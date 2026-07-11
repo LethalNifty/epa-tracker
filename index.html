@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GI EPA Tracker</title>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/*EPA_DATA_START*/
+const EPA_DATA = [
+ {
+  "code": "D1",
+  "stage": "ttd",
+  "title": "Assessing, triaging, and initiating management for patients with GI emergencies",
+  "parts": [
+   {
+    "id": "d1",
+    "name": null,
+    "required": 4,
+    "items": [
+     {
+      "h": "At least 2 of the following presentation:"
+     },
+     {
+      "id": "d1-1",
+      "label": "acute GI bleed",
+      "target": 1
+     },
+     {
+      "id": "d1-2",
+      "label": "acute cholangitis",
+      "target": 1
+     },
+     {
+      "id": "d1-3",
+      "label": "severe/fulminant colitis",
+      "target": 1
+     },
+     {
+      "id": "d1-4",
+      "label": "esophageal foreign body/caustic ingestion",
+      "target": 1
+     },
+     {
+      "id": "d1-5",
+      "label": "acute liver failure",
+      "target": 1
+     },
+     {
+      "id": "d1-6",
+      "label": "other",
+      "target": 1
+     },
+     {
+      "id": "d1-7",
+      "label": "1 endoscopy required",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "D2",
+  "stage": "ttd",
+  "title": "Performing the pre-procedural assessment and risk optimization for patients undergoing endoscopy",
+  "parts": [
+   {
+    "id": "d2a",
+    "name": "Part A: Consent",
+    "required": 2,
+    "items": [
+     {
+      "id": "d2a-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "d2a-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
+   },
+   {
+    "id": "d2b",
+    "name": "Part B: Patient preparation",
+    "required": 4,
+    "items": [
+     {
+      "id": "d2b-1",
+      "label": "1 upper endoscopy",
+      "target": 1
+     },
+     {
+      "id": "d2b-2",
+      "label": "2 upper endoscopy",
+      "target": 1
+     },
+     {
+      "id": "d2b-3",
+      "label": "1 lower endoscopy",
+      "target": 1
+     },
+     {
+      "id": "d2b-4",
+      "label": "2 lower endoscopy",
+      "target": 1
+     },
+     {
+      "id": "d2b-5",
+      "label": "1 Emergent",
+      "target": 1
+     },
+     {
+      "id": "d2b-6",
+      "label": "1 Urgent",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "F1",
+  "stage": "f",
+  "title": "Assessing and initiating management for uncomplicated patients",
+  "parts": [
+   {
+    "id": "f1a",
+    "name": "Part A: History and physical",
+    "required": 2,
+    "items": [
+     {
+      "id": "f1a-1",
+      "label": "1 observed history",
+      "target": 1
+     },
+     {
+      "id": "f1a-2",
+      "label": "1 observed physical",
+      "target": 1
+     }
+    ]
+   },
+   {
+    "id": "f1b",
+    "name": "Part B: Clinical assessment and management",
+    "required": 12,
+    "items": [
+     {
+      "id": "f1b-1",
+      "label": "1 Upper GI tract disease",
+      "target": 1
+     },
+     {
+      "id": "f1b-2",
+      "label": "1 Lower GI tract disease",
+      "target": 1
+     },
+     {
+      "id": "f1b-3",
+      "label": "1 Liver disease",
+      "target": 1
+     },
+     {
+      "id": "f1b-4",
+      "label": "1 Pancreaticobiliary disease",
+      "target": 1
+     },
+     {
+      "id": "f1b-5",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f1b-6",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f1b-7",
+      "label": "3 Assessor",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "F2",
+  "stage": "f",
+  "title": "Assessing the nutritional status of uncomplicated patients",
+  "parts": [
+   {
+    "id": "f2",
+    "name": null,
+    "required": 2,
+    "items": [
+     {
+      "id": "f2-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f2-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "F3",
+  "stage": "f",
+  "title": "Performing esophagogastroduodenoscopy",
+  "parts": [
+   {
+    "id": "f3a",
+    "name": "Part A: Procedure",
+    "required": 6,
+    "items": [
+     {
+      "id": "f3a-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f3a-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
+   },
+   {
+    "id": "f3b",
+    "name": "Part B: Procedure note",
+    "required": 3,
+    "items": [
+     {
+      "id": "f3b-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f3b-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "F4",
+  "stage": "f",
+  "title": "Performing endoscopic examination to the level of the sigmoid colon",
+  "parts": [
+   {
+    "id": "f4",
+    "name": null,
+    "required": 6,
+    "items": [
+     {
+      "id": "f4-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "f4-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C1",
+  "stage": "core",
+  "title": "Assessing and initiating management for complex patients",
+  "parts": [
+   {
+    "id": "c1",
+    "name": null,
+    "required": 5,
+    "items": [
+     {
+      "id": "c1-1",
+      "label": "1 direct observation",
+      "target": 1
+     },
+     {
+      "id": "c1-2",
+      "label": "1 inpatient",
+      "target": 1
+     },
+     {
+      "id": "c1-3",
+      "label": "2 inpatient",
+      "target": 1
+     },
+     {
+      "id": "c1-4",
+      "label": "1 outpatient",
+      "target": 1
+     },
+     {
+      "id": "c1-5",
+      "label": "2 outpatient",
+      "target": 1
+     },
+     {
+      "id": "c1-6",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c1-7",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "h": "At least 5 different examples of the case mix:"
+     },
+     {
+      "id": "c1-8",
+      "label": "Atypical presentation",
+      "target": 1
+     },
+     {
+      "id": "c1-9",
+      "label": "Ambiguity in presentation, investigations and/or treatment",
+      "target": 1
+     },
+     {
+      "id": "c1-10",
+      "label": "Anticoagulation issues",
+      "target": 1
+     },
+     {
+      "id": "c1-11",
+      "label": "Multiple comorbid diseases",
+      "target": 1
+     },
+     {
+      "id": "c1-12",
+      "label": "Extraintestinal manifestations of intestinal disease",
+      "target": 1
+     },
+     {
+      "id": "c1-13",
+      "label": "Extrahepatic manifestations of liver disease",
+      "target": 1
+     },
+     {
+      "id": "c1-14",
+      "label": "Pregnancy",
+      "target": 1
+     },
+     {
+      "id": "c1-15",
+      "label": "Potential drug interaction",
+      "target": 1
+     },
+     {
+      "id": "c1-16",
+      "label": "Significant family history of malignancy",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C2",
+  "stage": "core",
+  "title": "Providing ongoing management for patients with stable, chronic and/or complex conditions",
+  "parts": [
+   {
+    "id": "c2",
+    "name": null,
+    "required": 14,
+    "items": [
+     {
+      "id": "c2-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c2-2",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c2-3",
+      "label": "3 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c2-4",
+      "label": "1 direct observation",
+      "target": 1
+     },
+     {
+      "id": "c2-5",
+      "label": "2 direct observation",
+      "target": 1
+     },
+     {
+      "h": "2 of each following presentations:"
+     },
+     {
+      "id": "c2-6",
+      "label": "Chronic liver disease and / or liver transplant recipients",
+      "target": 2
+     },
+     {
+      "id": "c2-7",
+      "label": "Chronic pancreatobiliary disease",
+      "target": 2
+     },
+     {
+      "id": "c2-8",
+      "label": "Inflammatory bowel disease",
+      "target": 2
+     },
+     {
+      "id": "c2-9",
+      "label": "Refractory disease such as GERD, H. pylori, cystic fibrosis",
+      "target": 2
+     },
+     {
+      "id": "c2-10",
+      "label": "Celiac disease /eosinophilic disorders",
+      "target": 2
+     },
+     {
+      "id": "c2-11",
+      "label": "Functional abdominal pain/irritable bowel syndrome (IBS-D, IBS-C)",
+      "target": 2
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C3",
+  "stage": "core",
+  "title": "Managing patients with exacerbations, disease progression, and/or complications of chronic GI conditions",
+  "parts": [
+   {
+    "id": "c3",
+    "name": null,
+    "required": 10,
+    "items": [
+     {
+      "id": "c3-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c3-2",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c3-3",
+      "label": "1 inpatient",
+      "target": 1
+     },
+     {
+      "id": "c3-4",
+      "label": "2 inpatient",
+      "target": 1
+     },
+     {
+      "id": "c3-5",
+      "label": "1 outpatient",
+      "target": 1
+     },
+     {
+      "id": "c3-6",
+      "label": "2 outpatient",
+      "target": 1
+     },
+     {
+      "id": "c3-7",
+      "label": "1 patients with IBD",
+      "target": 1
+     },
+     {
+      "id": "c3-8",
+      "label": "2 patients with IBD",
+      "target": 1
+     },
+     {
+      "id": "c3-9",
+      "label": "3 patients with IBD",
+      "target": 1
+     },
+     {
+      "id": "c3-10",
+      "label": "1 patients with chronic liver disease",
+      "target": 1
+     },
+     {
+      "id": "c3-11",
+      "label": "2 patients with chronic liver disease",
+      "target": 1
+     },
+     {
+      "id": "c3-12",
+      "label": "3 patients with chronic liver disease",
+      "target": 1
+     },
+     {
+      "id": "c3-13",
+      "label": "1 pancreatic disease",
+      "target": 1
+     },
+     {
+      "id": "c3-14",
+      "label": "1 esophageal disease",
+      "target": 1
+     },
+     {
+      "id": "c3-15",
+      "label": "1 intestinal failure",
+      "target": 1
+     },
+     {
+      "id": "c3-16",
+      "label": "1 disease exacerbation",
+      "target": 1
+     },
+     {
+      "id": "c3-17",
+      "label": "1 disease progression",
+      "target": 1
+     },
+     {
+      "id": "c3-18",
+      "label": "1 complication of therapy",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C4",
+  "stage": "core",
+  "title": "Identifying and referring patients who need additional specialized care",
+  "parts": [
+   {
+    "id": "c4",
+    "name": null,
+    "required": 3,
+    "items": [
+     {
+      "id": "c4-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c4-2",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c4-3",
+      "label": "1 Elective",
+      "target": 1
+     },
+     {
+      "id": "c4-4",
+      "label": "1 advanced GI care referral",
+      "target": 1
+     },
+     {
+      "id": "c4-5",
+      "label": "1 referral from other service",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C5",
+  "stage": "core",
+  "title": "Providing complete nutritional assessment and plans for patients with complex nutritional needs",
+  "parts": [
+   {
+    "id": "c5",
+    "name": null,
+    "required": 2,
+    "items": [
+     {
+      "id": "c5-1",
+      "label": "1 physician",
+      "target": 1
+     },
+     {
+      "id": "c5-2",
+      "label": "1 requiring nutritional intervention",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C6",
+  "stage": "core",
+  "title": "Performing colonoscopy",
+  "parts": [
+   {
+    "id": "c6",
+    "name": null,
+    "required": 12,
+    "items": [
+     {
+      "id": "c6-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c6-2",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c6-3",
+      "label": "3 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c6-4",
+      "label": "4 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c6-5",
+      "label": "1 difficult colonoscopy",
+      "target": 1
+     },
+     {
+      "id": "c6-6",
+      "label": "2 difficult colonoscopy",
+      "target": 1
+     },
+     {
+      "id": "c6-7",
+      "label": "3 difficult colonoscopy",
+      "target": 1
+     },
+     {
+      "id": "c6-8",
+      "label": "4 difficult colonoscopy",
+      "target": 1
+     },
+     {
+      "id": "c6-9",
+      "label": "1 DOPS",
+      "target": 1
+     },
+     {
+      "id": "c6-10",
+      "label": "2 DOPS",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C7",
+  "stage": "core",
+  "title": "Identifying clinically significant findings during endoscopic procedures of the upper and lower gastrointestinal tract",
+  "parts": [
+   {
+    "id": "c7",
+    "name": null,
+    "required": 8,
+    "items": [
+     {
+      "id": "c7-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c7-2",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c7-3",
+      "label": "3 Assessor",
+      "target": 1
+     },
+     {
+      "h": "At least 8 of the following:"
+     },
+     {
+      "id": "c7-4",
+      "label": "Crohn's",
+      "target": 1
+     },
+     {
+      "id": "c7-5",
+      "label": "ulcerative colitis",
+      "target": 1
+     },
+     {
+      "id": "c7-6",
+      "label": "upper GI malignancy",
+      "target": 1
+     },
+     {
+      "id": "c7-7",
+      "label": "lower GI malignancy",
+      "target": 1
+     },
+     {
+      "id": "c7-8",
+      "label": "peptic ulcer disease",
+      "target": 1
+     },
+     {
+      "id": "c7-9",
+      "label": "Barrett's",
+      "target": 1
+     },
+     {
+      "id": "c7-10",
+      "label": "celiac",
+      "target": 1
+     },
+     {
+      "id": "c7-11",
+      "label": "polyps",
+      "target": 1
+     },
+     {
+      "id": "c7-12",
+      "label": "portal hypertension (e.g., varices)",
+      "target": 1
+     },
+     {
+      "id": "c7-13",
+      "label": "vascular lesion",
+      "target": 1
+     },
+     {
+      "id": "c7-14",
+      "label": "other significant",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "C8",
+  "stage": "core",
+  "title": "Performing therapeutic endoscopic interventions of the upper and lower gastrointestinal tract",
+  "parts": [
+   {
+    "id": "c8a",
+    "name": "Part A: Procedural skills",
+    "required": 25,
+    "items": [
+     {
+      "id": "c8a-1",
+      "label": "1 variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-2",
+      "label": "2 variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-3",
+      "label": "3 variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-4",
+      "label": "1 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-5",
+      "label": "2 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-6",
+      "label": "3 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-7",
+      "label": "4 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-8",
+      "label": "5 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-9",
+      "label": "6 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-10",
+      "label": "7 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-11",
+      "label": "8 non-variceal hemostasis",
+      "target": 1
+     },
+     {
+      "id": "c8a-12",
+      "label": "1 dilations",
+      "target": 1
+     },
+     {
+      "id": "c8a-13",
+      "label": "2 dilations",
+      "target": 1
+     },
+     {
+      "id": "c8a-14",
+      "label": "1 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-15",
+      "label": "2 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-16",
+      "label": "3 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-17",
+      "label": "4 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-18",
+      "label": "5 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-19",
+      "label": "6 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-20",
+      "label": "7 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-21",
+      "label": "8 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-22",
+      "label": "9 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-23",
+      "label": "10 polypectomy",
+      "target": 1
+     },
+     {
+      "id": "c8a-24",
+      "label": "1 foreign body",
+      "target": 1
+     },
+     {
+      "id": "c8a-25",
+      "label": "2 foreign body",
+      "target": 1
+     },
+     {
+      "id": "c8a-26",
+      "label": "1 actively bleeding",
+      "target": 1
+     },
+     {
+      "id": "c8a-27",
+      "label": "2 actively bleeding",
+      "target": 1
+     },
+     {
+      "id": "c8a-28",
+      "label": "3 actively bleeding",
+      "target": 1
+     },
+     {
+      "id": "c8a-29",
+      "label": "4 actively bleeding",
+      "target": 1
+     },
+     {
+      "id": "c8a-30",
+      "label": "1 polypectomy >1 cm",
+      "target": 1
+     },
+     {
+      "id": "c8a-31",
+      "label": "2 polypectomy >1 cm",
+      "target": 1
+     },
+     {
+      "id": "c8a-32",
+      "label": "3 polypectomy >1 cm",
+      "target": 1
+     },
+     {
+      "id": "c8a-33",
+      "label": "4 polypectomy >1 cm",
+      "target": 1
+     },
+     {
+      "id": "c8a-34",
+      "label": "5 polypectomy >1 cm",
+      "target": 1
+     }
+    ]
+   },
+   {
+    "id": "c8b",
+    "name": "Part B: Procedure note",
+    "required": 4,
+    "items": []
+   }
+  ]
+ },
+ {
+  "code": "C9",
+  "stage": "core",
+  "title": "Leading the provision of GI care for patients on an inpatient service",
+  "parts": [
+   {
+    "id": "c9a",
+    "name": "Part A: Patient Care",
+    "required": 4,
+    "items": [
+     {
+      "id": "c9a-1",
+      "label": "1 assessor",
+      "target": 1
+     },
+     {
+      "id": "c9a-2",
+      "label": "2 assessor",
+      "target": 1
+     }
+    ]
+   },
+   {
+    "id": "c9b",
+    "name": "Part B: Interprofessional care",
+    "required": 6,
+    "items": [
+     {
+      "id": "c9b-1",
+      "label": "1 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-2",
+      "label": "2 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-3",
+      "label": "3 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-4",
+      "label": "4 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-5",
+      "label": "5 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-6",
+      "label": "6 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-7",
+      "label": "1 other health care professional",
+      "target": 1
+     },
+     {
+      "id": "c9b-8",
+      "label": "2 other health care professional",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "code": "P1",
+  "stage": "ttp",
+  "title": "Managing the day’s list of endoscopy procedures",
+  "parts": [
+   {
+    "id": "p1",
+    "name": null,
+    "required": 5,
+    "items": [
+     {
+      "id": "p1-1",
+      "label": "1 assessor",
+      "target": 1
+     },
+     {
+      "id": "p1-2",
+      "label": "2 assessor",
+      "target": 1
+     },
+     {
+      "id": "p1-3",
+      "label": "3 assessor",
+      "target": 1
+     }
+    ]
+   }
+  ]
+ }
+];
+/*EPA_DATA_END*/
+</script>
+</body>
+</html>
