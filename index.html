@@ -46,6 +46,20 @@ section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:va
 .rbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
 .rcount{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:650;color:var(--muted);font-size:14px}
 .rcount.done{color:var(--accent-ink)}
+.banner{background:var(--accent-weak);border:1px solid var(--accent);border-radius:14px;
+  padding:12px 14px;margin-top:10px}
+.banner b{font-size:15px}
+.bhint{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.mini{flex:0 0 auto;min-width:74px;min-height:44px;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:8px 12px;text-align:center}
+.mini b{display:block;font-size:15px;color:var(--accent-ink)}
+.mini span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;background:var(--accent);color:#fff;border-radius:99px;
+  font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 7px;margin-left:6px;vertical-align:2px}
+@media (prefers-color-scheme: dark){ .chip{color:#06281c} }
 </style>
 </head>
 <body>
@@ -1807,6 +1821,30 @@ const Store = {
   importJSON(t) { return null; }
 };
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
+const YEAR1_START = new Date(2026, 6, 1);
+const BLOCK_NAMES = {1:"Consults HSC",2:"Consults SBH",3:"Hepatology",4:"Motility/Nutrition",5:"Consults SBH",6:"Radiology",7:"Consults SBH",8:"Advanced Endoscopy",9:"Pathology",10:"Consults HSC",11:"Consults Grace",12:"Hepatology",13:"Consults HSC"};
+function blockFor(date) {
+  const days = Math.floor((date - YEAR1_START) / 86400000);
+  if (days < 0 || days >= 13 * 28) return null;
+  const num = Math.floor(days / 28) + 1;
+  return {num, name: BLOCK_NAMES[num], week: Math.floor((days % 28) / 7) + 1};
+}
+const CONSULTS = {epas:["D1","F1","C1","C3","C4","D2","F3","F4","C7"], hint:"Emergencies, new assessments, complex patients — form on every interesting consult."};
+const BLOCK_FOCUS = {
+  1:{epas:["D1","D2","F1"], hint:"TTD first: emergencies (D1), consent + prep (D2), observed H&P (F1-A)."},
+  2:{epas:["D1","D2","F1","F2"], hint:"Close out D1; stack F1-B assessments; start F2 nutrition."},
+  3:{epas:["C2","C3","C1","D1"], hint:"Liver ticks: chronic liver follow-ups (C2), liver exacerbations (C3)."},
+  4:{epas:["F2","C5","C2"], hint:"Finish F2; complex nutrition (C5); functional/refractory C2 lines."},
+  5:CONSULTS,
+  6:{epas:[], catchup:true, hint:"Light block: catch up on lagging EPAs, procedure notes (F3-B, C8-B), pre-book assessors."},
+  7:CONSULTS,
+  8:{epas:["C6","C8","F3","F4","C7","D2"], hint:"Procedure goldmine: form on EVERY list — colonoscopy, therapeutics, findings."},
+  9:{epas:[], catchup:true, hint:"Light block: catch up on lagging EPAs, procedure notes, book next block's assessors."},
+  10:{epas:["C1","C3","C9"], hint:"Finish C1; rare C3 lines (pancreatic, esophageal, intestinal failure); C9 if senior."},
+  11:{epas:["C2","C3","C4"], hint:"Outpatient-heavy: every clinic is a C2 form opportunity."},
+  12:{epas:["C2","C3","C1"], hint:"Second liver block: close every remaining liver line."},
+  13:{epas:["C9"], hint:"Year-1 wrap: audit everything, close TTD/F gaps, book stragglers."}
+};
 let route = {page:"home"};
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function fmtDate(d) { return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
@@ -1816,16 +1854,35 @@ function overall() { let d=0, r=0;
 
 function viewHome() {
   const o = overall();
+  const today = window.__today || new Date();
+  const blk = blockFor(today);
+  const focus = blk ? (BLOCK_FOCUS[blk.num] || {epas:[]}) : {epas:[]};
   let h = `<header class="top"><div class="htitle"><b>GI EPA Tracker</b>` +
     `<span class="hcount">${o.d} / ${o.r}</span></div>` +
     `<div class="hbar"><i style="width:${o.r ? Math.round(o.d/o.r*100) : 0}%"></i></div></header>`;
+  if (blk) {
+    h += `<div class="banner"><b>Block ${blk.num} — ${esc(blk.name)} (wk ${blk.week}/4)</b>` +
+      `<div class="bhint">${esc(focus.hint || "")}</div>`;
+    if (focus.epas.length) {
+      h += `<div class="strip">` + focus.epas.map(c => {
+        const p = Store.epaProgress(c);
+        return `<button class="mini" data-action="open" data-code="${c}"><b>${c}</b><span>${p.done}/${p.req}</span></button>`;
+      }).join("") + `</div>`;
+    }
+    h += `</div>`;
+  } else {
+    h += `<div class="banner"><b>${today < YEAR1_START ? "Fellowship starts July 2026." :
+      "Year 2 schedule not loaded"}</b>` + (today < YEAR1_START ? "" :
+      `<div class="bhint">Ask Claude to update the app with the Year 2 rotation schedule.</div>`) + `</div>`;
+  }
   for (const st of ["ttd","f","core","ttp"]) {
     h += `<section><h2>${STAGE_NAMES[st]}</h2>`;
     for (const e of EPA_DATA.filter(x => x.stage === st)) {
       const p = Store.epaProgress(e.code), pct = p.req ? Math.round(p.done/p.req*100) : 0;
+      const badge = !focus.catchup && focus.epas.includes(e.code) ? `<span class="chip">this block</span>` : "";
       h += `<button class="row" data-action="open" data-code="${e.code}">` +
         `<span class="code">${e.code}</span>` +
-        `<span class="rmid"><span class="rtitle">${esc(e.title)}</span>` +
+        `<span class="rmid"><span class="rtitle">${esc(e.title)}${badge}</span>` +
         `<span class="rbar"><i style="width:${pct}%"></i></span></span>` +
         `<span class="rcount${p.done >= p.req ? " done" : ""}">${p.done}/${p.req}${p.done >= p.req ? " ✓" : ""}</span>` +
         `</button>`;
