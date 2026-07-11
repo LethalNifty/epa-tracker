@@ -51,6 +51,21 @@ def main():
                 errs.append(f"{pid}: bad line id {l['id']}")
     if len(parts) != len(EXPECTED):
         errs.append(f"{len(parts)} parts, expected {len(EXPECTED)}")
+    for e in data:
+        ref = e.get("ref") or {}
+        if not ref.get("keyFeatures"):
+            errs.append(f"{e['code']}: ref.keyFeatures missing/empty")
+        if not ref.get("plan"):
+            errs.append(f"{e['code']}: ref.plan missing/empty")
+        for pl in ref.get("plan", []):
+            if not pl.get("method") or not pl.get("rule"):
+                errs.append(f"{e['code']}: plan entry missing method/rule")
+        ms = ref.get("milestones", [])
+        if sum(len(g["list"]) for g in ms) < 3:
+            errs.append(f"{e['code']}: fewer than 3 milestones")
+        nparts = len(e["parts"])
+        if nparts > 1 and len(ref.get("plan", [])) != nparts:
+            errs.append(f"{e['code']}: plan groups != parts")
     if errs:
         print("AUDIT FAIL")
         for e in errs:
