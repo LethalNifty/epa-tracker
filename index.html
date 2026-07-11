@@ -60,6 +60,62 @@ section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:va
   font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   padding:2px 7px;margin-left:6px;vertical-align:2px}
 @media (prefers-color-scheme: dark){ .chip{color:#06281c} }
+.back{color:var(--accent-ink);font-weight:650;min-height:44px;display:flex;align-items:center}
+.dhead{display:flex;gap:10px;align-items:center;margin-top:2px}
+.code.big{flex:0 0 52px;height:52px;font-size:18px;border-radius:13px}
+.stagechip{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:3px 10px}
+.dtitle{font-size:19px;line-height:1.3;margin:10px 0 4px;letter-spacing:-.2px}
+.part{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:14px}
+.part h3{margin:0 0 6px;font-size:15px}
+.pprog{font-size:14px;color:var(--muted)}
+.pprog b{font-size:20px;color:var(--text)}
+.pprog .ok{color:var(--accent-ink);font-weight:650}
+.pbarBig{height:6px;border-radius:3px;background:var(--border);margin:8px 0 10px;overflow:hidden}
+.pbarBig i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.logbtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;
+  border:1.5px dashed var(--accent);border-radius:12px;color:var(--accent-ink);font-weight:650}
+.obsrow{display:flex;gap:10px;align-items:center;width:100%;min-height:44px;
+  border-bottom:1px solid var(--border);padding:6px 2px;font-size:14px}
+.obsrow .onum{color:var(--accent-ink);font-weight:700;flex:0 0 28px}
+.obsrow .ometa{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editor{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
+.editor label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+.editor input{display:block;width:100%;margin-top:3px;font:inherit;color:var(--text);
+  background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;min-height:40px}
+.erow{display:flex;justify-content:space-between;gap:10px}
+.erow button{min-height:40px;padding:0 16px;border-radius:10px;font-weight:650}
+.erow .del{color:var(--danger)}
+.erow .donebtn{background:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){ .erow .donebtn{color:#06281c} }
+.ctx{margin-top:12px}
+.ctx h4{margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ihead{font-size:13px;font-weight:650;color:var(--muted);padding:10px 2px 2px}
+.line{display:flex;gap:10px;align-items:center;min-height:46px;border-bottom:1px solid var(--border);
+  padding:4px 2px;cursor:pointer}
+.line:last-child{border-bottom:none}
+.lbox{flex:0 0 30px;height:30px;border:1.5px solid var(--border);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent-ink)}
+.ldone .lbox{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){ .ldone .lbox{color:#06281c} }
+.llab{flex:1;font-size:14px;line-height:1.3}
+.ldone .llab{color:var(--muted);text-decoration:line-through}
+.lmeta{flex:0 0 36px;height:36px;border-radius:9px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+.refblock{margin-top:18px}
+.refblock h4{margin:16px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.refblock ul{margin:0;padding-left:18px;font-size:14px;color:var(--text)}
+.refblock li{margin-bottom:6px;line-height:1.45}
+.planitem{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:8px;font-size:14px}
+.planitem b{display:block;margin-bottom:2px}
+.planitem .rule{color:var(--accent-ink);font-weight:600;margin-top:6px}
+.planitem .meth{color:var(--muted)}
+details{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 13px;margin-top:10px}
+summary{min-height:46px;display:flex;align-items:center;font-weight:650;cursor:pointer;list-style:none}
+summary::before{content:"▸";margin-right:8px;color:var(--accent-ink);transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+details ol{margin:0 0 12px;padding-left:20px;font-size:13.5px}
+details li{margin-bottom:7px;line-height:1.45}
+details h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -1891,18 +1947,106 @@ function viewHome() {
   }
   return h;
 }
-function viewEpa(code) { return `<header class="top"><div class="htitle"><b>${code}</b></div></header>`; }
+function editorHTML(meta, dat) {
+  return `<div class="editor">` +
+    `<label>Date <input type="date" value="${esc(meta.d || "")}" data-field="d" ${dat}></label>` +
+    `<label>Note <input type="text" value="${esc(meta.n || "")}" placeholder="assessor, case details…" data-field="n" ${dat}></label>` +
+    `<div class="erow">` + (dat.includes("data-obs") ?
+      `<button class="del" data-action="delobs" ${dat}>Delete</button>` : `<span></span>`) +
+    `<button class="donebtn" data-action="closeedit">Done</button></div></div>`;
+}
+function partBlock(p) {
+  const done = Store.partDone(p.id);
+  const pct = Math.min(100, p.required ? Math.round(done / p.required * 100) : 0);
+  let h = `<div class="part">`;
+  if (p.name) h += `<h3>${esc(p.name)}</h3>`;
+  h += `<div class="pprog"><b>${done}</b> / ${p.required} observations` +
+    (done >= p.required ? ` <span class="ok">✓ complete</span>` : "") + `</div>` +
+    `<div class="pbarBig"><i style="width:${pct}%"></i></div>`;
+  const obs = Store.state.obs[p.id] || [];
+  for (let i = 0; i < obs.length; i++) {
+    const o = obs[i];
+    h += `<div class="obsrow" data-action="editobs" data-part="${p.id}" data-obs="${i}">` +
+      `<span class="onum">#${i+1}</span>` +
+      `<span class="ometa">${esc(o.d || "no date")}${o.n ? " · " + esc(o.n) : ""}</span></div>`;
+    if (route.editObs === p.id + "|" + i)
+      h += editorHTML(o, `data-part="${p.id}" data-obs="${i}"`);
+  }
+  h += `<button class="logbtn" data-action="logobs" data-part="${p.id}">+ Log observation</button>`;
+  if (p.items.length) {
+    h += `<div class="ctx"><h4>Context checklist</h4>`;
+    for (const it of p.items) {
+      if (it.h) { h += `<div class="ihead">${esc(it.h)}</div>`; continue; }
+      const v = Store.lineVal(it.id), ldone = v >= it.target;
+      const box = it.target === 1 ? (v ? "✓" : "") : `${v}/2`;
+      h += `<div class="line${ldone ? " ldone" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
+        `<span class="lbox">${box}</span><span class="llab">${esc(it.label)}</span>` +
+        `<button class="lmeta" data-action="linemeta" data-line="${it.id}">…</button></div>`;
+      if (route.editLine === it.id)
+        h += editorHTML(Store.state.lines[it.id] || {}, `data-line="${it.id}"`);
+    }
+    h += `</div>`;
+  }
+  return h + `</div>`;
+}
+function refBlock(e) {
+  const r = e.ref;
+  let h = `<div class="refblock"><h4>Key features</h4><ul>` +
+    r.keyFeatures.map(k => `<li>${esc(k)}</li>`).join("") + `</ul>`;
+  h += `<h4>Assessment plan</h4>`;
+  for (const pl of r.plan) {
+    h += `<div class="planitem">` + (pl.part ? `<b>${esc(pl.part)}</b>` : "") +
+      `<span class="meth">${esc(pl.method)}</span>` +
+      (pl.collects.length ? `<ul>` + pl.collects.map(c => `<li>${esc(c)}</li>`).join("") + `</ul>` : "") +
+      `<div class="rule">${esc(pl.rule)}</div></div>`;
+  }
+  h += `<details><summary>CanMEDS milestones</summary>`;
+  for (const g of r.milestones) {
+    if (g.part) h += `<h5>${esc(g.part)}</h5>`;
+    h += `<ol>` + g.list.map(m => `<li>${esc(m)}</li>`).join("") + `</ol>`;
+  }
+  return h + `</details></div>`;
+}
+function viewEpa(code) {
+  const e = EPA_DATA.find(x => x.code === code);
+  let h = `<header class="top"><button class="back" data-action="back">← All EPAs</button></header>` +
+    `<div class="dhead"><span class="code big">${e.code}</span>` +
+    `<span class="stagechip">${STAGE_NAMES[e.stage]}</span></div>` +
+    `<h1 class="dtitle">${esc(e.title)}</h1>`;
+  for (const p of e.parts) h += partBlock(p);
+  return h + refBlock(e);
+}
 
 function render() {
   document.getElementById("app").innerHTML = route.page === "home" ? viewHome() : viewEpa(route.code);
-  window.scrollTo(0, 0);
+  if (!route.keepScroll) window.scrollTo(0, 0);
+  route.keepScroll = false;
+}
+function dispatch(act, d) {
+  if (act === "open") { route = {page:"epa", code:d.code}; render(); }
+  else if (act === "back") { route = {page:"home"}; render(); }
+  else if (act === "logobs") {
+    const i = Store.logObs(d.part);
+    Store.setObsMeta(d.part, i, {d: fmtDate(window.__today || new Date())});
+    route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "editobs") {
+    const k = d.part + "|" + d.obs;
+    route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "delobs") { Store.removeObs(d.part, +d.obs); route.editObs = null; route.keepScroll = true; render(); }
+  else if (act === "cycleline") { Store.cycleLine(d.line, +d.target); route.keepScroll = true; render(); }
+  else if (act === "linemeta") {
+    route.editLine = route.editLine === d.line ? null : d.line; route.editObs = null; route.keepScroll = true; render(); }
+  else if (act === "closeedit") { route.editObs = null; route.editLine = null; route.keepScroll = true; render(); }
 }
 document.getElementById("app").addEventListener("click", ev => {
   const t = ev.target.closest("[data-action]");
-  if (!t) return;
-  const act = t.dataset.action;
-  if (act === "open") { route = {page:"epa", code:t.dataset.code}; render(); }
-  else if (act === "back") { route = {page:"home"}; render(); }
+  if (t) dispatch(t.dataset.action, t.dataset);
+});
+document.getElementById("app").addEventListener("change", ev => {
+  const t = ev.target, d = t.dataset || {};
+  if (!d.field) return;
+  if (d.part !== undefined && d.obs !== undefined) Store.setObsMeta(d.part, +d.obs, {[d.field]: t.value});
+  else if (d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
 Store.load();
 render();
