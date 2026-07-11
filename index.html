@@ -4,6 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GI EPA Tracker</title>
+<style>
+:root{
+  --bg:#f4f7f5; --card:#ffffff; --text:#17221d; --muted:#5f6f68; --border:#dde5e0;
+  --accent:#059669; --accent-ink:#047857; --accent-weak:#d7f2e6; --danger:#b91c1c;
+  --chipbg:#065f46; --chiptx:#eafff5;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b100e; --card:#151d19; --text:#e6ebe8; --muted:#93a39b; --border:#25302a;
+    --accent:#34d399; --accent-ink:#6ee7b7; --accent-weak:#0e3a2b; --danger:#f87171;
+    --chipbg:#0d4a37; --chiptx:#a7f3d0;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:env(safe-area-inset-bottom)}
+#app{max-width:560px;margin:0 auto;padding:0 14px 40px}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;text-align:left;cursor:pointer}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 2px 8px}
+.htitle{display:flex;justify-content:space-between;align-items:baseline}
+.htitle b{font-size:20px;letter-spacing:-.2px}
+.hcount{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.hbar{height:5px;border-radius:3px;background:var(--border);margin-top:8px;overflow:hidden}
+.hbar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+section{margin-top:18px}
+section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 2px 8px}
+.row{display:flex;gap:12px;align-items:center;width:100%;min-height:56px;
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:10px 12px;margin-bottom:8px}
+.row:active{transform:scale(.99)}
+.code{flex:0 0 44px;height:44px;border-radius:11px;background:var(--chipbg);color:var(--chiptx);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.rmid{flex:1;min-width:0}
+.rtitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  font-size:13.5px;line-height:1.3;color:var(--text)}
+.rbar{display:block;height:4px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden}
+.rbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.rcount{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:650;color:var(--muted);font-size:14px}
+.rcount.done{color:var(--accent-ink)}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1736,6 +1779,76 @@ const EPA_DATA = [
  }
 ];
 /*EPA_DATA_END*/
+</script>
+<script>
+"use strict";
+const KEY = "epa-state-v1";
+const Store = {
+  state: {v:1, obs:{}, lines:{}, lastBackup:null},
+  persistFailed: false,
+  load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) this.state = s; } catch(e){} },
+  save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch(e){ this.persistFailed = true; } },
+  logObs(p) { (this.state.obs[p] ||= []).push({}); this.save(); return this.state.obs[p].length - 1; },
+  removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
+  setObsMeta(p, i, m) { Object.assign(this.state.obs[p][i], m); this.save(); },
+  cycleLine(id, target) { const cur = this.lineVal(id), nv = (cur + 1) % (target + 1);
+    if (nv === 0) { const meta = this.state.lines[id]; delete this.state.lines[id];
+      if (meta && (meta.d || meta.n)) { this.state.lines[id] = {v:0, d:meta.d, n:meta.n}; } }
+    else (this.state.lines[id] ||= {}).v = nv;
+    this.save(); return nv; },
+  lineVal(id) { return (this.state.lines[id] && this.state.lines[id].v) || 0; },
+  setLineMeta(id, m) { Object.assign(this.state.lines[id] ||= {v:0}, m); this.save(); },
+  partDone(p) { return (this.state.obs[p]||[]).length; },
+  epaProgress(code) { const e = EPA_DATA.find(x => x.code === code);
+    let done = 0, req = 0;
+    for (const p of e.parts) { req += p.required; done += Math.min(this.partDone(p.id), p.required); }
+    return {done, req}; },
+  exportJSON() { return null; },
+  importJSON(t) { return null; }
+};
+const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
+let route = {page:"home"};
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function fmtDate(d) { return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function overall() { let d=0, r=0;
+  for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
+  return {d, r}; }
+
+function viewHome() {
+  const o = overall();
+  let h = `<header class="top"><div class="htitle"><b>GI EPA Tracker</b>` +
+    `<span class="hcount">${o.d} / ${o.r}</span></div>` +
+    `<div class="hbar"><i style="width:${o.r ? Math.round(o.d/o.r*100) : 0}%"></i></div></header>`;
+  for (const st of ["ttd","f","core","ttp"]) {
+    h += `<section><h2>${STAGE_NAMES[st]}</h2>`;
+    for (const e of EPA_DATA.filter(x => x.stage === st)) {
+      const p = Store.epaProgress(e.code), pct = p.req ? Math.round(p.done/p.req*100) : 0;
+      h += `<button class="row" data-action="open" data-code="${e.code}">` +
+        `<span class="code">${e.code}</span>` +
+        `<span class="rmid"><span class="rtitle">${esc(e.title)}</span>` +
+        `<span class="rbar"><i style="width:${pct}%"></i></span></span>` +
+        `<span class="rcount${p.done >= p.req ? " done" : ""}">${p.done}/${p.req}${p.done >= p.req ? " ✓" : ""}</span>` +
+        `</button>`;
+    }
+    h += `</section>`;
+  }
+  return h;
+}
+function viewEpa(code) { return `<header class="top"><div class="htitle"><b>${code}</b></div></header>`; }
+
+function render() {
+  document.getElementById("app").innerHTML = route.page === "home" ? viewHome() : viewEpa(route.code);
+  window.scrollTo(0, 0);
+}
+document.getElementById("app").addEventListener("click", ev => {
+  const t = ev.target.closest("[data-action]");
+  if (!t) return;
+  const act = t.dataset.action;
+  if (act === "open") { route = {page:"epa", code:t.dataset.code}; render(); }
+  else if (act === "back") { route = {page:"home"}; render(); }
+});
+Store.load();
+render();
 </script>
 </body>
 </html>
