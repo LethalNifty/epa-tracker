@@ -116,6 +116,15 @@ details[open] summary::before{transform:rotate(90deg)}
 details ol{margin:0 0 12px;padding-left:20px;font-size:13.5px}
 details li{margin-bottom:7px;line-height:1.45}
 details h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
+.nudge{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--accent);
+  border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px}
+.nudge .dis{flex:0 0 36px;height:36px;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:17px}
+.warnbar{background:var(--danger);color:#fff;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px;font-weight:600}
+.bwrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+.bbtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;
+  border:1px solid var(--border);border-radius:11px;font-weight:650;margin-bottom:8px;color:var(--accent-ink)}
+.bnote{font-size:12.5px;color:var(--muted);text-align:center}
+.berr{color:var(--danger);font-size:13px;margin-top:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -1873,9 +1882,30 @@ const Store = {
     let done = 0, req = 0;
     for (const p of e.parts) { req += p.required; done += Math.min(this.partDone(p.id), p.required); }
     return {done, req}; },
-  exportJSON() { return null; },
-  importJSON(t) { return null; }
+  exportJSON() {
+    this.state.lastBackup = new Date().toISOString(); this.save();
+    return JSON.stringify(this.state, null, 1);
+  },
+  importJSON(text) {
+    try {
+      const s = JSON.parse(text);
+      if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
+        return {ok:false, error:"Not a valid EPA backup file."};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null};
+      this.save(); return {ok:true};
+    } catch(e) { return {ok:false, error:"Could not read that file."}; }
+  },
+  hasData() {
+    return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
+      Object.keys(this.state.lines).length > 0;
+  }
 };
+let nudgeDismissed = false, importError = null;
+function needsNudge(today) {
+  if (!Store.hasData()) return false;
+  const lb = Store.state.lastBackup;
+  return !lb || (today - new Date(lb)) > 30 * 86400000;
+}
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
 const YEAR1_START = new Date(2026, 6, 1);
 const BLOCK_NAMES = {1:"Consults HSC",2:"Consults SBH",3:"Hepatology",4:"Motility/Nutrition",5:"Consults SBH",6:"Radiology",7:"Consults SBH",8:"Advanced Endoscopy",9:"Pathology",10:"Consults HSC",11:"Consults Grace",12:"Hepatology",13:"Consults HSC"};
@@ -1916,6 +1946,11 @@ function viewHome() {
   let h = `<header class="top"><div class="htitle"><b>GI EPA Tracker</b>` +
     `<span class="hcount">${o.d} / ${o.r}</span></div>` +
     `<div class="hbar"><i style="width:${o.r ? Math.round(o.d/o.r*100) : 0}%"></i></div></header>`;
+  if (Store.persistFailed)
+    h += `<div class="warnbar">Warning: progress can't be saved (private browsing?). Ticks will be lost when you close the app.</div>`;
+  if (!nudgeDismissed && needsNudge(today))
+    h += `<div class="nudge"><span>It's been a while since your last backup — export one below.</span>` +
+      `<button class="dis" data-action="dismissnudge">×</button></div>`;
   if (blk) {
     h += `<div class="banner"><b>Block ${blk.num} — ${esc(blk.name)} (wk ${blk.week}/4)</b>` +
       `<div class="bhint">${esc(focus.hint || "")}</div>`;
@@ -1945,6 +1980,13 @@ function viewHome() {
     }
     h += `</section>`;
   }
+  h += `<section><h2>Backup</h2><div class="bwrap">` +
+    `<button class="bbtn" data-action="export">Export backup</button>` +
+    `<button class="bbtn" data-action="importpick">Import backup</button>` +
+    `<input type="file" id="importfile" accept=".json,application/json" style="display:none">` +
+    `<div class="bnote">Last backup: ${Store.state.lastBackup ? esc(Store.state.lastBackup.slice(0,10)) : "never"}</div>` +
+    (importError ? `<div class="berr">${esc(importError)}</div>` : "") +
+    `</div></section>`;
   return h;
 }
 function editorHTML(meta, dat) {
@@ -2037,6 +2079,16 @@ function dispatch(act, d) {
   else if (act === "linemeta") {
     route.editLine = route.editLine === d.line ? null : d.line; route.editObs = null; route.keepScroll = true; render(); }
   else if (act === "closeedit") { route.editObs = null; route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "dismissnudge") { nudgeDismissed = true; route.keepScroll = true; render(); }
+  else if (act === "export") {
+    const json = Store.exportJSON();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], {type:"application/json"}));
+    a.download = "epa-backup-" + fmtDate(new Date()) + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    route.keepScroll = true; render(); }
+  else if (act === "importpick") { document.getElementById("importfile").click(); }
 }
 document.getElementById("app").addEventListener("click", ev => {
   const t = ev.target.closest("[data-action]");
@@ -2044,6 +2096,21 @@ document.getElementById("app").addEventListener("click", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
+  if (t.id === "importfile") {
+    const f = t.files && t.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      importError = null;
+      if (confirm("Replace current progress with this backup?")) {
+        const res = Store.importJSON(rd.result);
+        if (!res.ok) importError = res.error;
+      }
+      render();
+    };
+    rd.readAsText(f);
+    return;
+  }
   if (!d.field) return;
   if (d.part !== undefined && d.obs !== undefined) Store.setObsMeta(d.part, +d.obs, {[d.field]: t.value});
   else if (d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
