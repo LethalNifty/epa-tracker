@@ -130,6 +130,7 @@ details h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
   border:1px solid var(--border);border-radius:11px;font-weight:650;margin-bottom:8px;color:var(--accent-ink)}
 .bnote{font-size:12.5px;color:var(--muted);text-align:center}
 .berr{color:var(--danger);font-size:13px;margin-top:6px;text-align:center}
+.copy{font-size:11px;color:var(--muted);line-height:1.4;margin-top:14px}
 </style>
 </head>
 <body>
@@ -2052,7 +2053,7 @@ function refBlock(e) {
     if (g.part) h += `<h5>${esc(g.part)}</h5>`;
     h += `<ol>` + g.list.map(m => `<li>${esc(m)}</li>`).join("") + `</ol>`;
   }
-  return h + `</details></div>`;
+  return h + `</details><p class="copy">EPA definitions: Copyright © 2024 The Royal College of Physicians and Surgeons of Canada. Referenced and produced with permission. Reproduced for educational purposes.</p></div>`;
 }
 function viewEpa(code) {
   const e = EPA_DATA.find(x => x.code === code);
