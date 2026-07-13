@@ -66,13 +66,33 @@ def main():
         nparts = len(e["parts"])
         if nparts > 1 and len(ref.get("plan", [])) != nparts:
             errs.append(f"{e['code']}: plan groups != parts")
+    # Biopsy data (JS-literal, not JSON): structural checks by regex.
+    bm = re.search(r"/\*BIOPSY_DATA_START\*/(.*?)/\*BIOPSY_DATA_END\*/", src, re.S)
+    if not bm:
+        errs.append("BIOPSY_DATA markers not found")
+        nbio = 0
+    else:
+        blob = bm.group(1)
+        nbio = len(re.findall(r"\{cat:", blob))
+        nsrc = len(re.findall(r'src:"(?:mb|us)"', blob))
+        ntitle = len(re.findall(r"title:", blob))
+        nrows = len(re.findall(r"rows:\[", blob))
+        badsrc = re.findall(r'src:"([^"]*)"', blob)
+        if nbio != 16:
+            errs.append(f"BIOPSY_DATA: {nbio} protocols, expected 16")
+        if not (nsrc == ntitle == nrows == nbio):
+            errs.append(f"BIOPSY_DATA: field mismatch cat={nbio} src={nsrc} title={ntitle} rows={nrows}")
+        for s in badsrc:
+            if s not in ("mb", "us"):
+                errs.append(f"BIOPSY_DATA: bad src '{s}'")
+
     if errs:
         print("AUDIT FAIL")
         for e in errs:
             print(" -", e)
         sys.exit(1)
     print(f"AUDIT OK: {len(data)} EPAs, {len(parts)} parts, total required = "
-          f"{sum(p['required'] for p in parts.values())}")
+          f"{sum(p['required'] for p in parts.values())}; {nbio} biopsy protocols")
 
 if __name__ == "__main__":
     main()
