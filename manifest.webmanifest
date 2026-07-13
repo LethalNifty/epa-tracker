@@ -1,6 +1,6 @@
 {
-  "name": "GI EPA Tracker",
-  "short_name": "EPAs",
+  "name": "GI Hub",
+  "short_name": "GI Hub",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#064e3b",
