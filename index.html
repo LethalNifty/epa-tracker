@@ -146,6 +146,35 @@ details h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
 .pchip span{color:var(--muted);font-variant-numeric:tabular-nums}
 .pchip.full{border-color:var(--accent)}
 .pchip.full b{text-decoration:line-through;color:var(--muted)}
+:root{--tag2:#f0a63c; --mark:#3a4a2a}
+.bsub{font-size:11px;color:var(--muted);margin:2px 2px 10px}
+.qwrap{position:relative;margin-top:2px}
+#biopsyq{width:100%;padding:13px 40px 13px 14px;font-size:17px;border-radius:12px;
+  border:1px solid var(--border);background:var(--card);color:var(--text);outline:none}
+#biopsyq:focus{border-color:var(--accent)}
+.qclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:var(--chipbg);
+  color:var(--chiptx);width:30px;height:30px;border-radius:50%;font-size:16px}
+.bcats{display:flex;gap:7px;overflow-x:auto;padding:10px 2px 2px;scrollbar-width:none}
+.bcats::-webkit-scrollbar{display:none}
+.bcat{white-space:nowrap;min-height:38px;display:flex;align-items:center;padding:7px 14px;border-radius:999px;
+  font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--border);color:var(--muted)}
+.bcat.on{background:var(--accent);color:#06281c;border-color:var(--accent)}
+.bcount{color:var(--muted);font-size:12px;padding:9px 4px 0}
+.bgrp{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:16px 4px 8px}
+.bcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.bcard h3{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.3}
+.btag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.3px}
+.btag.mb{background:var(--accent-weak);color:var(--accent-ink)}
+.btag.us{background:color-mix(in srgb,var(--tag2) 24%,transparent);color:var(--tag2)}
+.brow{display:flex;gap:9px;padding:6px 0;font-size:14.5px;border-top:1px solid var(--border)}
+.brow:first-of-type{border-top:none}
+.bk{flex:0 0 82px;color:var(--muted);font-weight:600;font-size:12.5px;padding-top:1px}
+.bv{flex:1;line-height:1.4}
+.bv b{color:var(--accent-ink);font-weight:700}
+.bv.note{color:var(--muted);font-size:13.5px}
+.bcard mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
+.bempty{color:var(--muted);text-align:center;padding:40px 20px;font-size:15px}
+.bfoot{color:var(--muted);font-size:11px;text-align:center;padding:22px 12px 0;line-height:1.6}
 </style>
 </head>
 <body>
@@ -2099,7 +2128,43 @@ function overall() { let d=0, r=0;
 function tabsHTML(active) {
   return `<div class="tabs">` +
     `<button class="tab${active === "home" ? " active" : ""}" data-action="tab" data-page="home">EPAs</button>` +
-    `<button class="tab${active === "plan" ? " active" : ""}" data-action="tab" data-page="plan">Plan</button></div>`;
+    `<button class="tab${active === "plan" ? " active" : ""}" data-action="tab" data-page="plan">Plan</button>` +
+    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button></div>`;
+}
+function viewBiopsy() {
+  const list = biopsyFilter(biopsyTerm, biopsyCat);
+  let h = `<header class="top"><div class="htitle"><b>Biopsy protocols</b></div>` +
+    tabsHTML("biopsy") + `</header>`;
+  h += `<div class="bsub">Manitoba (Shared Health 2022) primary · ACG/AGA where noted</div>`;
+  h += `<div class="qwrap"><input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori…)" ` +
+    `autocomplete="off" autocapitalize="off" value="${esc(biopsyTerm)}">` +
+    (biopsyTerm ? `<button class="qclear" data-action="bclear" aria-label="Clear">×</button>` : ``) + `</div>`;
+  h += `<div class="bcats">` + BIOPSY_CATS.map(c =>
+    `<button class="bcat${biopsyCat === c[0] ? " on" : ""}" data-action="bcat" data-cat="${esc(c[0])}">${esc(c[1])}</button>`
+  ).join("") + `</div>`;
+  const filtered = biopsyTerm || biopsyCat !== "all";
+  h += `<div class="bcount">${filtered ? list.length + " of " + BIOPSY_DATA.length + " shown" : BIOPSY_DATA.length + " protocols"}</div>`;
+  if (!list.length) {
+    h += `<div class="bempty">No match — try a different term.</div>`;
+  } else {
+    let lastCat = "";
+    for (const d of list) {
+      if (d.cat !== lastCat) { h += `<div class="bgrp">${esc(d.cat)}</div>`; lastCat = d.cat; }
+      const tag = d.src === "mb" ? `<span class="btag mb">MB</span>` : `<span class="btag us">ACG/AGA</span>`;
+      h += `<div class="bcard"><h3>${biopsyHi(esc(d.title), biopsyTerm)} ${tag}</h3>`;
+      for (const row of d.rows) {
+        const key = row.length > 1 ? row[0] : "", val = row.length > 1 ? row[1] : row[0];
+        const cls = (key === "Notes" || key === "") ? "bv note" : "bv";
+        h += `<div class="brow"><div class="bk">${esc(key)}</div>` +
+          `<div class="${cls}">${biopsyHi(biopsyBold(esc(val)), biopsyTerm)}</div></div>`;
+      }
+      h += `</div>`;
+    }
+  }
+  h += `<div class="bfoot">Always label the jar with a standard location term first, then your descriptor. ` +
+    `Give the clinical question / differential on every requisition. ` +
+    `Reference tool — verify against current guideline &amp; clinical judgment.</div>`;
+  return h;
 }
 function viewHome() {
   const o = overall();
@@ -2258,7 +2323,8 @@ function viewEpa(code) {
 function render() {
   document.getElementById("app").innerHTML =
     route.page === "home" ? viewHome() :
-    route.page === "plan" ? viewPlan() : viewEpa(route.code);
+    route.page === "plan" ? viewPlan() :
+    route.page === "biopsy" ? viewBiopsy() : viewEpa(route.code);
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
 }
@@ -2288,10 +2354,22 @@ function dispatch(act, d) {
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     route.keepScroll = true; render(); }
   else if (act === "importpick") { document.getElementById("importfile").click(); }
+  else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
+  else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();
+    const q = document.getElementById("biopsyq"); if (q) q.focus(); }
 }
 document.getElementById("app").addEventListener("click", ev => {
   const t = ev.target.closest("[data-action]");
   if (t) dispatch(t.dataset.action, t.dataset);
+});
+document.getElementById("app").addEventListener("input", ev => {
+  if (ev.target.id !== "biopsyq") return;
+  const caret = ev.target.selectionStart;
+  biopsyTerm = ev.target.value;
+  route.keepScroll = true;
+  render();
+  const q = document.getElementById("biopsyq");
+  if (q) { q.focus(); try { q.setSelectionRange(caret, caret); } catch(e){} }
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
