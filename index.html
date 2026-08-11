@@ -93,6 +93,28 @@ section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:va
 .cbox b{font-size:20px;display:block;margin-top:6px;color:var(--accent-ink)}
 .cemoji{font-size:48px;line-height:1}
 .chint{font-size:12px;color:var(--muted);margin-top:8px}
+.pace{margin-top:8px;font-size:13px;font-weight:700;border-radius:9px;padding:6px 10px}
+.pace.ok{color:var(--accent-ink);background:var(--accent-weak)}
+.pace.behind{color:var(--tag2);background:color-mix(in srgb,var(--tag2) 14%,transparent)}
+.statbig{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:12px;text-align:center}
+.statnum{font-size:40px;font-weight:800;color:var(--accent-ink);line-height:1}
+.statnum span{font-size:14px;font-weight:600;color:var(--muted);margin-left:6px}
+.statsub{font-size:13px;color:var(--muted);margin-top:6px}
+.statgrid{display:flex;gap:10px;margin-top:12px}
+.statcard{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+.sclabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.scval{font-size:30px;font-weight:800;color:var(--text);line-height:1.1;margin-top:6px}
+.scval.sm{font-size:20px}
+.scval span{font-size:14px;font-weight:600;color:var(--muted)}
+.scval.ok{color:var(--accent-ink)}
+.scval.warn{color:var(--tag2)}
+.scsub{font-size:12px;color:var(--muted);margin-top:4px}
+.achgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;opacity:.5}
+.ach.got{opacity:1;border-color:var(--accent)}
+.achtop{font-size:13.5px;display:flex;align-items:center;gap:5px}
+.achtop b{font-weight:700}
+.achhint{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.35}
 .editor{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
 .editor label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
 .editor input{display:block;width:100%;margin-top:3px;font:inherit;color:var(--text);
@@ -2227,12 +2249,48 @@ function paceInfo(today) {
   return {expected, logged, diff: logged - expected};
 }
 
-function viewStats() { return ""; }  /* real body added in Stats-tab task */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function viewStats() {
+  const today = window.__today || new Date();
+  const approved = Store.overallApproved(), pending = Store.overallPending(), logged = loggedTotal();
+  const s = streakInfo(today), pj = projection(today), earned = earnedAchievements();
+  let h = `<header class="top"><div class="htitle"><b>Stats</b>` +
+    `<span class="hcount">${approved} / 139</span></div>` +
+    `<div class="hbar"><i style="width:${Math.round(approved/139*100)}%"></i></div>` +
+    tabsHTML("stats") + `</header>`;
+  // headline
+  h += `<div class="statbig"><div class="statnum">${approved}<span>/ 139 approved</span></div>` +
+    `<div class="statsub">${pending} pending · ${logged} logged</div></div>`;
+  // streak + projection cards
+  h += `<div class="statgrid">`;
+  h += `<div class="statcard"><div class="sclabel">Weekly streak</div>` +
+    `<div class="scval">${s.current}<span> wk</span></div>` +
+    `<div class="scsub">best ${s.best} wk</div></div>`;
+  if (pj.date) {
+    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
+      `<div class="scval sm ${pj.onTrack ? "ok" : "warn"}">${MONTHS[pj.date.getMonth()]} ${pj.date.getFullYear()}</div>` +
+      `<div class="scsub">${pj.onTrack ? "on track for Year 1" : "past end of Year 1"}</div></div>`;
+  } else {
+    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
+      `<div class="scval sm">—</div><div class="scsub">log a few to project</div></div>`;
+  }
+  h += `</div>`;
+  // achievements
+  h += `<section><h2>Achievements</h2><div class="achgrid">`;
+  for (const a of ACHIEVEMENTS) {
+    const got = earned.includes(a.id);
+    h += `<div class="ach${got ? " got" : ""}"><div class="achtop">${got ? "🏅" : "🔒"} <b>${esc(a.label)}</b></div>` +
+      `<div class="achhint">${esc(a.hint)}</div></div>`;
+  }
+  h += `</div></section>`;
+  return h;
+}
 function tabsHTML(active) {
   return `<div class="tabs">` +
     `<button class="tab${active === "home" ? " active" : ""}" data-action="tab" data-page="home">EPAs</button>` +
     `<button class="tab${active === "plan" ? " active" : ""}" data-action="tab" data-page="plan">Plan</button>` +
-    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button></div>`;
+    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button>` +
+    `<button class="tab${active === "stats" ? " active" : ""}" data-action="tab" data-page="stats">Stats</button></div>`;
 }
 function viewBiopsy() {
   const list = biopsyFilter(biopsyTerm, biopsyCat);
@@ -2286,6 +2344,15 @@ function viewHome() {
   if (blk) {
     h += `<div class="banner"><b>Block ${blk.num} — ${esc(blk.name)} (wk ${blk.week}/4)</b>` +
       `<div class="bhint">${esc(BLOCK_HINTS[blk.num] || "")}</div>`;
+    const pace = paceInfo(today);
+    if (pace) {
+      if (Math.abs(pace.diff) <= 1) h += `<div class="pace ok">On pace ✓</div>`;
+      else if (pace.diff > 1) h += `<div class="pace ok">${pace.diff} ahead of plan 🚀</div>`;
+      else {
+        const codes = focusEpas.slice(0, 4).join(", ");
+        h += `<div class="pace behind">${-pace.diff} behind${codes ? ` — chase ${codes}` : ""}</div>`;
+      }
+    }
     const plan = PLAN[blk.num] || {};
     const pids = Object.keys(plan);
     if (pids.length) {
