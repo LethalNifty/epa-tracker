@@ -1991,13 +1991,30 @@ const BIOPSY_DATA = [
 "use strict";
 const KEY = "epa-state-v1";
 const Store = {
-  state: {v:1, obs:{}, lines:{}, lastBackup:null},
+  state: {v:1, obs:{}, lines:{}, lastBackup:null, celebrated:[]},
   persistFailed: false,
-  load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) this.state = s; } catch(e){} },
+  load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) this.state = s; } catch(e){} this.migrate(); },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch(e){ this.persistFailed = true; } },
-  logObs(p) { (this.state.obs[p] ||= []).push({}); this.save(); return this.state.obs[p].length - 1; },
+  migrate() { this.state.celebrated ||= [];
+    for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved"; },
+  logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
+    this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
   setObsMeta(p, i, m) { Object.assign(this.state.obs[p][i], m); this.save(); },
+  setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.state.obs[p][i].status = s; this.save(); } },
+  toggleObsStatus(p, i) { const o = this.state.obs[p][i];
+    o.status = o.status === "approved" ? "pending" : "approved"; this.save(); return o.status; },
+  partApproved(p) { return (this.state.obs[p]||[]).filter(o => o.status === "approved").length; },
+  partPending(p) { return (this.state.obs[p]||[]).filter(o => o.status !== "approved").length; },
+  overallApproved() { let d = 0; for (const e of EPA_DATA) for (const p of e.parts)
+    d += Math.min(this.partApproved(p.id), p.required); return d; },
+  overallPending() { let n = 0; for (const k in this.state.obs)
+    n += this.state.obs[k].filter(o => o.status !== "approved").length; return n; },
+  epaApproved(code) { const e = EPA_DATA.find(x => x.code === code); let done = 0, req = 0;
+    for (const p of e.parts) { req += p.required; done += Math.min(this.partApproved(p.id), p.required); }
+    return {done, req}; },
+  logTimestamps() { const out = []; for (const k in this.state.obs)
+    for (const o of this.state.obs[k]) if (o.ts) out.push(new Date(o.ts)); return out; },
   cycleLine(id, target) { const cur = this.lineVal(id), nv = (cur + 1) % (target + 1);
     if (nv === 0) { const meta = this.state.lines[id]; delete this.state.lines[id];
       if (meta && (meta.d || meta.n)) { this.state.lines[id] = {v:0, d:meta.d, n:meta.n}; } }
@@ -2019,8 +2036,8 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null};
-      this.save(); return {ok:true};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, celebrated:s.celebrated || []};
+      this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
   hasData() {
