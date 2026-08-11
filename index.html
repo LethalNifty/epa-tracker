@@ -86,6 +86,13 @@ section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:va
 .pendtxt{color:var(--tag2);font-weight:650}
 .rpend{color:var(--tag2);font-size:12px;font-weight:700;margin-left:3px}
 .elbl{font-size:12px;color:var(--muted);align-self:center}
+.celebrate{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.cbox{background:var(--card);border:1.5px solid var(--accent);border-radius:18px;
+  padding:26px 28px;text-align:center;max-width:300px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.cbox b{font-size:20px;display:block;margin-top:6px;color:var(--accent-ink)}
+.cemoji{font-size:48px;line-height:1}
+.chint{font-size:12px;color:var(--muted);margin-top:8px}
 .editor{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
 .editor label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
 .editor input{display:block;width:100%;margin-top:3px;font:inherit;color:var(--text);
@@ -2060,8 +2067,36 @@ function needsNudge(today) {
   const lb = Store.state.lastBackup;
   return !lb || (today - new Date(lb)) > 30 * 86400000;
 }
+const PROC_EPAS = ["F3","F4","C6","C8","P1"];
+function epaFullyApproved(code) { const p = Store.epaApproved(code); return p.done >= p.req; }
+const ACHIEVEMENTS = [
+  {id:"first", label:"First Steps", hint:"Log your first observation", earned:() => loggedTotal() >= 1},
+  {id:"pct25", label:"25% There", hint:"35 observations logged", earned:() => loggedTotal() >= 35},
+  {id:"pct50", label:"Halfway", hint:"70 observations logged", earned:() => loggedTotal() >= 70},
+  {id:"pct75", label:"75% There", hint:"105 observations logged", earned:() => loggedTotal() >= 105},
+  {id:"century", label:"Century", hint:"100 observations logged", earned:() => loggedTotal() >= 100},
+  {id:"closer", label:"Closer", hint:"First EPA fully approved", earned:() => EPA_DATA.some(e => epaFullyApproved(e.code))},
+  {id:"ttd", label:"Transition Complete", hint:"D1 & D2 fully approved", earned:() => ["D1","D2"].every(epaFullyApproved)},
+  {id:"foundations", label:"Foundations Complete", hint:"F1–F4 fully approved", earned:() => ["F1","F2","F3","F4"].every(epaFullyApproved)},
+  {id:"scope", label:"Scope Master", hint:"All procedural EPAs approved", earned:() => PROC_EPAS.every(epaFullyApproved)},
+  {id:"core", label:"Core Complete", hint:"C1–C9 fully approved", earned:() => ["C1","C2","C3","C4","C5","C6","C7","C8","C9"].every(epaFullyApproved)},
+  {id:"streak4", label:"4-Week Streak", hint:"Log something 4 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 4},
+  {id:"streak12", label:"12-Week Streak", hint:"12 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 12},
+  {id:"finisher", label:"Finisher", hint:"All 139 approved", earned:() => Store.overallApproved() >= 139},
+];
+function earnedAchievements() {
+  return ACHIEVEMENTS.filter(a => { try { return a.earned(); } catch(e) { return false; } }).map(a => a.id);
+}
 let pendingCelebration = null;
-function afterProgress() { /* real body added in Stats task */ }
+function afterProgress() {
+  const now = earnedAchievements();
+  const fresh = now.filter(id => !Store.state.celebrated.includes(id));
+  if (!fresh.length) return;
+  Store.state.celebrated.push(...fresh); Store.save();
+  const order = ACHIEVEMENTS.map(a => a.id);
+  fresh.sort((a,b) => order.indexOf(b) - order.indexOf(a));  // highest-value first
+  pendingCelebration = ACHIEVEMENTS.find(a => a.id === fresh[0]);
+}
 let biopsyTerm = "", biopsyCat = "all";
 const BIOPSY_CATS = [["all","All"],["Esophagus","Esophagus"],["Stomach","Stomach"],
   ["Duodenum / Small bowel","Duod / SB"],["Colon","Colon"]];
@@ -2192,6 +2227,7 @@ function paceInfo(today) {
   return {expected, logged, diff: logged - expected};
 }
 
+function viewStats() { return ""; }  /* real body added in Stats-tab task */
 function tabsHTML(active) {
   return `<div class="tabs">` +
     `<button class="tab${active === "home" ? " active" : ""}" data-action="tab" data-page="home">EPAs</button>` +
@@ -2403,7 +2439,14 @@ function render() {
   document.getElementById("app").innerHTML =
     route.page === "home" ? viewHome() :
     route.page === "plan" ? viewPlan() :
-    route.page === "biopsy" ? viewBiopsy() : viewEpa(route.code);
+    route.page === "biopsy" ? viewBiopsy() :
+    route.page === "stats" ? viewStats() : viewEpa(route.code);
+  if (pendingCelebration && route.page !== "biopsy") {
+    document.getElementById("app").insertAdjacentHTML("beforeend",
+      `<div class="celebrate" data-action="dismisscelebrate"><div class="cbox">` +
+      `<div class="cemoji">🎉</div><b>${esc(pendingCelebration.label)}</b>` +
+      `<div class="chint">Achievement unlocked — tap to dismiss</div></div></div>`);
+  }
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
 }
@@ -2418,6 +2461,7 @@ function dispatch(act, d) {
     route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
   else if (act === "togglestatus") {
     Store.toggleObsStatus(d.part, +d.obs); afterProgress(); route.keepScroll = true; render(); }
+  else if (act === "dismisscelebrate") { pendingCelebration = null; route.keepScroll = true; render(); }
   else if (act === "editobs") {
     const k = d.part + "|" + d.obs;
     route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
