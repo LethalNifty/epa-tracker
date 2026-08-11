@@ -2153,6 +2153,44 @@ function fmtDate(d) { return d.getFullYear()+"-"+String(d.getMonth()+1).padStart
 function overall() { let d=0, r=0;
   for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
   return {d, r}; }
+function loggedTotal() { let n=0; for (const k in Store.state.obs) n += Store.state.obs[k].length; return n; }
+const WEEK = 604800000;
+function mondayStamp(d) { const x = new Date(d); const off = (x.getDay()+6)%7;
+  x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return +x; }
+function weekKey(d) { const m = new Date(mondayStamp(d));
+  const jan1 = new Date(m.getFullYear(),0,1);
+  const wk = Math.floor((m - jan1)/WEEK)+1;
+  return m.getFullYear()+"-W"+String(wk).padStart(2,"0"); }
+function streakInfo(today) {
+  const stamps = [...new Set(Store.logTimestamps().map(mondayStamp))].sort((a,b)=>a-b);
+  if (!stamps.length) return {current:0, best:0};
+  let best=1, run=1;
+  for (let i=1;i<stamps.length;i++){ run = (stamps[i]-stamps[i-1]===WEEK) ? run+1 : 1; best=Math.max(best,run); }
+  const set = new Set(stamps);
+  const tw = mondayStamp(today);
+  let cursor = set.has(tw) ? tw : (set.has(tw-WEEK) ? tw-WEEK : null);
+  let cur = 0;
+  while (cursor !== null && set.has(cursor)) { cur++; cursor -= WEEK; }
+  return {current:cur, best:Math.max(best,cur)};
+}
+function projection(today) {
+  const logged = loggedTotal();
+  if (logged <= 0 || today < YEAR1_START) return {rate:0, date:null, onTrack:false};
+  const weeks = Math.max(1, (today - YEAR1_START)/WEEK);
+  const rate = logged/weeks;
+  const remaining = Math.max(0, 139 - logged);
+  const date = remaining === 0 ? today : new Date(+today + (remaining/rate)*WEEK);
+  return {rate, date, onTrack: date <= new Date(2027,5,29)};
+}
+function paceInfo(today) {
+  const blk = blockFor(today); if (!blk) return null;
+  let expected = 0;
+  for (let n=1;n<blk.num;n++) expected += Object.values(PLAN[n]).reduce((a,b)=>a+b,0);
+  expected += Object.values(PLAN[blk.num]).reduce((a,b)=>a+b,0) * (blk.week/4);
+  expected = Math.round(expected);
+  const logged = loggedTotal();
+  return {expected, logged, diff: logged - expected};
+}
 
 function tabsHTML(active) {
   return `<div class="tabs">` +
