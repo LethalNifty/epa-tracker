@@ -204,7 +204,7 @@ function paceFinish(obsByPart, today) {
   }
   if (!n) return {date: null};
   const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + Math.ceil(remaining / (n / weeks) * 7));
-  return {date, onTrack: dayIndex(date) <= dayIndex(YEAR1_END)};
+  return {date, onTrack: dayIndex(date) <= dayIndex(YEAR1_END), n, weeks: Math.round(weeks)};
 }
 // Finish date if every block hits its recalculated targets.
 function planFinish(cp) {

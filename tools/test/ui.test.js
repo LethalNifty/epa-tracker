@@ -108,3 +108,15 @@ test("outside Year 1 the Week tab explains itself", () => {
   assert.match(load({today: "2027-07-05"}).html(), /Year 1 is done/);
   assert.match(load({today: "2026-06-15"}).html(), /Fellowship starts July 2, 2026/);
 });
+
+test("recap separates what's carried onto this week from what moved to a later block", () => {
+  const h = load({today: "2026-09-24"});
+  assert.match(h.html(), /Carried onto this week: [^<]*F1-B ×9/);
+  assert.match(h.html(), /Moved to a later block: [^<]*C3 ×2/);
+  assert.doesNotMatch(h.html(), /Carried onto this week: [^<]*C3/);
+});
+
+test("pace estimate says what it is based on", () => {
+  const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
+  assert.match(h.html(), /<div class="ssub">16 logged in the last 8 weeks<\/div>/);
+});

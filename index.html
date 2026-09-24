@@ -2218,12 +2218,18 @@ function viewEpas() {
   return h + backupHTML();
 }
 let chaseOpen = false;
-function recapHTML(rc) {
+// rows is this week's list: a slipped part is either on it now or was moved
+// on to a later block whose rotation suits it.
+function recapHTML(rc, rows) {
   const list = xs => xs.map(x => `${x.label} ×${x.n}`).join(", ");
+  const onNow = rc.slipped.filter(s => rows.some(r => r.pid === s.pid && r.outstanding > 0));
+  const later = rc.slipped.filter(s => !onNow.includes(s));
   return `<div class="card recap"><div class="rhead"><b>Your week, Jared</b>` +
     `<button class="iconbtn" data-action="dismissrecap" data-key="${rc.key}" aria-label="Dismiss">${ic("x")}</button></div>` +
     `<p>Last week: ${rc.got.length ? list(rc.got) : "nothing logged"}.</p>` +
-    `<p>${rc.slipped.length ? "Slipped, now on this week: " + list(rc.slipped) + "." : "Nothing slipped."}</p></div>`;
+    (rc.slipped.length ? "" : `<p>Nothing slipped.</p>`) +
+    (onNow.length ? `<p>Carried onto this week: ${list(onNow)}.</p>` : "") +
+    (later.length ? `<p>Moved to a later block: ${list(later)}.</p>` : "") + `</div>`;
 }
 function thisWeekHTML(rows) {
   let h = `<section><h2>This week</h2>`;
@@ -2256,13 +2262,14 @@ function chaseHTML(list) {
 function finishHTML(pace, plan) {
   const month = d => MONTHS[d.getMonth()] + " " + d.getFullYear();
   const day = d => MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
-  const cell = (label, r, fmt, empty) => `<div class="stat"><div class="slabel">${label}</div>` +
+  const cell = (label, r, fmt, empty, note) => `<div class="stat"><div class="slabel">${label}</div>` +
     (r.done ? `<div class="sval ok">Done</div>` : r.date ?
-      `<div class="sval ${r.onTrack ? "ok" : "warn"}">${fmt(r.date)}</div>` :
+      `<div class="sval ${r.onTrack ? "ok" : "warn"}">${fmt(r.date)}</div>` + (note ? `<div class="ssub">${note}</div>` : "") :
       `<div class="sval">–</div><div class="ssub">${empty}</div>`) + `</div>`;
+  const paceNote = pace.date ? `${pace.n} logged in the last ${pace.weeks} week${pace.weeks === 1 ? "" : "s"}` : "";
   return `<section><h2>Estimated completion</h2><div class="statgrid">` +
-    cell("At your current pace", pace, month, "Log a few to estimate") +
-    cell("If you hit the plan", plan, day, "") +
+    cell("At your current pace", pace, month, "Log a few to estimate", paceNote) +
+    cell("If you hit the plan", plan, day, "", "") +
     `</div><div class="ssub goalline">Goal: everything logged by Jun 30, 2027.</div></section>`;
 }
 function viewWeek() {
@@ -2277,7 +2284,7 @@ function viewWeek() {
   let h = headerHTML(`Block ${blk.num} · ${esc(blk.name)}`, `Week ${blk.week} of 4`) + warningsHTML(today);
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
-    if (rc) h += recapHTML(rc);
+    if (rc) h += recapHTML(rc, rows);
   }
   h += thisWeekHTML(rows);
   const look = lookFor(rows, id => Store.lineVal(id));
