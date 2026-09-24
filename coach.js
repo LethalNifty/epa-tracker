@@ -97,25 +97,42 @@ function attrDate(o) {
   return null;
 }
 
-// Rotation types where the July plan ever placed this part.
+// Stages the coach works through, in order. Each opens once every observation
+// of the stage before it is logged (pending counts). Transition to Discipline
+// (D1, D2) came before Foundations and is behind the user, so the coach never
+// plans or suggests it; it can still be logged on the EPAs tab.
+const COACH_STAGES = ["f", "core", "ttp"];
+// A procedure note can happen wherever its procedure happens.
+const NOTE_OF = {f3b: "f3a", c8b: "c8a"};
+
+// Rotation types where the July plan ever placed this part (or its procedure).
 function feasibleFamilies(pid) {
+  const ids = NOTE_OF[pid] ? [pid, NOTE_OF[pid]] : [pid];
   const out = [];
-  for (const b in PLAN) if (PLAN[b][pid] > 0 && !out.includes(BLOCK_FAMILY[b])) out.push(BLOCK_FAMILY[b]);
+  for (const b in PLAN) for (const id of ids)
+    if (PLAN[b][id] > 0 && !out.includes(BLOCK_FAMILY[b])) out.push(BLOCK_FAMILY[b]);
   return out;
+}
+// First block from `from` whose rotation suits the part; `from` if none is left.
+function firstFeasible(pid, from) {
+  const fams = feasibleFamilies(pid);
+  for (let b = from; b <= 13; b++) if (fams.includes(BLOCK_FAMILY[b])) return b;
+  return from;
 }
 
 // The recalculated plan on `today`. Per part: logged (all of it, or only up to
-// opts.asOf), inCur and inWeek (logged in the current block and week),
-// planned[b] (the July plan's share still to do in block b, filled in date
-// order so getting ahead empties the latest blocks first) and carried[b]
-// (missed earlier; placed on the next block whose rotation suits the part,
-// else on the current block as overdue). Null outside Year 1.
+// opts.asOf), inCur and inWeek (logged in the current block and week) and
+// planned[b] (how many to log in block b). active is the stage being worked
+// on: everything it still needs is due at the first block where each part can
+// happen (as soon as possible). Later stages start the block after the stage
+// before them is due to finish: the July plan's share from there on, with the
+// rest spread over blocks whose rotation suits them. Null outside Year 1.
 function coachPlan(obsByPart, today, opts) {
   const blk = blockFor(today);
   if (!blk) return null;
   const cur = blk.num;
   const cutoff = opts && opts.asOf ? dayIndex(opts.asOf) : null;
-  const parts = {};
+  const parts = {}, left = {};
   for (const P of PARTS) {
     const list = (obsByPart[P.id] || []).filter(o => {
       if (cutoff === null) return true;
@@ -127,42 +144,71 @@ function coachPlan(obsByPart, today, opts) {
       const d = attrDate(o), b = d && blockFor(d);
       if (b && b.num === cur) { inCur++; if (b.week === blk.week) inWeek++; }
     }
-    let left = Math.max(0, P.required - list.length);
-    const planned = {}, carried = {};
-    for (let b = cur; b <= 13; b++) {
-      const cap = Math.max(0, (PLAN[b][P.id] || 0) - (b === cur ? inCur : 0));
-      const take = Math.min(cap, left);
-      if (take > 0) { planned[b] = take; left -= take; }
-    }
-    if (left > 0) {
-      const fams = feasibleFamilies(P.id);
-      let target = cur;
-      for (let b = cur; b <= 13; b++) if (fams.includes(BLOCK_FAMILY[b])) { target = b; break; }
-      carried[target] = left;
-    }
-    parts[P.id] = {logged: list.length, inCur, inWeek, planned, carried};
+    left[P.id] = COACH_STAGES.includes(P.stage) ? Math.max(0, P.required - list.length) : 0;
+    parts[P.id] = {logged: list.length, inCur, inWeek, planned: {}};
   }
-  return {block: blk, parts};
+  const open = st => PARTS.filter(P => P.stage === st && left[P.id] > 0);
+  const active = COACH_STAGES.find(st => open(st).length) || null;
+  let start = cur;
+  for (const st of COACH_STAGES) {
+    const todo = open(st);
+    if (!todo.length) continue;
+    const from = Math.min(start, 13);
+    let last = from;
+    for (const P of todo) {
+      const planned = parts[P.id].planned;
+      let need = left[P.id];
+      if (st === active) {
+        const b = firstFeasible(P.id, cur);
+        planned[b] = need;
+        last = Math.max(last, b);
+        continue;
+      }
+      for (let b = from; b <= 13 && need > 0; b++) {
+        const take = Math.min(PLAN[b][P.id] || 0, need);
+        if (take > 0) { planned[b] = take; need -= take; last = Math.max(last, b); }
+      }
+      if (need > 0) {
+        const fams = feasibleFamilies(P.id), slots = [];
+        for (let b = from; b <= 13; b++) if (fams.includes(BLOCK_FAMILY[b])) slots.push(b);
+        if (!slots.length) for (let b = from; b <= 13; b++) slots.push(b);
+        for (let k = 0; need > 0; k++, need--) {
+          const b = slots[k % slots.length];
+          planned[b] = (planned[b] || 0) + 1;
+          last = Math.max(last, b);
+        }
+      }
+    }
+    start = last + 1;
+  }
+  return {block: blk, parts, active};
 }
 
 
-// This week's list for a coachPlan result: every part with something due by
-// the end of this block week (carried units are due at once; the planned
-// share is spread over the block's 4 weeks), plus parts finished this week.
-function weekList(cp) {
+// This week's list for a coachPlan result: parts of the active stage with
+// something due by the end of this block week (the block's share is spread
+// over its 4 weeks), plus ones finished this week. prevRows is last week's
+// list; anything still outstanding from it is marked carried.
+function weekList(cp, prevRows) {
   const cur = cp.block.num, week = cp.block.week, rows = [];
   for (const P of PARTS) {
+    if (P.stage !== cp.active) continue;
     const s = cp.parts[P.id];
-    const plannedCur = s.planned[cur] || 0, carriedCur = s.carried[cur] || 0;
-    const share = Math.min(PLAN[cur][P.id] || 0, s.inCur + plannedCur);
-    const total = s.inCur + plannedCur + carriedCur;
-    const dueBy = w => Math.min(total, carriedCur + Math.ceil(share * w / 4));
-    const outstanding = Math.max(0, dueBy(week) - s.inCur);
+    const total = s.inCur + (s.planned[cur] || 0);
+    const outstanding = Math.max(0, Math.min(total, Math.ceil(total * week / 4)) - s.inCur);
     if (outstanding === 0 && s.inWeek === 0) continue;
-    rows.push({pid: P.id, label: P.label, short: PART_SHORT[P.id], outstanding,
-      carried: outstanding > 0 && (carriedCur > 0 || (week > 1 && dueBy(week - 1) > s.inCur))});
+    const wasDue = !!prevRows && prevRows.some(r => r.pid === P.id && r.outstanding > 0);
+    rows.push({pid: P.id, label: P.label, short: PART_SHORT[P.id], outstanding, carried: outstanding > 0 && wasDue});
   }
   return rows.sort((a, b) => (b.outstanding > 0) - (a.outstanding > 0) || b.carried - a.carried || b.outstanding - a.outstanding);
+}
+// This week's list on `today`, with carried marks from last week.
+function weekRows(obsByPart, today) {
+  const cp = coachPlan(obsByPart, today);
+  if (!cp) return [];
+  const prev = prevBlockWeek(cp.block);
+  const end = prev && weekEnd(prev.num, prev.week);
+  return weekList(cp, end ? weekList(coachPlan(obsByPart, end, {asOf: end})) : null);
 }
 
 function prevBlockWeek(blk) {
@@ -189,8 +235,10 @@ function recapFor(obsByPart, today) {
   return {key: blk.num + "-" + blk.week, got, slipped};
 }
 
+// Observations the coach still has to find (Transition to Discipline excluded).
 function remainingTotal(obsByPart) {
-  return PARTS.reduce((a, P) => a + Math.max(0, P.required - (obsByPart[P.id] || []).length), 0);
+  return PARTS.reduce((a, P) => a + (COACH_STAGES.includes(P.stage) ?
+    Math.max(0, P.required - (obsByPart[P.id] || []).length) : 0), 0);
 }
 // Finish date at the pace of the last 8 weeks (fewer early in the year).
 function paceFinish(obsByPart, today) {
@@ -211,7 +259,7 @@ function planFinish(cp) {
   let last = 0;
   for (const pid in cp.parts) {
     const s = cp.parts[pid];
-    for (const b of Object.keys(s.planned).concat(Object.keys(s.carried))) last = Math.max(last, +b);
+    for (const b of Object.keys(s.planned)) last = Math.max(last, +b);
   }
   if (!last) return {done: true};
   const date = blockEnd(last);
@@ -267,14 +315,8 @@ function blockTargets(num, obsByPart, cp, curNum) {
   const out = [];
   for (const P of PARTS) {
     const past = num < curNum;
-    let n = 0, carried = false;
-    if (past) n = loggedInBlock(obsByPart, P.id, num);
-    else if (cp) {
-      const s = cp.parts[P.id];
-      n = (s.planned[num] || 0) + (s.carried[num] || 0);
-      carried = !!s.carried[num];
-    } else n = PLAN[num][P.id] || 0;
-    if (n) out.push({pid: P.id, label: P.label, code: P.code, n, carried, past});
+    const n = past ? loggedInBlock(obsByPart, P.id, num) : cp ? (cp.parts[P.id].planned[num] || 0) : (PLAN[num][P.id] || 0);
+    if (n) out.push({pid: P.id, label: P.label, code: P.code, n, past});
   }
   return out;
 }
@@ -283,7 +325,7 @@ function blockFocus(cp) {
   const cur = cp.block.num, out = [];
   for (const P of PARTS) {
     const s = cp.parts[P.id];
-    if ((s.planned[cur] || 0) + (s.carried[cur] || 0) > 0 && !out.includes(P.code)) out.push(P.code);
+    if ((s.planned[cur] || 0) > 0 && !out.includes(P.code)) out.push(P.code);
   }
   return out;
 }
