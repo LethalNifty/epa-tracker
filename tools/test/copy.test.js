@@ -23,6 +23,6 @@ test("the app never says Elentra", () => {
 
 test("the service worker caches coach.js under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v5";/);
+  assert.match(sw, /const CACHE = "epa-v6";/);
   assert.match(sw, /"coach\.js"/);
 });

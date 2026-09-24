@@ -191,8 +191,7 @@ details.fold h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
 .pchip{min-height:34px;display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--line);
   border-radius:10px;padding:4px 10px;font-size:13px}
 .pchip b{color:var(--accent-ink)}
-.pchip.carried{border-color:rgba(240,166,60,.6)}
-.pchip.carried b{color:var(--warn)}
+.stagenote{font-size:12.5px;color:var(--muted);margin:-2px 2px 8px;line-height:1.4}
 .pchip.past b{color:var(--muted)}
 .qwrap{position:relative}
 .qwrap > .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
@@ -2212,7 +2211,9 @@ function viewEpas() {
   for (const st of ["ttd", "f", "core", "ttp"]) {
     const list = EPA_DATA.filter(x => x.stage === st);
     const done = list.filter(e => { const p = Store.epaProgress(e.code); return p.done >= p.req; });
-    h += `<section><h2>${STAGE_NAMES[st]}</h2>` + list.filter(e => !done.includes(e)).map(e => epaRowHTML(e, focus)).join("");
+    h += `<section><h2>${STAGE_NAMES[st]}</h2>` + (st === "ttd" ? `<p class="stagenote">Earlier stage: the coach won't suggest these. ` +
+      `Log anything Entrada has that's missing here so your totals match.</p>` : "") +
+      list.filter(e => !done.includes(e)).map(e => epaRowHTML(e, focus)).join("");
     if (done.length) h += `<details class="donegrp"><summary>Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
     h += `</section>`;
   }
@@ -2232,8 +2233,8 @@ function recapHTML(rc, rows) {
     (onNow.length ? `<p>Carried onto this week: ${list(onNow)}.</p>` : "") +
     (later.length ? `<p>Moved to a later block: ${list(later)}.</p>` : "") + `</div>`;
 }
-function thisWeekHTML(rows) {
-  let h = `<section><h2>This week</h2>`;
+function thisWeekHTML(rows, stage) {
+  let h = `<section><h2>This week${stage ? " · " + STAGE_NAMES[stage] : ""}</h2>`;
   if (!rows.length) return h + `<div class="card empty">Nothing due this week. Log anything you get.</div></section>`;
   h += `<div class="card list">`;
   for (const r of rows) {
@@ -2281,13 +2282,13 @@ function viewWeek() {
       `<div class="card pad spaced">${before ? "Fellowship starts July 2, 2026." :
         "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>`;
   }
-  const cp = coachPlan(obsBy, today), rows = weekList(cp);
+  const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
   let h = headerHTML(`Block ${blk.num} · ${esc(blk.name)}`, `Week ${blk.week} of 4`) + warningsHTML(today);
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
   }
-  h += thisWeekHTML(rows);
+  h += thisWeekHTML(rows, cp.active);
   const look = lookFor(rows, id => Store.lineVal(id));
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
@@ -2330,12 +2331,12 @@ function suggHTML(typed) {
     `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}</button>`).join("");
 }
 function sheetHTML() {
-  const s = sheet, cp = coachPlan(Store.state.obs, getToday());
+  const s = sheet;
   const chip = pid => `<button class="pick${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">${PART_BY_ID[pid].label}</button>`;
   let picker;
   if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
   else {
-    const quick = cp ? weekList(cp).filter(r => r.outstanding > 0).map(r => r.pid) : [];
+    const quick = weekRows(Store.state.obs, getToday()).filter(r => r.outstanding > 0).map(r => r.pid);
     if (s.pid && !quick.includes(s.pid)) quick.unshift(s.pid);
     picker = !s.all && quick.length
       ? `<div class="lbl">This week's EPAs</div><div class="pickrow">${quick.map(chip).join("")}` +
@@ -2438,14 +2439,20 @@ function viewPlan() {
   const curNum = blk ? blk.num : (dayIndex(today) < 0 ? 0 : 14);
   let h = headerHTML("Recalculated from what you've logged", "Year 1 plan");
   if (cp) h += finishHTML(paceFinish(obsBy, today), planFinish(cp));
-  h += `<p class="goal">Targets update every time you log. A miss moves to the next block where it can realistically happen; ` +
-    `getting ahead clears the end of the year first. Past blocks show what you logged.</p>`;
+  const order = {
+    f: "You're on Foundations. Core opens once every Foundations observation is logged, then Transition to Practice (P1). ",
+    core: "You're on Core. Transition to Practice (P1) opens once every Core observation is logged. ",
+    ttp: "You're on Transition to Practice. ",
+  };
+  h += `<p class="goal">${cp ? (order[cp.active] || "Everything is logged. ") : ""}` +
+    `What's left in your stage is due as soon as a block can fit it; the next stage starts the block after. ` +
+    `Targets update every time you log. Past blocks show what you logged.</p>`;
   for (let n = 1; n <= 13; n++) {
     const chips = blockTargets(n, obsBy, cp, curNum), now = n === curNum, past = n < curNum;
     h += `<div class="pcard${now ? " now" : past ? " past" : ""}"><div class="pctop"><b>Block ${n}: ${esc(BLOCK_NAMES[n])}</b>` +
       (now ? `<span class="tag solid">now</span>` : "") + `<span class="pcdates">${blockDates(n)}</span></div>` +
       `<div class="bhint">${esc(BLOCK_HINTS[n])}</div><div class="pchips">` +
-      (chips.length ? chips.map(c => `<button class="pchip${c.carried ? " carried" : c.past ? " past" : ""}" data-action="open" data-code="${c.code}">` +
+      (chips.length ? chips.map(c => `<button class="pchip${c.past ? " past" : ""}" data-action="open" data-code="${c.code}">` +
         `<b>${c.label}</b> ×${c.n}</button>`).join("") :
         `<span class="muted">${past ? "Nothing logged here" : "Nothing left here"}</span>`) + `</div></div>`;
   }

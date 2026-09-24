@@ -6,29 +6,32 @@ const {load, obs, state, many, dateExpr} = require("./harness");
 const ALL = `(() => { const o = {}; for (const P of PARTS)
   o[P.id] = Array.from({length: P.required}, () => ({d: "2026-09-01", status: "approved"})); return o; })()`;
 const rowsOn = (h, iso) => Object.fromEntries(
-  h.val(`weekList(coachPlan(Store.state.obs, ${dateExpr(iso)}))`).map(r => [r.pid, r]));
+  h.val(`weekRows(Store.state.obs, ${dateExpr(iso)})`).map(r => [r.pid, r]));
 
-test("week 1 of Block 4 with nothing logged", () => {
+test("week 1 of Block 4 with nothing logged: Foundations only", () => {
   const h = load({today: "2026-09-24"});
-  const list = h.val(`weekList(coachPlan({}, ${dateExpr("2026-09-24")}))`);
-  const by = Object.fromEntries(list.map(r => [r.pid, r]));
-  assert.deepEqual(by.c5, {pid: "c5", label: "C5", short: "Complex nutrition", outstanding: 1, carried: false});
-  assert.deepEqual(by.f1b, {pid: "f1b", label: "F1-B", short: "Assessment and plan", outstanding: 10, carried: true});
-  assert.equal(by.d1, undefined);   // D1 is carried to Block 5, not this motility block
-  assert.deepEqual(list.map(r => r.pid), ["f1b", "c2", "f2", "c4", "c5"]);
+  assert.deepEqual(h.val(`weekRows({}, ${dateExpr("2026-09-24")})`), [
+    {pid: "f1b", label: "F1-B", short: "Assessment and plan", outstanding: 3, carried: true},
+    {pid: "f2", label: "F2", short: "Nutrition", outstanding: 1, carried: false}]);
 });
 
 test("a miss in week 1 shows as carried in week 2", () => {
   const h = load({today: "2026-10-01"});
-  assert.equal(rowsOn(h, "2026-09-24").c5.carried, false);
-  assert.equal(rowsOn(h, "2026-10-01").c5.carried, true);
-  const done = load({today: "2026-10-01", state: state({c5: [obs("2026-09-25")]})});
-  assert.equal(rowsOn(done, "2026-10-01").c5, undefined);
+  assert.equal(rowsOn(h, "2026-09-24").f2.carried, false);
+  assert.equal(rowsOn(h, "2026-10-01").f2.carried, true);
+  const done = load({today: "2026-10-01", state: state({f2: [obs("2026-09-25")]})});
+  assert.equal(rowsOn(done, "2026-10-01").f2, undefined);
 });
 
 test("a part finished this week stays listed as done", () => {
+  const h = load({today: "2026-09-26", state: state({f2: [obs("2026-09-25")]})});
+  assert.deepEqual(rowsOn(h, "2026-09-26").f2, {pid: "f2", label: "F2", short: "Nutrition", outstanding: 0, carried: false});
+});
+
+test("Core logged early is counted but never suggested", () => {
   const h = load({today: "2026-09-26", state: state({c5: [obs("2026-09-25")]})});
-  assert.deepEqual(rowsOn(h, "2026-09-26").c5, {pid: "c5", label: "C5", short: "Complex nutrition", outstanding: 0, carried: false});
+  assert.equal(rowsOn(h, "2026-09-26").c5, undefined);
+  assert.equal(h.val(`coachPlan(Store.state.obs, ${dateExpr("2026-09-26")}).parts.c5.logged`), 1);
 });
 
 test("recap: what was logged last week and what slipped", () => {
@@ -36,8 +39,7 @@ test("recap: what was logged last week and what slipped", () => {
   const rc = h.val(`recapFor(Store.state.obs, ${dateExpr("2026-09-24")})`);
   assert.equal(rc.key, "4-1");
   assert.deepEqual(rc.got, [{pid: "c2", label: "C2", n: 2}]);
-  assert.ok(rc.slipped.some(s => s.pid === "c3" && s.n === 2));
-  assert.deepEqual(rc.slipped.find(s => s.pid === "c2"), {pid: "c2", label: "C2", n: 1});
+  assert.deepEqual(rc.slipped, [{pid: "f1b", label: "F1-B", n: 12}]);   // Core is not due yet, so it never slips
 });
 
 test("recap: none in Block 1 week 1; week 1 looks back at the previous block's week 4", () => {
@@ -51,7 +53,7 @@ test("recap: none in Block 1 week 1; week 1 looks back at the previous block's w
 test("pace estimate uses the last 8 weeks", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
   assert.deepEqual(h.val(`(() => { const r = paceFinish(Store.state.obs, ${dateExpr("2026-09-24")});
-    return [fmtDate(r.date), r.onTrack]; })()`), ["2027-11-29", false]);
+    return [fmtDate(r.date), r.onTrack]; })()`), ["2027-10-25", false]);
 });
 
 test("pace estimate needs something logged in the window", () => {
@@ -102,8 +104,8 @@ test("look for: case lines only, numbered series grouped, at most 3", () => {
 test("block targets: past blocks show what was logged, later blocks what is left", () => {
   const h = load({today: "2026-09-25", state: state({c8a: many(2, "2026-09-25"), c2: many(3, "2026-08-27")})});
   const bt = n => h.val(`blockTargets(${n}, Store.state.obs, coachPlan(Store.state.obs, ${dateExpr("2026-09-25")}), 4)`);
-  assert.deepEqual(bt(12).find(x => x.pid === "c8a"), {pid: "c8a", label: "C8-A", code: "C8", n: 4, carried: false, past: false});
-  assert.deepEqual(bt(3).find(x => x.pid === "c2"), {pid: "c2", label: "C2", code: "C2", n: 3, carried: false, past: true});
+  assert.deepEqual(bt(12).find(x => x.pid === "c8a"), {pid: "c8a", label: "C8-A", code: "C8", n: 4, past: false});
+  assert.deepEqual(bt(3).find(x => x.pid === "c2"), {pid: "c2", label: "C2", code: "C2", n: 3, past: true});
   assert.equal(h.val(`blockTargets(1, {}, null, 0).find(x => x.pid === "d1").n`), 2);   // before Year 1: the July plan
-  assert.deepEqual(h.val(`blockFocus(coachPlan({}, ${dateExpr("2026-09-24")}))`), ["F1", "F2", "C2", "C4", "C5"]);
+  assert.deepEqual(h.val(`blockFocus(coachPlan({}, ${dateExpr("2026-09-24")}))`), ["F1", "F2"]);
 });
