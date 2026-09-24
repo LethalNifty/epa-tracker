@@ -65,12 +65,13 @@ test("Week is the home screen", () => {
   assert.match(h.html(), /class="nv on" data-action="tab" data-page="week"/);
 });
 
-test("This week lists what's due, carried first", () => {
+test("This week lists only Foundations, carried first, and names the stage", () => {
   const h = load({today: "2026-09-24"});
   const html = h.html();
-  assert.match(html, /data-part="f1b"><span class="tick"><\/span><span class="cc">F1-B<\/span><span class="wname">Assessment and plan<\/span><span class="tag warn">carried<\/span><span class="wn">×10<\/span>/);
-  assert.match(html, /data-part="c5">.*?<span class="wn">×1<\/span>/);
-  assert.doesNotMatch(html, /data-part="d1"/);
+  assert.match(html, /<h2>This week · Foundations<\/h2>/);
+  assert.match(html, /data-part="f1b"><span class="tick"><\/span><span class="cc">F1-B<\/span><span class="wname">Assessment and plan<\/span><span class="tag warn">carried<\/span><span class="wn">×3<\/span>/);
+  assert.match(html, /data-part="f2">.*?<span class="wn">×1<\/span>/);
+  assert.doesNotMatch(html, /class="wrow[^"]*" data-action="sheet" data-part="[cdp]/);
 });
 
 test("recap shows once per block week", () => {
@@ -94,7 +95,7 @@ test("chase list approves in place", () => {
 
 test("estimated completion shows both dates", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
-  assert.match(h.html(), /At your current pace<\/div><div class="sval warn">Nov 2027<\/div>/);
+  assert.match(h.html(), /At your current pace<\/div><div class="sval warn">Oct 2027<\/div>/);
   assert.match(h.html(), /If you hit the plan<\/div><div class="sval ok">Jun 30, 2027<\/div>/);
 });
 
@@ -110,10 +111,10 @@ test("outside Year 1 the Week tab explains itself", () => {
 });
 
 test("recap separates what's carried onto this week from what moved to a later block", () => {
-  const h = load({today: "2026-09-24"});
-  assert.match(h.html(), /Carried onto this week: [^<]*F1-B ×9/);
-  assert.match(h.html(), /Moved to a later block: [^<]*C3 ×2/);
-  assert.doesNotMatch(h.html(), /Carried onto this week: [^<]*C3/);
+  const h = load({today: "2026-11-19"});   // Block 6 is Radiology: only EGD notes fit this block
+  assert.match(h.html(), /Carried onto this week: F3-B ×3\./);
+  assert.match(h.html(), /Moved to a later block: [^<]*F1-B ×12/);
+  assert.doesNotMatch(h.html(), /Carried onto this week: [^<]*F1-B/);
 });
 
 test("pace estimate says what it is based on", () => {
@@ -121,13 +122,13 @@ test("pace estimate says what it is based on", () => {
   assert.match(h.html(), /<div class="ssub">16 logged in the last 8 weeks<\/div>/);
 });
 
-test("Plan: completion up top, recalculated blocks, carried marked", () => {
+test("Plan: completion up top, Foundations now, Core after", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "plan"});
   const html = h.html();
   assert.match(html, /<h2>Estimated completion<\/h2>/);
   assert.match(html, /<div class="pcard now"><div class="pctop"><b>Block 4: Motility\/Nutrition<\/b><span class="tag solid">now<\/span>/);
-  assert.match(html, /<button class="pchip carried" data-action="open" data-code="F1"><b>F1-B<\/b> ×11<\/button>/);
+  assert.match(html, /<button class="pchip" data-action="open" data-code="F1"><b>F1-B<\/b> ×12<\/button>/);
   assert.match(html, /<div class="pcard past">.*?Block 1: Consults HSC.*?Nothing logged here/);
 });
 
@@ -135,4 +136,16 @@ test("Plan: getting ahead empties the end of the year first", () => {
   const h = load({today: "2026-09-25", state: state({c8a: many(2, "2026-09-25")})});
   h.click("tab", {page: "plan"});
   assert.match(h.html(), /Block 12: Hepatology.*?<b>C8-A<\/b> ×4/);
+});
+
+test("Plan explains the stage order", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "plan"});
+  assert.match(h.html(), /You're on Foundations\. Core opens once every Foundations observation is logged/);
+});
+
+test("EPAs tab: Transition to Discipline is marked as behind you", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "epas"});
+  assert.match(h.html(), /<h2>Transition to Discipline<\/h2><p class="stagenote">Earlier stage: the coach won't suggest these\./);
 });
