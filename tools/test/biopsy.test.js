@@ -34,3 +34,11 @@ test("gastric ulcer card carries the edge and base numbers", () => {
   assert.match(h.val(`BIOPSY_DATA.find(d => d.title === "Gastric ulcer").rows.map(r => r.join(" ")).join(" ")`),
     /≥4 from the edge \+ ≥1 from the base/);
 });
+
+test("biopsy Notes rows are not restyled by the backup note", () => {
+  const html = require("node:fs").readFileSync(require("node:path").join(require("./harness").ROOT, "index.html"), "utf8");
+  assert.doesNotMatch(html, /^\.note\{/m);
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "epas"});
+  assert.match(h.html(), /<div class="bnote">Last backup: never<\/div>/);
+});
