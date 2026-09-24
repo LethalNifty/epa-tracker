@@ -144,3 +144,146 @@ function coachPlan(obsByPart, today, opts) {
   }
   return {block: blk, parts};
 }
+
+
+// This week's list for a coachPlan result: every part with something due by
+// the end of this block week (carried units are due at once; the planned
+// share is spread over the block's 4 weeks), plus parts finished this week.
+function weekList(cp) {
+  const cur = cp.block.num, week = cp.block.week, rows = [];
+  for (const P of PARTS) {
+    const s = cp.parts[P.id];
+    const plannedCur = s.planned[cur] || 0, carriedCur = s.carried[cur] || 0;
+    const share = Math.min(PLAN[cur][P.id] || 0, s.inCur + plannedCur);
+    const total = s.inCur + plannedCur + carriedCur;
+    const dueBy = w => Math.min(total, carriedCur + Math.ceil(share * w / 4));
+    const outstanding = Math.max(0, dueBy(week) - s.inCur);
+    if (outstanding === 0 && s.inWeek === 0) continue;
+    rows.push({pid: P.id, label: P.label, short: PART_SHORT[P.id], outstanding,
+      carried: outstanding > 0 && (carriedCur > 0 || (week > 1 && dueBy(week - 1) > s.inCur))});
+  }
+  return rows.sort((a, b) => (b.outstanding > 0) - (a.outstanding > 0) || b.carried - a.carried || b.outstanding - a.outstanding);
+}
+
+function prevBlockWeek(blk) {
+  if (blk.week > 1) return {num: blk.num, week: blk.week - 1};
+  return blk.num > 1 ? {num: blk.num - 1, week: 4} : null;
+}
+// Last block week in review: what was logged in it, and what slipped (still
+// due when it ended). key names the current block week, e.g. "4-1".
+function recapFor(obsByPart, today) {
+  const blk = blockFor(today);
+  const prev = blk && prevBlockWeek(blk);
+  if (!prev) return null;
+  const end = weekEnd(prev.num, prev.week), hi = dayIndex(end), lo = hi - 6;
+  const got = [];
+  for (const P of PARTS) {
+    const n = (obsByPart[P.id] || []).filter(o => {
+      const d = attrDate(o);
+      return d && dayIndex(d) >= lo && dayIndex(d) <= hi;
+    }).length;
+    if (n) got.push({pid: P.id, label: P.label, n});
+  }
+  const slipped = weekList(coachPlan(obsByPart, end, {asOf: end}))
+    .filter(r => r.outstanding > 0).map(r => ({pid: r.pid, label: r.label, n: r.outstanding}));
+  return {key: blk.num + "-" + blk.week, got, slipped};
+}
+
+function remainingTotal(obsByPart) {
+  return PARTS.reduce((a, P) => a + Math.max(0, P.required - (obsByPart[P.id] || []).length), 0);
+}
+// Finish date at the pace of the last 8 weeks (fewer early in the year).
+function paceFinish(obsByPart, today) {
+  const remaining = remainingTotal(obsByPart);
+  if (!remaining) return {done: true};
+  const t = dayIndex(today), weeks = Math.max(1, Math.min(8, (t + 1) / 7));
+  let n = 0;
+  for (const pid in obsByPart) for (const o of obsByPart[pid]) {
+    const d = attrDate(o);
+    if (d && dayIndex(d) <= t && dayIndex(d) > t - weeks * 7) n++;
+  }
+  if (!n) return {date: null};
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + Math.ceil(remaining / (n / weeks) * 7));
+  return {date, onTrack: dayIndex(date) <= dayIndex(YEAR1_END)};
+}
+// Finish date if every block hits its recalculated targets.
+function planFinish(cp) {
+  let last = 0;
+  for (const pid in cp.parts) {
+    const s = cp.parts[pid];
+    for (const b of Object.keys(s.planned).concat(Object.keys(s.carried))) last = Math.max(last, +b);
+  }
+  if (!last) return {done: true};
+  const date = blockEnd(last);
+  return {date, block: last, onTrack: dayIndex(date) <= dayIndex(YEAR1_END)};
+}
+
+// Pending observations more than 14 days old, oldest first.
+function chaseList(obsByPart, today) {
+  const t = dayIndex(today), out = [];
+  for (const P of PARTS) (obsByPart[P.id] || []).forEach((o, i) => {
+    const d = attrDate(o);
+    if (o.status === "approved" || !d || t - dayIndex(d) <= 14) return;
+    out.push({pid: P.id, i, label: P.label, date: fmtDate(d), a: o.a || "", age: t - dayIndex(d)});
+  });
+  return out.sort((x, y) => y.age - x.age);
+}
+
+// Context lines that say who assessed, not what case to find.
+const NOT_A_CASE = /(assessor|observer|direct observation|dops|physician|other health care professional)$|^other( significant)?$/i;
+// Up to `max` case types still needed for this week's outstanding parts, in
+// row order. Numbered series ("1 polypectomy", "2 polypectomy") are grouped.
+function lookFor(rows, lineVal, max) {
+  const out = [], limit = max || 3;
+  for (const r of rows) {
+    if (!(r.outstanding > 0)) continue;
+    const groups = [];
+    for (const it of PART_BY_ID[r.pid].items) {
+      if (!it.id) continue;
+      const name = it.label.replace(/^\d+\s+/, "");
+      const left = it.target - lineVal(it.id);
+      if (NOT_A_CASE.test(name) || left <= 0) continue;
+      const g = groups.find(x => x.name === name);
+      if (g) g.left += left;
+      else groups.push({pid: r.pid, part: r.label, name, left});
+    }
+    for (const g of groups) {
+      if (out.length >= limit) return out;
+      out.push(g);
+    }
+  }
+  return out;
+}
+
+function loggedInBlock(obsByPart, pid, num) {
+  return (obsByPart[pid] || []).filter(o => {
+    const d = attrDate(o), b = d && blockFor(d);
+    return b && b.num === num;
+  }).length;
+}
+// Chips for one block on the Plan tab. curNum is the current block number,
+// 0 before Year 1 (show the July plan) or 14 after it (everything is past).
+function blockTargets(num, obsByPart, cp, curNum) {
+  const out = [];
+  for (const P of PARTS) {
+    const past = num < curNum;
+    let n = 0, carried = false;
+    if (past) n = loggedInBlock(obsByPart, P.id, num);
+    else if (cp) {
+      const s = cp.parts[P.id];
+      n = (s.planned[num] || 0) + (s.carried[num] || 0);
+      carried = !!s.carried[num];
+    } else n = PLAN[num][P.id] || 0;
+    if (n) out.push({pid: P.id, label: P.label, code: P.code, n, carried, past});
+  }
+  return out;
+}
+// EPA codes with anything due in the current block.
+function blockFocus(cp) {
+  const cur = cp.block.num, out = [];
+  for (const P of PARTS) {
+    const s = cp.parts[P.id];
+    if ((s.planned[cur] || 0) + (s.carried[cur] || 0) > 0 && !out.includes(P.code)) out.push(P.code);
+  }
+  return out;
+}
