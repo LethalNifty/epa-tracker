@@ -57,3 +57,54 @@ test("a cancelled share does not count as a backup", async () => {
   await new Promise(r => setImmediate(r));
   assert.equal(h.val("Store.state.lastBackup"), null);
 });
+
+test("Week is the home screen", () => {
+  const h = load({today: "2026-09-24"});
+  assert.equal(h.val("route.page"), "week");
+  assert.match(h.html(), /<div class="hsub">Block 4 · Motility\/Nutrition<\/div><h1 class="htitle">Week 1 of 4<\/h1>/);
+  assert.match(h.html(), /class="nv on" data-action="tab" data-page="week"/);
+});
+
+test("This week lists what's due, carried first", () => {
+  const h = load({today: "2026-09-24"});
+  const html = h.html();
+  assert.match(html, /data-part="f1b"><span class="tick"><\/span><span class="cc">F1-B<\/span><span class="wname">Assessment and plan<\/span><span class="tag warn">carried<\/span><span class="wn">×10<\/span>/);
+  assert.match(html, /data-part="c5">.*?<span class="wn">×1<\/span>/);
+  assert.doesNotMatch(html, /data-part="d1"/);
+});
+
+test("recap shows once per block week", () => {
+  const h = load({today: "2026-09-24", state: state({c2: many(2, "2026-09-20")})});
+  assert.match(h.html(), /Your week, Jared/);
+  assert.match(h.html(), /Last week: C2 ×2\./);
+  h.click("dismissrecap", {key: "4-1"});
+  assert.doesNotMatch(h.html(), /Your week, Jared/);
+  assert.doesNotMatch(load({today: "2026-09-24", state: h.saved()}).html(), /Your week, Jared/);
+  assert.match(load({today: "2026-10-01", state: h.saved()}).html(), /Your week, Jared/);
+});
+
+test("chase list approves in place", () => {
+  const h = load({today: "2026-09-24", state: state({c2: [obs("2026-09-01", {status: "pending", a: "Dr. A"})]})});
+  assert.match(h.html(), /1 form pending 14\+ days/);
+  assert.match(h.html(), /2026-09-01 · Dr\. A/);
+  h.click("chaseok", {part: "c2", obs: "0"});
+  assert.equal(h.saved().obs.c2[0].status, "approved");
+  assert.doesNotMatch(h.html(), /pending 14\+ days/);
+});
+
+test("estimated completion shows both dates", () => {
+  const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
+  assert.match(h.html(), /At your current pace<\/div><div class="sval warn">Nov 2027<\/div>/);
+  assert.match(h.html(), /If you hit the plan<\/div><div class="sval ok">Jun 30, 2027<\/div>/);
+});
+
+test("look for lists case types for this week's parts", () => {
+  const h = load({today: "2026-09-24"});
+  assert.match(h.html(), /<h2>Look for<\/h2>/);
+  assert.match(h.html(), /Upper GI tract disease/);
+});
+
+test("outside Year 1 the Week tab explains itself", () => {
+  assert.match(load({today: "2027-07-05"}).html(), /Year 1 is done/);
+  assert.match(load({today: "2026-06-15"}).html(), /Fellowship starts July 2, 2026/);
+});

@@ -41,7 +41,7 @@ test("an old v1 backup without status imports as approved", () => {
 
 test("every page renders without throwing", () => {
   const h = load({today: "2026-09-24"});
-  for (const page of ["epas", "plan", "biopsy"]) {
+  for (const page of ["week", "epas", "plan", "biopsy"]) {
     h.run(`route = {page: ${JSON.stringify(page)}}; render();`);
     assert.ok(h.html().length > 200, page);
   }

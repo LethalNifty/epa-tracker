@@ -2159,7 +2159,7 @@ function biopsyHi(html, term) {
   return html.replace(new RegExp("(" + t + ")(?![^<]*>)", "ig"), "<mark>$1</mark>");
 }
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
-let route = {page:"epas"};
+let route = {page:"week"};
 function getToday() { return window.__today || new Date(); }
 function ic(name, cls) { return `<svg class="ic${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
 // Page header. sub and title are HTML (escape before passing).
@@ -2169,7 +2169,7 @@ function headerHTML(sub, title, count = true) {
     (count ? `<div class="hcount"><b>${o.d}</b> / ${o.r}</div>` : "") + `</div>` +
     (count ? `<div class="hbar"><i style="width:${o.r ? Math.round(o.d / o.r * 100) : 0}%"></i></div>` : "") + `</header>`;
 }
-const NAV = [["epas", "EPAs", "epas"], ["plan", "Plan", "plan"], ["biopsy", "Biopsy", "jar"]];
+const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["plan", "Plan", "plan"], ["biopsy", "Biopsy", "jar"]];
 function navHTML(active) {
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}">` +
     `${ic(icon)}<span>${label}</span></button>`;
@@ -2216,6 +2216,75 @@ function viewEpas() {
     h += `</section>`;
   }
   return h + backupHTML();
+}
+let chaseOpen = false;
+function recapHTML(rc) {
+  const list = xs => xs.map(x => `${x.label} ×${x.n}`).join(", ");
+  return `<div class="card recap"><div class="rhead"><b>Your week, Jared</b>` +
+    `<button class="iconbtn" data-action="dismissrecap" data-key="${rc.key}" aria-label="Dismiss">${ic("x")}</button></div>` +
+    `<p>Last week: ${rc.got.length ? list(rc.got) : "nothing logged"}.</p>` +
+    `<p>${rc.slipped.length ? "Slipped, now on this week: " + list(rc.slipped) + "." : "Nothing slipped."}</p></div>`;
+}
+function thisWeekHTML(rows) {
+  let h = `<section><h2>This week</h2>`;
+  if (!rows.length) return h + `<div class="card empty">Nothing due this week. Log anything you get.</div></section>`;
+  h += `<div class="card list">`;
+  for (const r of rows) {
+    const done = r.outstanding === 0;
+    h += `<button class="wrow${done ? " done" : ""}" data-action="sheet" data-part="${r.pid}">` +
+      `<span class="tick">${done ? ic("check") : ""}</span><span class="cc">${r.label}</span>` +
+      `<span class="wname">${esc(r.short)}</span>` +
+      (r.carried ? `<span class="tag warn">carried</span>` : "") +
+      (done ? "" : `<span class="wn">×${r.outstanding}</span>`) + `</button>`;
+  }
+  return h + `</div></section>`;
+}
+function lookHTML(items) {
+  return `<section><h2>Look for</h2><div class="card list">` + items.map(x =>
+    `<button class="lrow" data-action="open" data-code="${PART_BY_ID[x.pid].code}">${ic("search")}` +
+    `<span class="wname">${esc(x.name)}</span><span class="cc sm">${x.part}</span>` +
+    (x.left > 1 ? `<span class="wn">×${x.left}</span>` : "") + `</button>`).join("") + `</div></section>`;
+}
+function chaseHTML(list) {
+  return `<details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
+    `<span>${list.length} form${list.length > 1 ? "s" : ""} pending 14+ days</span><span class="muted">chase in Entrada</span></summary>` +
+    list.map(c => `<div class="crow"><span class="cc sm">${c.label}</span>` +
+      `<span class="cmeta">${esc(c.date)} · ${c.a ? esc(c.a) : "no assessor"}</span>` +
+      `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`).join("") +
+    `</details>`;
+}
+function finishHTML(pace, plan) {
+  const month = d => MONTHS[d.getMonth()] + " " + d.getFullYear();
+  const day = d => MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+  const cell = (label, r, fmt, empty) => `<div class="stat"><div class="slabel">${label}</div>` +
+    (r.done ? `<div class="sval ok">Done</div>` : r.date ?
+      `<div class="sval ${r.onTrack ? "ok" : "warn"}">${fmt(r.date)}</div>` :
+      `<div class="sval">–</div><div class="ssub">${empty}</div>`) + `</div>`;
+  return `<section><h2>Estimated completion</h2><div class="statgrid">` +
+    cell("At your current pace", pace, month, "Log a few to estimate") +
+    cell("If you hit the plan", plan, day, "") +
+    `</div><div class="ssub goalline">Goal: everything logged by Jun 30, 2027.</div></section>`;
+}
+function viewWeek() {
+  const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
+  if (!blk) {
+    const before = dayIndex(today) < 0;
+    return headerHTML("GI Hub", before ? "Almost time" : "Year 1 done") + warningsHTML(today) +
+      `<div class="card pad spaced">${before ? "Fellowship starts July 2, 2026." :
+        "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>`;
+  }
+  const cp = coachPlan(obsBy, today), rows = weekList(cp);
+  let h = headerHTML(`Block ${blk.num} · ${esc(blk.name)}`, `Week ${blk.week} of 4`) + warningsHTML(today);
+  if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
+    const rc = recapFor(obsBy, today);
+    if (rc) h += recapHTML(rc);
+  }
+  h += thisWeekHTML(rows);
+  const look = lookFor(rows, id => Store.lineVal(id));
+  if (look.length) h += lookHTML(look);
+  const chase = chaseList(obsBy, today);
+  if (chase.length) h += chaseHTML(chase);
+  return h + finishHTML(paceFinish(obsBy, today), planFinish(cp));
 }
 // Hands the backup to the iPhone share sheet when it can take a file,
 // otherwise downloads it. Only a completed hand-over counts as a backup.
@@ -2387,7 +2456,8 @@ function viewEpa(code) {
 
 function render() {
   const p = route.page;
-  const body = p === "epas" ? viewEpas() : p === "plan" ? viewPlan() : p === "biopsy" ? viewBiopsy() : viewEpa(route.code);
+  const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
+    p === "biopsy" ? viewBiopsy() : viewEpa(route.code);
   document.getElementById("app").innerHTML = body + navHTML(p === "epa" ? route.from : p);
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
@@ -2401,6 +2471,8 @@ function dispatch(act, d) {
     Store.setObsMeta(d.part, i, {d: fmtDate(getToday())});
     route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
   else if (act === "togglestatus") { Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
+  else if (act === "dismissrecap") { Store.setRecapSeen(d.key); route.keepScroll = true; render(); }
+  else if (act === "chaseok") { Store.setObsStatus(d.part, +d.obs, "approved"); chaseOpen = true; route.keepScroll = true; render(); }
   else if (act === "editobs") {
     const k = d.part + "|" + d.obs;
     route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
