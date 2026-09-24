@@ -1,0 +1,80 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const {load} = require("./harness");
+
+test("EPA data: 16 EPAs, 21 parts, 139 required", () => {
+  const h = load({today: "2026-09-24"});
+  assert.equal(h.val("EPA_DATA.length"), 16);
+  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).length"), 21);
+  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).reduce((a, p) => a + p.required, 0)"), 139);
+});
+
+test("PLAN column sums equal each part's required count", () => {
+  const h = load({today: "2026-09-24"});
+  const bad = h.val(`EPA_DATA.flatMap(e => e.parts).filter(p =>
+    Object.values(PLAN).reduce((a, blk) => a + (blk[p.id] || 0), 0) !== p.required).map(p => p.id)`);
+  assert.deepEqual(bad, []);
+});
+
+test("16 biopsy protocols", () => {
+  const h = load({today: "2026-09-24"});
+  assert.equal(h.val("BIOPSY_DATA.length"), 16);
+});
+
+test("logging an observation persists and reloads", () => {
+  const h = load({today: "2026-09-24"});
+  h.run(`Store.logObs("c2")`);
+  const saved = h.saved();
+  assert.equal(saved.obs.c2.length, 1);
+  assert.equal(saved.obs.c2[0].status, "pending");
+  const again = load({today: "2026-09-24", state: saved});
+  assert.equal(again.val(`Store.partDone("c2")`), 1);
+});
+
+test("an old v1 backup without status imports as approved", () => {
+  const h = load({today: "2026-09-24"});
+  const text = JSON.stringify({v: 1, obs: {c2: [{d: "2026-08-01"}]}, lines: {}});
+  assert.equal(h.val(`Store.importJSON(${JSON.stringify(text)}).ok`), true);
+  assert.equal(h.val(`Store.state.obs.c2[0].status`), "approved");
+});
+
+test("every page renders without throwing", () => {
+  const h = load({today: "2026-09-24"});
+  for (const page of ["week", "epas", "plan", "biopsy"]) {
+    h.run(`route = {page: ${JSON.stringify(page)}}; render();`);
+    assert.ok(h.html().length > 200, page);
+  }
+  h.run(`route = {page: "epa", code: "C2", from: "epas"}; render();`);
+  assert.match(h.html(), /chronic/i);
+});
+
+test("gamification is gone", () => {
+  const h = load({today: "2026-09-24"});
+  for (const name of ["ACHIEVEMENTS", "afterProgress", "streakInfo", "projection", "paceInfo", "viewStats", "loggedTotal"])
+    assert.equal(h.run(`typeof ${name}`), "undefined", name);
+  assert.doesNotMatch(h.html(), /data-page="stats"|Achievement/);
+});
+
+test("a backup that still carries 'celebrated' imports and drops it", () => {
+  const h = load({today: "2026-09-24"});
+  const text = JSON.stringify({v: 1, obs: {c2: [{d: "2026-08-01", status: "approved"}]}, lines: {}, celebrated: ["first"]});
+  assert.equal(h.val(`Store.importJSON(${JSON.stringify(text)}).ok`), true);
+  assert.equal(h.val(`"celebrated" in Store.state`), false);
+  assert.equal(h.val(`Store.state.recapSeen`), null);
+  assert.equal(h.saved().obs.c2.length, 1);
+});
+
+test("recapSeen persists", () => {
+  const h = load({today: "2026-09-24"});
+  h.run(`Store.setRecapSeen("4-1")`);
+  assert.equal(h.saved().recapSeen, "4-1");
+});
+
+test("exportJSON has no side effects; markBackup stamps the date", () => {
+  const h = load({today: "2026-09-24"});
+  h.run(`Store.exportJSON()`);
+  assert.equal(h.val(`Store.state.lastBackup`), null);
+  h.run(`Store.markBackup()`);
+  assert.match(h.saved().lastBackup, /^\d{4}-\d{2}-\d{2}T/);
+});

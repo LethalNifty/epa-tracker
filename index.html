@@ -12,211 +12,260 @@
 <meta name="theme-color" content="#064e3b">
 <style>
 :root{
-  --bg:#0b100e; --card:#151d19; --text:#e6ebe8; --muted:#93a39b; --border:#25302a;
-  --accent:#34d399; --accent-ink:#6ee7b7; --accent-weak:#0e3a2b; --danger:#f87171;
+  color-scheme:dark;
+  --bg:#0b100e; --surface:#141c18; --surface2:#1b2520; --line:#25302a;
+  --text:#e6ebe8; --muted:#93a39b; --faint:#64726b;
+  --accent:#34d399; --accent-ink:#6ee7b7; --accent-weak:#0e3a2b; --on-accent:#06281c;
   --chipbg:#0d4a37; --chiptx:#a7f3d0;
+  --warn:#f0a63c; --warn-weak:rgba(240,166,60,.13); --danger:#f87171; --mark:#3a4a2a;
+  --r-lg:16px; --r-md:12px; --nav-h:62px;
 }
-:root{color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);
-  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  padding-bottom:env(safe-area-inset-bottom)}
-#app{max-width:560px;margin:0 auto;padding:0 14px 40px}
-button{font:inherit;color:inherit;background:none;border:none;padding:0;text-align:left;cursor:pointer}
-header.top{position:sticky;top:0;z-index:5;background:var(--bg);
-  padding:calc(10px + env(safe-area-inset-top)) 2px 8px}
-.htitle{display:flex;justify-content:space-between;align-items:baseline}
-.htitle b{font-size:20px;letter-spacing:-.2px}
-.hcount{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
-.hbar{height:5px;border-radius:3px;background:var(--border);margin-top:8px;overflow:hidden}
-.hbar i{display:block;height:100%;background:var(--accent);border-radius:3px}
-section{margin-top:18px}
-section h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 2px 8px}
-.row{display:flex;gap:12px;align-items:center;width:100%;min-height:56px;
-  background:var(--card);border:1px solid var(--border);border-radius:14px;
-  padding:10px 12px;margin-bottom:8px}
-.row:active{transform:scale(.99)}
-.code{flex:0 0 44px;height:44px;border-radius:11px;background:var(--chipbg);color:var(--chiptx);
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+body{margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+#app{max-width:560px;margin:0 auto;padding:0 16px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px)}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent-ink);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.ic{width:20px;height:20px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:15px;height:15px}
+.muted{color:var(--muted)}
+.spaced{margin-top:14px}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(12px + env(safe-area-inset-top)) 0 10px}
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.hsub{font-size:12.5px;color:var(--muted);font-weight:600}
+.htitle{margin:1px 0 0;font-size:24px;line-height:1.15;letter-spacing:-.3px;font-weight:700}
+.hcount{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.hcount b{color:var(--text);font-size:17px}
+.hbar{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden}
+.hbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.back{display:inline-flex;align-items:center;gap:4px;min-height:44px;color:var(--accent-ink);font-weight:650}
+section{margin-top:22px}
+section h2{margin:0 2px 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)}
+.card.pad{padding:14px}
+.card.list{padding:2px 14px}
+.card.empty{padding:16px;color:var(--muted);text-align:center}
+.tag{display:inline-flex;align-items:center;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;
+  background:var(--accent-weak);color:var(--accent-ink);white-space:nowrap}
+.tag.warn{background:var(--warn-weak);color:var(--warn)}
+.tag.solid{background:var(--accent);color:var(--on-accent);text-transform:uppercase;letter-spacing:.04em;font-size:10px}
+.cc{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:24px;padding:0 7px;border-radius:7px;
+  background:var(--chipbg);color:var(--chiptx);font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums}
+.cc.sm{min-width:0;height:21px;font-size:11.5px}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;color:var(--muted)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;border-radius:var(--r-md);
+  border:1px solid var(--line);font-weight:650;color:var(--accent-ink);background:var(--surface2)}
+.btn + .btn{margin-top:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--danger)}
+.bnote{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px}
+.err{color:var(--danger);font-size:13px;margin-top:8px;text-align:center}
+.warnbar{background:var(--danger);color:#fff;border-radius:var(--r-md);padding:10px 12px;margin-top:10px;font-size:13.5px;font-weight:600}
+.nudge{display:flex;gap:10px;align-items:center;margin-top:10px;padding:8px 8px 8px 12px;font-size:13.5px;border-color:var(--accent)}
+.nudge span{flex:1}
+.nudge .btn{width:auto;min-height:36px;padding:0 12px}
+nav.bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,14,.94);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.bnav-in{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:center}
+.nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;
+  font-size:11px;font-weight:600;color:var(--muted)}
+.nv.on{color:var(--accent-ink)}
+.nv .ic{width:22px;height:22px}
+.fab{flex:0 0 auto;width:48px;height:48px;margin:0 6px;border-radius:50%;background:var(--accent);color:var(--on-accent);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(52,211,153,.25)}
+.fab .ic{width:24px;height:24px;stroke-width:2.4}
+.recap{margin-top:12px;padding:12px 8px 12px 14px;background:var(--accent-weak);border-color:var(--accent)}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.rhead b{color:var(--accent-ink);font-size:15px}
+.recap p{margin:2px 0 0;padding-right:6px;font-size:13.5px}
+.wrow,.lrow{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;border-top:1px solid var(--line);padding:8px 0}
+.list > :first-child{border-top:none}
+.tick{flex:0 0 22px;height:22px;border-radius:7px;border:1.5px solid var(--faint);display:flex;align-items:center;justify-content:center}
+.tick .ic{width:15px;height:15px;stroke-width:3}
+.wrow.done .tick{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.wname{flex:1;min-width:0;font-size:14.5px}
+.wrow.done .wname{color:var(--muted);text-decoration:line-through}
+.wn{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:650}
+.lrow > .ic{color:var(--muted)}
+.chase{margin-top:14px;padding:0 14px}
+.chase summary{min-height:48px;display:flex;align-items:center;gap:8px;font-weight:650;color:var(--warn);list-style:none;cursor:pointer}
+.chase summary::-webkit-details-marker{display:none}
+.chase summary .muted{font-weight:500;font-size:12.5px;margin-left:auto}
+.crow{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);min-height:48px}
+.cmeta{flex:1;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pillbtn{min-height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--accent);color:var(--accent-ink);font-size:12.5px;font-weight:700}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 14px}
+.slabel{font-size:12px;color:var(--muted)}
+.sval{font-size:19px;font-weight:750;margin-top:4px}
+.sval.ok{color:var(--accent-ink)}
+.sval.warn{color:var(--warn)}
+.ssub{font-size:12px;color:var(--muted);margin-top:3px}
+.goalline{margin:8px 2px 0}
+.row{display:flex;gap:12px;align-items:center;width:100%;min-height:62px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:10px 12px;margin-bottom:8px}
+.row:active,.wrow:active,.lrow:active,.btn:active,.pchip:active,.nv:active{opacity:.7}
+.code{flex:0 0 44px;height:44px;border-radius:12px;background:var(--chipbg);color:var(--chiptx);display:flex;align-items:center;
+  justify-content:center;font-weight:750;font-size:15px}
 .rmid{flex:1;min-width:0}
-.rtitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  font-size:13.5px;line-height:1.3;color:var(--text)}
-.rbar{display:block;height:4px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden}
+.rtitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;line-height:1.3}
+.rbar{display:block;height:4px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}
 .rbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
-.rcount{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:650;color:var(--muted);font-size:14px}
+.rmeta{display:flex;gap:6px;margin-top:6px}
+.rmeta:empty{display:none}
+.rcount{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);font-size:14px}
 .rcount.done{color:var(--accent-ink)}
-.banner{background:var(--accent-weak);border:1px solid var(--accent);border-radius:14px;
-  padding:12px 14px;margin-top:10px}
-.banner b{font-size:15px}
-.bhint{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
-.strip{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.strip::-webkit-scrollbar{display:none}
-.mini{flex:0 0 auto;min-width:74px;min-height:44px;background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:8px 12px;text-align:center}
-.mini b{display:block;font-size:15px;color:var(--accent-ink)}
-.mini span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.chip{display:inline-block;background:var(--accent);color:#06281c;border-radius:99px;
-  font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-  padding:2px 7px;margin-left:6px;vertical-align:2px}
-.back{color:var(--accent-ink);font-weight:650;min-height:44px;display:flex;align-items:center}
-.dhead{display:flex;gap:10px;align-items:center;margin-top:2px}
-.code.big{flex:0 0 52px;height:52px;font-size:18px;border-radius:13px}
-.stagechip{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:3px 10px}
-.dtitle{font-size:19px;line-height:1.3;margin:10px 0 4px;letter-spacing:-.2px}
-.part{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:14px}
+.donegrp summary,details.fold summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer}
+.donegrp summary::-webkit-details-marker,details.fold summary::-webkit-details-marker{display:none}
+.donegrp summary::before,details.fold summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin:0 2px}
+.donegrp[open] summary::before,details.fold[open] summary::before{transform:rotate(45deg)}
+.donegrp summary{min-height:40px;color:var(--muted);font-weight:650;font-size:13px}
+.dhead{display:flex;gap:10px;align-items:center;margin-top:4px}
+.code.big{flex:0 0 52px;height:52px;font-size:18px;border-radius:14px}
+.stagechip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.dtitle{font-size:20px;line-height:1.3;margin:12px 0 4px;letter-spacing:-.2px}
+.part{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin-top:14px}
 .part h3{margin:0 0 6px;font-size:15px}
 .pprog{font-size:14px;color:var(--muted)}
 .pprog b{font-size:20px;color:var(--text)}
 .pprog .ok{color:var(--accent-ink);font-weight:650}
-.pbarBig{height:6px;border-radius:3px;background:var(--border);margin:8px 0 10px;overflow:hidden}
+.pendtxt{color:var(--warn);font-weight:650}
+.pbarBig{height:6px;border-radius:3px;background:var(--line);margin:8px 0 10px;overflow:hidden}
 .pbarBig i{display:block;height:100%;background:var(--accent);border-radius:3px}
-.logbtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;
-  border:1.5px dashed var(--accent);border-radius:12px;color:var(--accent-ink);font-weight:650}
-.obsrow{display:flex;gap:8px;align-items:center;width:100%;min-height:44px;
-  border-bottom:1px solid var(--border);padding:6px 2px;font-size:14px}
+.logbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;margin-top:8px;
+  border:1.5px dashed var(--accent);border-radius:var(--r-md);color:var(--accent-ink);font-weight:650}
+.obsrow{display:flex;gap:8px;align-items:center;min-height:46px;border-bottom:1px solid var(--line);padding:4px 0;font-size:14px}
 .obsrow .onum{color:var(--accent-ink);font-weight:700}
-.ometabtn{flex:1;min-width:0;color:var(--muted);background:none;font-size:13.5px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:38px}
-.spill{flex:0 0 auto;min-height:32px;display:flex;align-items:center;border-radius:99px;
-  padding:4px 10px;font-size:11.5px;font-weight:700;border:1px solid var(--border);white-space:nowrap}
-.spill.pending{color:var(--tag2);border-color:color-mix(in srgb,var(--tag2) 55%,transparent);
-  background:color-mix(in srgb,var(--tag2) 12%,transparent)}
+.ometabtn{flex:1;min-width:0;color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:40px}
+.spill{flex:0 0 auto;min-height:32px;display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:4px 10px;
+  font-size:11.5px;font-weight:700;border:1px solid var(--line);white-space:nowrap}
+.spill .ic{width:13px;height:13px;stroke-width:2.6}
+.spill.pending{color:var(--warn);border-color:rgba(240,166,60,.5);background:var(--warn-weak)}
 .spill.approved{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-weak)}
-.pendtxt{color:var(--tag2);font-weight:650}
-.rpend{color:var(--tag2);font-size:12px;font-weight:700;margin-left:3px}
-.elbl{font-size:12px;color:var(--muted);align-self:center}
-.celebrate{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);
-  display:flex;align-items:center;justify-content:center;padding:24px}
-.cbox{background:var(--card);border:1.5px solid var(--accent);border-radius:18px;
-  padding:26px 28px;text-align:center;max-width:300px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
-.cbox b{font-size:20px;display:block;margin-top:6px;color:var(--accent-ink)}
-.cemoji{font-size:48px;line-height:1}
-.chint{font-size:12px;color:var(--muted);margin-top:8px}
-.pace{margin-top:8px;font-size:13px;font-weight:700;border-radius:9px;padding:6px 10px}
-.pace.ok{color:var(--accent-ink);background:var(--accent-weak)}
-.pace.behind{color:var(--tag2);background:color-mix(in srgb,var(--tag2) 14%,transparent)}
-.statbig{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:12px;text-align:center}
-.statnum{font-size:40px;font-weight:800;color:var(--accent-ink);line-height:1}
-.statnum span{font-size:14px;font-weight:600;color:var(--muted);margin-left:6px}
-.statsub{font-size:13px;color:var(--muted);margin-top:6px}
-.statgrid{display:flex;gap:10px;margin-top:12px}
-.statcard{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
-.sclabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.scval{font-size:30px;font-weight:800;color:var(--text);line-height:1.1;margin-top:6px}
-.scval.sm{font-size:20px}
-.scval span{font-size:14px;font-weight:600;color:var(--muted)}
-.scval.ok{color:var(--accent-ink)}
-.scval.warn{color:var(--tag2)}
-.scsub{font-size:12px;color:var(--muted);margin-top:4px}
-.achgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ach{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;opacity:.5}
-.ach.got{opacity:1;border-color:var(--accent)}
-.achtop{font-size:13.5px;display:flex;align-items:center;gap:5px}
-.achtop b{font-weight:700}
-.achhint{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.35}
-.editor{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
-.editor label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
-.editor input{display:block;width:100%;margin-top:3px;font:inherit;color:var(--text);
-  background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;min-height:40px}
-.erow{display:flex;justify-content:space-between;gap:10px}
-.erow button{min-height:40px;padding:0 16px;border-radius:10px;font-weight:650}
-.erow .del{color:var(--danger)}
-.erow .donebtn{background:var(--accent);color:#06281c}
-.ctx{margin-top:12px}
-.ctx h4{margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.ihead{font-size:13px;font-weight:650;color:var(--muted);padding:10px 2px 2px}
-.line{display:flex;gap:10px;align-items:center;min-height:46px;border-bottom:1px solid var(--border);
-  padding:4px 2px;cursor:pointer}
+.ctx{margin-top:14px}
+.ctx h4,.refblock h4{margin:16px 0 6px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ihead{font-size:13px;font-weight:650;color:var(--muted);padding:10px 0 2px}
+.line{display:flex;gap:10px;align-items:center;min-height:46px;border-bottom:1px solid var(--line);padding:4px 0;cursor:pointer}
 .line:last-child{border-bottom:none}
-.lbox{flex:0 0 30px;height:30px;border:1.5px solid var(--border);border-radius:9px;
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent-ink)}
-.ldone .lbox{background:var(--accent);border-color:var(--accent);color:#06281c}
+.lbox{flex:0 0 30px;height:30px;border:1.5px solid var(--faint);border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:var(--accent-ink)}
+.lbox .ic{width:16px;height:16px;stroke-width:3}
+.ldone .lbox{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .llab{flex:1;font-size:14px;line-height:1.3}
 .ldone .llab{color:var(--muted);text-decoration:line-through}
-.lmeta{flex:0 0 36px;height:36px;border-radius:9px;color:var(--muted);
-  display:flex;align-items:center;justify-content:center;font-weight:700}
+.lmeta{flex:0 0 36px;height:36px;border-radius:9px;color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700}
+.editor{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md);padding:10px;margin:8px 0}
+.editor label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+.editor input,.sheet input{display:block;width:100%;margin-top:4px;font:inherit;font-size:16px;color:var(--text);background:var(--surface2);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+.editor input:focus,.sheet input:focus,#biopsyq:focus{outline:none;border-color:var(--accent)}
+.erow{display:flex;justify-content:flex-end;gap:10px}
+.erow button{min-height:40px;padding:0 16px;border-radius:10px;font-weight:650;background:var(--accent);color:var(--on-accent)}
 .refblock{margin-top:18px}
-.refblock h4{margin:16px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.refblock ul{margin:0;padding-left:18px;font-size:14px;color:var(--text)}
+.refblock ul{margin:0;padding-left:18px;font-size:14px}
 .refblock li{margin-bottom:6px;line-height:1.45}
-.planitem{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:8px;font-size:14px}
+.planitem{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:11px 13px;margin-bottom:8px;font-size:14px}
 .planitem b{display:block;margin-bottom:2px}
 .planitem .rule{color:var(--accent-ink);font-weight:600;margin-top:6px}
 .planitem .meth{color:var(--muted)}
-details{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 13px;margin-top:10px}
-summary{min-height:46px;display:flex;align-items:center;font-weight:650;cursor:pointer;list-style:none}
-summary::before{content:"▸";margin-right:8px;color:var(--accent-ink);transition:transform .15s}
-details[open] summary::before{transform:rotate(90deg)}
-details ol{margin:0 0 12px;padding-left:20px;font-size:13.5px}
-details li{margin-bottom:7px;line-height:1.45}
-details h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
-.nudge{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--accent);
-  border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px}
-.nudge .dis{flex:0 0 36px;height:36px;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:17px}
-.warnbar{background:var(--danger);color:#fff;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px;font-weight:600}
-.bwrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
-.bbtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;
-  border:1px solid var(--border);border-radius:11px;font-weight:650;margin-bottom:8px;color:var(--accent-ink)}
-.bnote{font-size:12.5px;color:var(--muted);text-align:center}
-.berr{color:var(--danger);font-size:13px;margin-top:6px;text-align:center}
+details.fold{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:0 13px;margin-top:10px}
+details.fold summary{min-height:46px;font-weight:650;color:var(--text)}
+details.fold summary::before{color:var(--accent-ink)}
+details.fold ol{margin:0 0 12px;padding-left:20px;font-size:13.5px}
+details.fold li{margin-bottom:7px;line-height:1.45}
+details.fold h5{margin:8px 0 6px;font-size:13px;color:var(--muted)}
 .copy{font-size:11px;color:var(--muted);line-height:1.4;margin-top:14px}
-.tabs{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;
-  padding:3px;margin-top:10px}
-.tab{flex:1;min-height:40px;display:flex;align-items:center;justify-content:center;
-  border-radius:9px;font-weight:650;color:var(--muted)}
-.tab.active{background:var(--accent);color:#06281c}
-.goal{font-size:13px;color:var(--muted);margin:12px 2px 2px;line-height:1.4}
-.goal b{color:var(--accent-ink)}
-.pcard{background:var(--card);border:1px solid var(--border);border-radius:16px;
-  padding:13px 14px;margin-top:12px}
+.goal{font-size:13px;color:var(--muted);margin:14px 2px 2px;line-height:1.45}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 14px;margin-top:10px}
 .pcard.now{border-color:var(--accent);background:var(--accent-weak)}
-.pcard.past{opacity:.55}
-.pctop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.pctop b{font-size:15px}
+.pcard.past{opacity:.6}
+.pctop{display:flex;align-items:center;gap:8px}
+.pctop b{font-size:15px;flex:1}
 .pcdates{font-size:12px;color:var(--muted);white-space:nowrap}
-.nowchip{background:var(--accent);color:#06281c;border-radius:99px;font-size:10px;
-  font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px}
-.pcload{font-size:12px;color:var(--muted)}
-.pchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
-.pchip{min-height:36px;display:flex;align-items:center;gap:5px;background:var(--bg);
-  border:1px solid var(--border);border-radius:10px;padding:4px 11px;font-size:13px}
+.bhint{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.4}
+.pchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.pchip{min-height:34px;display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:4px 10px;font-size:13px}
 .pchip b{color:var(--accent-ink)}
-.pchip span{color:var(--muted);font-variant-numeric:tabular-nums}
-.pchip.full{border-color:var(--accent)}
-.pchip.full b{text-decoration:line-through;color:var(--muted)}
-:root{--tag2:#f0a63c; --mark:#3a4a2a}
-.bsub{font-size:11px;color:var(--muted);margin:2px 2px 10px}
-.qwrap{position:relative;margin-top:2px}
-#biopsyq{width:100%;padding:13px 40px 13px 14px;font-size:17px;border-radius:12px;
-  border:1px solid var(--border);background:var(--card);color:var(--text);outline:none}
-#biopsyq:focus{border-color:var(--accent)}
-.qclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:var(--chipbg);
-  color:var(--chiptx);width:30px;height:30px;border-radius:50%;font-size:16px}
-.bcats{display:flex;gap:7px;overflow-x:auto;padding:10px 2px 2px;scrollbar-width:none}
+.pchip.carried{border-color:rgba(240,166,60,.6)}
+.pchip.carried b{color:var(--warn)}
+.pchip.past b{color:var(--muted)}
+.qwrap{position:relative}
+.qwrap > .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+#biopsyq{width:100%;padding:12px 44px 12px 40px;font-size:17px;border-radius:var(--r-md);border:1px solid var(--line);
+  background:var(--surface);color:var(--text)}
+.qclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:var(--surface2);color:var(--muted)}
+.qclear .ic{width:16px;height:16px}
+.bcats{display:flex;gap:7px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
 .bcats::-webkit-scrollbar{display:none}
-.bcat{white-space:nowrap;min-height:38px;display:flex;align-items:center;padding:7px 14px;border-radius:999px;
-  font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--border);color:var(--muted)}
-.bcat.on{background:var(--accent);color:#06281c;border-color:var(--accent)}
-.bcount{color:var(--muted);font-size:12px;padding:9px 4px 0}
-.bgrp{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:16px 4px 8px}
-.bcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px}
-.bcard h3{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.3}
-.btag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.3px}
+.bcat{white-space:nowrap;min-height:36px;display:flex;align-items:center;padding:6px 14px;border-radius:99px;font-size:13px;
+  font-weight:600;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.bcat.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.bcount{color:var(--muted);font-size:12px;padding:10px 2px 0}
+.bgrp{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 2px 8px}
+.bcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 14px;margin-bottom:10px}
+.bcard h3{font-size:16px;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.3}
+.btag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.3px}
 .btag.mb{background:var(--accent-weak);color:var(--accent-ink)}
-.btag.us{background:color-mix(in srgb,var(--tag2) 24%,transparent);color:var(--tag2)}
-.brow{display:flex;gap:9px;padding:6px 0;font-size:14.5px;border-top:1px solid var(--border)}
+.btag.us{background:var(--warn-weak);color:var(--warn)}
+.brow{display:flex;gap:10px;padding:7px 0;font-size:14.5px;border-top:1px solid var(--line)}
 .brow:first-of-type{border-top:none}
-.bk{flex:0 0 82px;color:var(--muted);font-weight:600;font-size:12.5px;padding-top:1px}
+.bk{flex:0 0 76px;color:var(--muted);font-weight:600;font-size:12.5px;padding-top:2px}
 .bv{flex:1;line-height:1.4}
 .bv b{color:var(--accent-ink);font-weight:700}
 .bv.note{color:var(--muted);font-size:13.5px}
 .bcard mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
-.bempty{color:var(--muted);text-align:center;padding:40px 20px;font-size:15px}
-.bfoot{color:var(--muted);font-size:11px;text-align:center;padding:22px 12px 0;line-height:1.6}
+.srcrow{display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 10px;border-radius:10px;background:var(--bg);
+  border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.srcrow span{flex:1;min-width:0}
+a.srcrow{color:var(--accent-ink)}
+.bempty{color:var(--muted);text-align:center;padding:40px 20px}
+.bfoot{color:var(--muted);font-size:11.5px;text-align:center;padding:22px 12px 0;line-height:1.6}
+.scrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;max-width:560px;margin:0 auto;max-height:88vh;overflow-y:auto;
+  background:var(--surface);border-top:1px solid var(--accent);border-radius:20px 20px 0 0;
+  padding:8px 16px calc(16px + env(safe-area-inset-bottom));animation:sheetup .18s ease-out}
+@keyframes sheetup{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--faint);margin:2px auto 8px}
+.shead{display:flex;justify-content:space-between;align-items:center}
+.shead b{font-size:17px}
+.lbl{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-top:12px}
+.pickrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sugg:empty{display:none}
+.pickgrp{font-size:11.5px;color:var(--faint);margin-top:10px;font-weight:600}
+.pick{min-height:36px;padding:0 12px;border-radius:10px;background:var(--chipbg);color:var(--chiptx);font-weight:700;font-size:13px}
+.pick.on{background:var(--accent);color:var(--on-accent)}
+.pick.ghost{background:var(--surface2);color:var(--text);font-weight:600}
+.seg{display:flex;gap:4px;margin-top:14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md);padding:3px}
+.seg button{flex:1;min-height:38px;border-radius:9px;text-align:center;font-weight:650;color:var(--muted)}
+.seg button.on{background:var(--surface2);color:var(--text)}
+.sactions{display:flex;gap:8px;margin-top:16px}
+.sactions .btn + .btn{margin-top:0}
+.sactions .btn.danger{flex:0 0 96px}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="i-week" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16"/></symbol>
+ <symbol id="i-epas" viewBox="0 0 24 24"><path d="M3.5 5.5l1.5 1.5 2.5-2.5M3.5 11.5l1.5 1.5 2.5-2.5M3.5 17.5l1.5 1.5 2.5-2.5M11 6h9M11 12h9M11 18h9"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+ <symbol id="i-plan" viewBox="0 0 24 24"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3zM9 4v13M15 7v13"/></symbol>
+ <symbol id="i-jar" viewBox="0 0 24 24"><path d="M8 3h8M9 3v3M15 3v3M7 6h10v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM7 11h10"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></symbol>
+ <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></symbol>
+ <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+ <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM5 18a2 2 0 0 1 2-2h11"/></symbol>
+ <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+ <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></symbol>
+</svg>
 <div id="app"></div>
 <script>
 /*EPA_DATA_START*/
@@ -1951,89 +2000,92 @@ const EPA_DATA = [
 <script>
 /*BIOPSY_DATA_START*/
 const BIOPSY_DATA = [
- {cat:"Esophagus", title:"Barrett's esophagus", src:"mb", kw:"BE reflux dysplasia seattle metaplasia surveillance", rows:[
+ {cat:"Esophagus", title:"Barrett's esophagus", src:"mb", sec:["2.4","Esophagus biopsy","2"], kw:"BE reflux dysplasia seattle metaplasia surveillance", rows:[
    ["Sites","4-quadrant biopsies + separately target any tongue, visible lesion, or high-risk area"],
    ["Number","4 per level (one each quadrant)"],
-   ["Spacing","Every 2 cm — or every 1 cm if known/suspected dysplasia (Seattle)"],
+   ["Spacing","Every 2 cm, or every 1 cm if known or suspected dysplasia (Seattle)"],
    ["Notes","Describe abnormal mucosa + exact locations; begin at top of gastric folds. Label lesions separately."]]},
- {cat:"Esophagus", title:"Eosinophilic esophagitis (EoE)", src:"mb", kw:"eosinophilic dysphagia food impaction furrows rings atopy", rows:[
+ {cat:"Esophagus", title:"Eosinophilic esophagitis (EoE)", src:"mb", sec:["2.4","Esophagus biopsy","2"], kw:"eosinophilic dysphagia food impaction furrows rings atopy", rows:[
    ["Sites","Mid ± proximal esophagus AND distal esophagus"],
    ["Number","2–4 fragments per site"],
    ["Jars","Exactly 2 (prox/mid; distal)"],
    ["Notes","Target furrows, exudates, rings. Dx = ≥15 eos/hpf. A failed PPI trial is NOT required to diagnose."]]},
- {cat:"Esophagus", title:"Infectious esophagitis (odynophagia)", src:"us", kw:"candida hsv herpes cmv cytomegalovirus odynophagia immunocompromised ulcer", rows:[
+ {cat:"Esophagus", title:"Infectious esophagitis (odynophagia)", src:"us", ref:{short:"Textbook", label:"Mayo Clinic Gastroenterology and Hepatology Board Review (2024), p. 100", url:null}, kw:"candida hsv herpes cmv cytomegalovirus odynophagia immunocompromised ulcer", rows:[
    ["Sites","Ulcer EDGE (HSV) · ulcer BASE (CMV) · plaques ± brushings (Candida)"],
    ["Number","Multiple targeted from ulcer edge and base"],
    ["Notes","Candida: brushings + biopsy of plaques → fluconazole. HSV: biopsy ulcer edge (multinucleated giant cells). CMV: biopsy ulcer base (inclusion bodies), usually immunocompromised. Send for viral IHC/culture."]]},
- {cat:"Esophagus", title:"GERD / dyspepsia (normal mucosa)", src:"mb", kw:"reflux heartburn dyspepsia", rows:[
+ {cat:"Esophagus", title:"GERD / dyspepsia (normal mucosa)", src:"mb", sec:["2.4–2.5","Esophagus and GE junction biopsy","2"], kw:"reflux heartburn dyspepsia GE junction GEJ", rows:[
    ["Sites","None"],
-   ["Notes","Do NOT biopsy normal/reactive esophagus. Distal-esophagus biopsies are not recommended to diagnose GERD. Biopsy only if an ulcer or lesion is present."]]},
- {cat:"Esophagus", title:"Stricture / lesion suspicious for malignancy", src:"mb", kw:"cancer stricture dysphagia tumour tumor", rows:[
+   ["Notes","Do NOT biopsy normal/reactive esophagus. Distal-esophagus biopsies are not recommended to diagnose GERD. Biopsy only if an ulcer or lesion is present. Don't biopsy a normal-looking GE junction to rule out Barrett's."]]},
+ {cat:"Esophagus", title:"Stricture / lesion suspicious for malignancy", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer stricture dysphagia tumour tumor", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Multiple to beat sampling error and allow molecular/IHC testing."]]},
 
- {cat:"Stomach", title:"H. pylori gastritis", src:"mb", kw:"helicobacter pylori gastritis urease breath", rows:[
+ {cat:"Stomach", title:"H. pylori gastritis", src:"mb", sec:["2.6","Gastric biopsy","3"], kw:"helicobacter pylori gastritis urease breath", rows:[
    ["Sites","Antrum AND gastric body"],
    ["Number","2 antrum + 2 body"],
    ["Jars","1 container"],
-   ["Notes","Especially important if on PPI (shifts organisms proximally). Erythema/superficial ulcer can go in same jar. OR rapid urease/culture — don't routinely do both histology + microbiology. Diminutive (<5 mm) fundic gland polyps: no biopsy."]]},
- {cat:"Stomach", title:"Gastric intestinal metaplasia / atrophic gastritis staging", src:"us", kw:"intestinal metaplasia atrophic sydney olga olgim precancerous GIM", rows:[
+   ["Notes","Especially important if on PPI (shifts organisms proximally). Erythema/superficial ulcer can go in the same jar. Rapid urease or culture works equally well; don't routinely send both histology and microbiology. Diminutive (<5 mm) fundic gland polyps: no biopsy."]]},
+ {cat:"Stomach", title:"Gastric intestinal metaplasia / atrophic gastritis staging", src:"us", ref:{short:"AGA", label:"AGA Clinical Practice Update on atrophic gastritis (Gastroenterology 2021)", url:"https://doi.org/10.1053/j.gastro.2021.06.078"}, kw:"intestinal metaplasia atrophic sydney olga olgim precancerous GIM", rows:[
    ["Sites","Antrum ×2 (greater + lesser curve), corpus ×2 (greater + lesser), incisura ×1"],
    ["Number","5 (updated Sydney)"],
    ["Jars","≥2 (antrum/incisura vs corpus) for OLGA / OLGIM"],
    ["Notes","Maps extent for cancer risk. Biopsy any visible IM or lesion separately."]]},
- {cat:"Stomach", title:"Gastric ulcer", src:"us", kw:"GU malignancy cancer healing repeat", rows:[
-   ["Sites","Ulcer rim (all quadrants)"],
-   ["Number","Multiple; ≥6–8 if suspicious"],
+ {cat:"Stomach", title:"Gastric ulcer", src:"us", ref:{short:"ASGE", label:"ASGE guideline on endoscopy in peptic ulcer disease (GIE 2010); Mayo Board Review (2024), p. 56", url:"https://doi.org/10.1016/j.gie.2009.11.026"}, kw:"GU malignancy cancer healing repeat", rows:[
+   ["Sites","Ulcer edge (all quadrants) AND base"],
+   ["Number","≥4 from the edge + ≥1 from the base (finds ~95% of cancers); ≥6–8 if it looks malignant"],
    ["Notes","Biopsy to exclude malignancy. Repeat EGD ~8–12 wk to confirm healing (esp. large/high-risk)."]]},
- {cat:"Stomach", title:"Lesion suspicious for malignancy / MALT", src:"mb", kw:"cancer lymphoma MALT tumour tumor mass", rows:[
+ {cat:"Stomach", title:"Lesion suspicious for malignancy / MALT", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer lymphoma MALT tumour tumor mass", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Adequate tissue for special stains / flow cytometry."]]},
 
- {cat:"Duodenum / Small bowel", title:"Celiac disease", src:"mb", kw:"coeliac sprue gluten marsh villous atrophy TTG", rows:[
+ {cat:"Duodenum / Small bowel", title:"Celiac disease", src:"mb", sec:["2.7","Duodenal biopsy","3"], kw:"coeliac sprue gluten marsh villous atrophy TTG", rows:[
    ["Sites","Second part of duodenum (D2) AND duodenal bulb"],
    ["Number","≥4 from D2 + 2 from bulb"],
    ["Jars","Label bulb vs D2"],
    ["Notes","Patient MUST be on a gluten-containing diet. State serology on requisition. Don't biopsy normal duodenum/bulb in an immunocompetent patient without an indication (flag if immunocompromised)."]]},
- {cat:"Duodenum / Small bowel", title:"Ileum", src:"mb", kw:"terminal ileum crohn diarrhea", rows:[
+ {cat:"Duodenum / Small bowel", title:"Ileum", src:"mb", sec:["2.8","Ileum biopsy","3"], kw:"terminal ileum crohn diarrhea", rows:[
    ["Sites","Only if abnormal or clinically indicated (IBD, diarrhea)"],
    ["Notes","Do NOT biopsy normal ileum just to document intubation."]]},
 
- {cat:"Colon", title:"IBD dysplasia surveillance", src:"mb", kw:"ulcerative colitis crohn dysplasia chromoendoscopy SCENIC surveillance", rows:[
+ {cat:"Colon", title:"IBD dysplasia surveillance", src:"mb", sec:["2.9","Colon biopsy for IBD dysplasia surveillance","3"], kw:"ulcerative colitis crohn dysplasia chromoendoscopy SCENIC surveillance", rows:[
    ["Sites","Chromoendoscopy (dye or virtual) + targeted biopsies of suspicious areas"],
    ["Spacing","Random q10 cm discouraged (low yield)"],
    ["Notes","HD white-light with careful exam is an alternative in non-high-risk. May still biopsy segments for disease activity."]]},
- {cat:"Colon", title:"IBD — initial diagnosis (mapping)", src:"us", kw:"ulcerative colitis crohn mapping diagnosis segments", rows:[
-   ["Sites","≥5 segments incl. rectum + ileum"],
-   ["Number","≥2 per segment"],
-   ["Jars","Separate jar per segment"],
+ {cat:"Colon", title:"IBD: initial diagnosis (mapping)", src:"us", ref:{short:"ECCO", label:"European consensus on the histopathology of IBD, ECCO-ESP (J Crohns Colitis 2013)", url:"https://doi.org/10.1016/j.crohns.2013.06.001"}, kw:"ulcerative colitis crohn mapping diagnosis segments", rows:[
+   ["Sites","≥5 colonic sites incl. rectum, plus terminal ileum"],
+   ["Number","≥2 per site"],
+   ["Jars","Separate jar per site"],
    ["Notes","Segmental mapping at diagnosis."]]},
- {cat:"Colon", title:"Microscopic colitis (chronic watery diarrhea, normal mucosa)", src:"mb", kw:"collagenous lymphocytic watery diarrhea", rows:[
+ {cat:"Colon", title:"Microscopic colitis (chronic watery diarrhea, normal mucosa)", src:"mb", sec:["2.10","Colon biopsy for possible microscopic colitis","3"], kw:"collagenous lymphocytic watery diarrhea", rows:[
    ["Sites","Right colon (asc + transverse) AND left colon (desc + sig + rectum)"],
    ["Number","≥4 fragments total"],
    ["Jars","≤2 (right; left)"],
    ["Notes","If adding rectal biopsies, state why (e.g. r/o quiescent UC proctitis). ASGE historically 8 biopsies; 2 asc + 2 desc validated as sufficient."]]},
- {cat:"Colon", title:"Colonic polyps", src:"mb", kw:"adenoma polypectomy surveillance coloncheck sessile serrated SSL", rows:[
+ {cat:"Colon", title:"Colonic polyps", src:"mb", sec:["2.11","Colonic polyps","3–4"], kw:"adenoma polypectomy surveillance coloncheck sessile serrated SSL", rows:[
    ["Sites","Remove; record number + size of each"],
    ["Notes","High-risk adenoma (≥10 mm, ≥3 adenomas, villous, or HGD) → 3-yr surveillance (ColonCheck MB). Note pedunculated/sessile/flat + whether completely removed."]]},
- {cat:"Colon", title:"Lesion suspicious for malignancy", src:"mb", kw:"cancer mass tumour tumor", rows:[
+ {cat:"Colon", title:"Lesion suspicious for malignancy", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer mass tumour tumor", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Beat sampling error; enable IHC / molecular testing."]]},
 ];
 /*BIOPSY_DATA_END*/
 </script>
+<script src="coach.js"></script>
 <script>
 "use strict";
 const KEY = "epa-state-v1";
 const Store = {
-  state: {v:1, obs:{}, lines:{}, lastBackup:null, celebrated:[]},
+  state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
   load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) this.state = s; } catch(e){} this.migrate(); },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch(e){ this.persistFailed = true; } },
-  migrate() { this.state.celebrated ||= [];
+  migrate() {
+    delete this.state.celebrated;
+    if (this.state.recapSeen === undefined) this.state.recapSeen = null;
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved"; },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -2042,17 +2094,13 @@ const Store = {
   setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.state.obs[p][i].status = s; this.save(); } },
   toggleObsStatus(p, i) { const o = this.state.obs[p][i];
     o.status = o.status === "approved" ? "pending" : "approved"; this.save(); return o.status; },
+  setRecapSeen(key) { this.state.recapSeen = key; this.save(); },
   partApproved(p) { return (this.state.obs[p]||[]).filter(o => o.status === "approved").length; },
   partPending(p) { return (this.state.obs[p]||[]).filter(o => o.status !== "approved").length; },
   overallApproved() { let d = 0; for (const e of EPA_DATA) for (const p of e.parts)
     d += Math.min(this.partApproved(p.id), p.required); return d; },
   overallPending() { let n = 0; for (const k in this.state.obs)
     n += this.state.obs[k].filter(o => o.status !== "approved").length; return n; },
-  epaApproved(code) { const e = EPA_DATA.find(x => x.code === code); let done = 0, req = 0;
-    for (const p of e.parts) { req += p.required; done += Math.min(this.partApproved(p.id), p.required); }
-    return {done, req}; },
-  logTimestamps() { const out = []; for (const k in this.state.obs)
-    for (const o of this.state.obs[k]) if (o.ts) out.push(new Date(o.ts)); return out; },
   cycleLine(id, target) { const cur = this.lineVal(id), nv = (cur + 1) % (target + 1);
     if (nv === 0) { const meta = this.state.lines[id]; delete this.state.lines[id];
       if (meta && (meta.d || meta.n)) { this.state.lines[id] = {v:0, d:meta.d, n:meta.n}; } }
@@ -2065,16 +2113,14 @@ const Store = {
     let done = 0, req = 0;
     for (const p of e.parts) { req += p.required; done += Math.min(this.partDone(p.id), p.required); }
     return {done, req}; },
-  exportJSON() {
-    this.state.lastBackup = new Date().toISOString(); this.save();
-    return JSON.stringify(this.state, null, 1);
-  },
+  exportJSON() { return JSON.stringify(this.state, null, 1); },
+  markBackup() { this.state.lastBackup = new Date().toISOString(); this.save(); },
   importJSON(text) {
     try {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, celebrated:s.celebrated || []};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -2083,42 +2129,13 @@ const Store = {
       Object.keys(this.state.lines).length > 0;
   }
 };
-let nudgeDismissed = false, importError = null;
+let nudgeDismissed = false, backupError = null;
 function needsNudge(today) {
   if (!Store.hasData()) return false;
   const lb = Store.state.lastBackup;
   return !lb || (today - new Date(lb)) > 30 * 86400000;
 }
-const PROC_EPAS = ["F3","F4","C6","C8","P1"];
-function epaFullyApproved(code) { const p = Store.epaApproved(code); return p.done >= p.req; }
-const ACHIEVEMENTS = [
-  {id:"first", label:"First Steps", hint:"Log your first observation", earned:() => loggedTotal() >= 1},
-  {id:"pct25", label:"25% There", hint:"35 observations logged", earned:() => loggedTotal() >= 35},
-  {id:"pct50", label:"Halfway", hint:"70 observations logged", earned:() => loggedTotal() >= 70},
-  {id:"pct75", label:"75% There", hint:"105 observations logged", earned:() => loggedTotal() >= 105},
-  {id:"century", label:"Century", hint:"100 observations logged", earned:() => loggedTotal() >= 100},
-  {id:"closer", label:"Closer", hint:"First EPA fully approved", earned:() => EPA_DATA.some(e => epaFullyApproved(e.code))},
-  {id:"ttd", label:"Transition Complete", hint:"D1 & D2 fully approved", earned:() => ["D1","D2"].every(epaFullyApproved)},
-  {id:"foundations", label:"Foundations Complete", hint:"F1–F4 fully approved", earned:() => ["F1","F2","F3","F4"].every(epaFullyApproved)},
-  {id:"scope", label:"Scope Master", hint:"All procedural EPAs approved", earned:() => PROC_EPAS.every(epaFullyApproved)},
-  {id:"core", label:"Core Complete", hint:"C1–C9 fully approved", earned:() => ["C1","C2","C3","C4","C5","C6","C7","C8","C9"].every(epaFullyApproved)},
-  {id:"streak4", label:"4-Week Streak", hint:"Log something 4 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 4},
-  {id:"streak12", label:"12-Week Streak", hint:"12 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 12},
-  {id:"finisher", label:"Finisher", hint:"All 139 approved", earned:() => Store.overallApproved() >= 139},
-];
-function earnedAchievements() {
-  return ACHIEVEMENTS.filter(a => { try { return a.earned(); } catch(e) { return false; } }).map(a => a.id);
-}
-let pendingCelebration = null;
-function afterProgress() {
-  const now = earnedAchievements();
-  const fresh = now.filter(id => !Store.state.celebrated.includes(id));
-  if (!fresh.length) return;
-  Store.state.celebrated.push(...fresh); Store.save();
-  const order = ACHIEVEMENTS.map(a => a.id);
-  fresh.sort((a,b) => order.indexOf(b) - order.indexOf(a));  // highest-value first
-  pendingCelebration = ACHIEVEMENTS.find(a => a.id === fresh[0]);
-}
+const MB_PDF = "https://healthproviders.sharedhealthmb.ca/files/clinical-guideline-gi-endoscopic-biopsy.pdf";
 let biopsyTerm = "", biopsyCat = "all";
 const BIOPSY_CATS = [["all","All"],["Esophagus","Esophagus"],["Stomach","Stomach"],
   ["Duodenum / Small bowel","Duod / SB"],["Colon","Colon"]];
@@ -2127,8 +2144,8 @@ function biopsyFilter(term, cat) {
   return BIOPSY_DATA.filter(d => {
     if (cat !== "all" && d.cat !== cat) return false;
     if (!term) return true;
-    const hay = (d.title + " " + d.cat + " " + (d.kw || "") + " " +
-      d.rows.map(r => r.join(" ")).join(" ")).toLowerCase();
+    const hay = (d.title + " " + d.cat + " " + (d.kw || "") + " " + d.rows.map(r => r.join(" ")).join(" ") + " " +
+      (d.sec ? "Shared Health " + d.sec[1] : "") + " " + (d.ref ? d.ref.short + " " + d.ref.label : "")).toLowerCase();
     return hay.includes(term);
   });
 }
@@ -2143,332 +2160,331 @@ function biopsyHi(html, term) {
   return html.replace(new RegExp("(" + t + ")(?![^<]*>)", "ig"), "<mark>$1</mark>");
 }
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
-const YEAR1_START = new Date(2026, 6, 1);
-const BLOCK_NAMES = {1:"Consults HSC",2:"Consults SBH",3:"Hepatology",4:"Motility/Nutrition",5:"Consults SBH",6:"Radiology",7:"Consults SBH",8:"Advanced Endoscopy",9:"Pathology",10:"Consults HSC",11:"Consults Grace",12:"Hepatology",13:"Consults HSC"};
-function blockFor(date) {
-  const days = Math.floor((date - YEAR1_START) / 86400000);
-  if (days < 0 || days >= 13 * 28) return null;
-  const num = Math.floor(days / 28) + 1;
-  return {num, name: BLOCK_NAMES[num], week: Math.floor((days % 28) / 7) + 1};
+let route = {page:"week"};
+function getToday() { return window.__today || new Date(); }
+function ic(name, cls) { return `<svg class="ic${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
+// Page header. sub and title are HTML (escape before passing).
+function headerHTML(sub, title, count = true) {
+  const o = overall();
+  return `<header class="top"><div class="hrow"><div><div class="hsub">${sub}</div><h1 class="htitle">${title}</h1></div>` +
+    (count ? `<div class="hcount"><b>${o.d}</b> / ${o.r}</div>` : "") + `</div>` +
+    (count ? `<div class="hbar"><i style="width:${o.r ? Math.round(o.d / o.r * 100) : 0}%"></i></div>` : "") + `</header>`;
 }
-// Finish-by-end-of-Year-1 plan: per block, target observations per part.
-// Column sums per part MUST equal that part's required count (tested).
-const PLAN = {
-  1:{d1:2, d2a:1, d2b:1, f1a:2, f1b:3},
-  2:{d1:2, d2a:1, d2b:2, f1b:4, f2:1, f3a:1},
-  3:{c2:3, c3:2, c1:1, f1b:2},
-  4:{f2:1, c5:2, c2:2, f1b:2, c4:1},
-  5:{d2b:1, f1b:1, f3a:2, f4:2, c1:2, c3:2, c7:1},
-  6:{f3b:2, c8b:1, c4:1},
-  7:{c1:2, c3:2, c7:1, f3a:2, f4:2, c8a:2},
-  8:{f3a:1, f4:2, c6:6, c7:3, c8a:8, c8b:1},
-  9:{f3b:1, c8b:1, c7:1},
-  10:{c3:2, c6:2, c8a:5, c9a:2, c9b:3, c7:2},
-  11:{c2:6, c3:1, c4:1, c6:2, c8a:4},
-  12:{c2:3, c3:1, c6:2, c8a:6, c8b:1, c9a:2, c9b:3},
-  13:{p1:5}
-};
-const BLOCK_HINTS = {
-  1:"TTD first: emergencies, consent + prep, observed H&P.",
-  2:"Close out D1/D2; stack F1-B assessments; start F2 nutrition.",
-  3:"Liver block: chronic-liver C2s and liver C3s are hardest to get elsewhere.",
-  4:"Nutrition block: finish F2, both C5s, functional/refractory C2 lines.",
-  5:"Finish Foundations; complex consults; forms on every scope day.",
-  6:"Light block: procedure notes + mop up anything behind plan.",
-  7:"Complex consults + therapeutic scope cases (holiday bleeds count).",
-  8:"Endo block: form on EVERY list — colonoscopies, therapeutics, findings.",
-  9:"Light block: last procedure notes; book assessors for block 10.",
-  10:"Junior-attending block: C9 observations + colonoscopy volume.",
-  11:"Clinic-heavy: C2 forms every clinic; keep scoping.",
-  12:"Big finish: close C2/C3, remaining scopes, C9 — varices = C8 variceal ticks.",
-  13:"P1 wrap-up: run the endoscopy list; buffer for anything left."
-};
-const PART_INFO = {};
-for (const e of EPA_DATA) {
-  const multi = e.parts.length > 1;
-  e.parts.forEach((p, i) => {
-    PART_INFO[p.id] = {code: e.code, label: e.code + (multi ? ["-A","-B"][i] : ""), required: p.required};
-  });
+const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["plan", "Plan", "plan"], ["biopsy", "Biopsy", "jar"]];
+function navHTML(active) {
+  const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}">` +
+    `${ic(icon)}<span>${label}</span></button>`;
+  const split = NAV.length - 2;
+  return `<nav class="bnav"><div class="bnav-in">${NAV.slice(0, split).map(item).join("")}` +
+    `<button class="fab" data-action="sheet" aria-label="Log observation">${ic("plus")}</button>` +
+    `${NAV.slice(split).map(item).join("")}</div></nav>`;
 }
-function blockEpaCodes(num) {
-  const set = [];
-  for (const pid of Object.keys(PLAN[num] || {})) {
-    const c = PART_INFO[pid].code;
-    if (!set.includes(c)) set.push(c);
+function warningsHTML(today) {
+  let h = "";
+  if (Store.persistFailed)
+    h += `<div class="warnbar">Progress can't be saved (private browsing?). Anything you log will be lost when the app closes.</div>`;
+  if (!nudgeDismissed && needsNudge(today))
+    h += `<div class="card nudge"><span>No backup in over 30 days.</span><button class="btn" data-action="export">Back up</button>` +
+      `<button class="iconbtn" data-action="dismissnudge" aria-label="Dismiss">${ic("x")}</button></div>`;
+  return h;
+}
+function epaRowHTML(e, focus) {
+  const p = Store.epaProgress(e.code), pct = p.req ? Math.round(p.done / p.req * 100) : 0;
+  const pend = e.parts.reduce((a, pt) => a + Store.partPending(pt.id), 0);
+  return `<button class="row" data-action="open" data-code="${e.code}"><span class="code">${e.code}</span>` +
+    `<span class="rmid"><span class="rtitle">${esc(e.title)}</span><span class="rbar"><i style="width:${pct}%"></i></span>` +
+    `<span class="rmeta">${focus.includes(e.code) ? `<span class="tag">this block</span>` : ""}` +
+    `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span></span>` +
+    `<span class="rcount${p.done >= p.req ? " done" : ""}">${p.done}/${p.req}</span></button>`;
+}
+function backupHTML() {
+  return `<section><h2>Backup</h2><div class="card pad">` +
+    `<button class="btn" data-action="export">${ic("share")}Export backup</button>` +
+    `<button class="btn" data-action="importpick">Import backup</button>` +
+    `<input type="file" id="importfile" accept=".json,application/json" hidden>` +
+    `<div class="bnote">Last backup: ${Store.state.lastBackup ? esc(Store.state.lastBackup.slice(0, 10)) : "never"}</div>` +
+    (backupError ? `<div class="err">${esc(backupError)}</div>` : "") + `</div></section>`;
+}
+function viewEpas() {
+  const today = getToday(), cp = coachPlan(Store.state.obs, today);
+  const focus = cp ? blockFocus(cp) : [];
+  let h = headerHTML(`${Store.overallApproved()} approved · ${Store.overallPending()} pending`, "EPAs") + warningsHTML(today);
+  for (const st of ["ttd", "f", "core", "ttp"]) {
+    const list = EPA_DATA.filter(x => x.stage === st);
+    const done = list.filter(e => { const p = Store.epaProgress(e.code); return p.done >= p.req; });
+    h += `<section><h2>${STAGE_NAMES[st]}</h2>` + list.filter(e => !done.includes(e)).map(e => epaRowHTML(e, focus)).join("");
+    if (done.length) h += `<details class="donegrp"><summary>Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
+    h += `</section>`;
   }
-  return set;
+  return h + backupHTML();
 }
-function blockDates(num) {
-  const s = new Date(YEAR1_START.getTime() + (num - 1) * 28 * 86400000);
-  const e = new Date(s.getTime() + 27 * 86400000);
-  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${M[s.getMonth()]} ${s.getDate()} – ${M[e.getMonth()]} ${e.getDate()}`;
+let chaseOpen = false;
+// rows is this week's list: a slipped part is either on it now or was moved
+// on to a later block whose rotation suits it.
+function recapHTML(rc, rows) {
+  const list = xs => xs.map(x => `${x.label} ×${x.n}`).join(", ");
+  const onNow = rc.slipped.filter(s => rows.some(r => r.pid === s.pid && r.outstanding > 0));
+  const later = rc.slipped.filter(s => !onNow.includes(s));
+  return `<div class="card recap"><div class="rhead"><b>Your week, Jared</b>` +
+    `<button class="iconbtn" data-action="dismissrecap" data-key="${rc.key}" aria-label="Dismiss">${ic("x")}</button></div>` +
+    `<p>Last week: ${rc.got.length ? list(rc.got) : "nothing logged"}.</p>` +
+    (rc.slipped.length ? "" : `<p>Nothing slipped.</p>`) +
+    (onNow.length ? `<p>Carried onto this week: ${list(onNow)}.</p>` : "") +
+    (later.length ? `<p>Moved to a later block: ${list(later)}.</p>` : "") + `</div>`;
 }
-let route = {page:"home"};
+function thisWeekHTML(rows) {
+  let h = `<section><h2>This week</h2>`;
+  if (!rows.length) return h + `<div class="card empty">Nothing due this week. Log anything you get.</div></section>`;
+  h += `<div class="card list">`;
+  for (const r of rows) {
+    const done = r.outstanding === 0;
+    h += `<button class="wrow${done ? " done" : ""}" data-action="sheet" data-part="${r.pid}">` +
+      `<span class="tick">${done ? ic("check") : ""}</span><span class="cc">${r.label}</span>` +
+      `<span class="wname">${esc(r.short)}</span>` +
+      (r.carried ? `<span class="tag warn">carried</span>` : "") +
+      (done ? "" : `<span class="wn">×${r.outstanding}</span>`) + `</button>`;
+  }
+  return h + `</div></section>`;
+}
+function lookHTML(items) {
+  return `<section><h2>Look for</h2><div class="card list">` + items.map(x =>
+    `<button class="lrow" data-action="open" data-code="${PART_BY_ID[x.pid].code}">${ic("search")}` +
+    `<span class="wname">${esc(x.name)}</span><span class="cc sm">${x.part}</span>` +
+    (x.left > 1 ? `<span class="wn">×${x.left}</span>` : "") + `</button>`).join("") + `</div></section>`;
+}
+function chaseHTML(list) {
+  return `<details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
+    `<span>${list.length} form${list.length > 1 ? "s" : ""} pending 14+ days</span><span class="muted">chase in Entrada</span></summary>` +
+    list.map(c => `<div class="crow"><span class="cc sm">${c.label}</span>` +
+      `<span class="cmeta">${esc(c.date)} · ${c.a ? esc(c.a) : "no assessor"}</span>` +
+      `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`).join("") +
+    `</details>`;
+}
+function finishHTML(pace, plan) {
+  const month = d => MONTHS[d.getMonth()] + " " + d.getFullYear();
+  const day = d => MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+  const cell = (label, r, fmt, empty, note) => `<div class="stat"><div class="slabel">${label}</div>` +
+    (r.done ? `<div class="sval ok">Done</div>` : r.date ?
+      `<div class="sval ${r.onTrack ? "ok" : "warn"}">${fmt(r.date)}</div>` + (note ? `<div class="ssub">${note}</div>` : "") :
+      `<div class="sval">–</div><div class="ssub">${empty}</div>`) + `</div>`;
+  const paceNote = pace.date ? `${pace.n} logged in the last ${pace.weeks} week${pace.weeks === 1 ? "" : "s"}` : "";
+  return `<section><h2>Estimated completion</h2><div class="statgrid">` +
+    cell("At your current pace", pace, month, "Log a few to estimate", paceNote) +
+    cell("If you hit the plan", plan, day, "", "") +
+    `</div><div class="ssub goalline">Goal: everything logged by Jun 30, 2027.</div></section>`;
+}
+function viewWeek() {
+  const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
+  if (!blk) {
+    const before = dayIndex(today) < 0;
+    return headerHTML("GI Hub", before ? "Almost time" : "Year 1 done") + warningsHTML(today) +
+      `<div class="card pad spaced">${before ? "Fellowship starts July 2, 2026." :
+        "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>`;
+  }
+  const cp = coachPlan(obsBy, today), rows = weekList(cp);
+  let h = headerHTML(`Block ${blk.num} · ${esc(blk.name)}`, `Week ${blk.week} of 4`) + warningsHTML(today);
+  if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
+    const rc = recapFor(obsBy, today);
+    if (rc) h += recapHTML(rc, rows);
+  }
+  h += thisWeekHTML(rows);
+  const look = lookFor(rows, id => Store.lineVal(id));
+  if (look.length) h += lookHTML(look);
+  const chase = chaseList(obsBy, today);
+  if (chase.length) h += chaseHTML(chase);
+  return h + finishHTML(paceFinish(obsBy, today), planFinish(cp));
+}
+let sheet = null, sheetError = null;
+function openSheet(pid, i) {
+  const o = pid && i !== undefined && Store.state.obs[pid] && Store.state.obs[pid][+i];
+  sheet = o
+    ? {mode: "edit", pid, i: +i, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
+    : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false};
+  sheetError = null;
+}
+function saveSheet() {
+  if (!sheet.pid) { sheetError = "Pick an EPA first."; return; }
+  const meta = {d: sheet.d, a: sheet.a.trim(), n: sheet.n.trim(), status: sheet.status};
+  const i = sheet.mode === "new" ? Store.logObs(sheet.pid) : sheet.i;
+  Store.setObsMeta(sheet.pid, i, meta);
+  sheet = null; sheetError = null;
+}
+// Every assessor name used so far, most recently logged first, one spelling each.
+function assessorNames() {
+  const all = [];
+  for (const k in Store.state.obs) for (const o of Store.state.obs[k]) if (o.a && o.a.trim()) all.push(o);
+  all.sort((x, y) => String(y.ts || "").localeCompare(String(x.ts || "")));
+  const out = [];
+  for (const o of all) {
+    const name = o.a.trim();
+    if (!out.some(x => x.toLowerCase() === name.toLowerCase())) out.push(name);
+  }
+  return out;
+}
+function assessorSuggestions(typed) {
+  const t = (typed || "").trim().toLowerCase();
+  return assessorNames().filter(n => !t || (n.toLowerCase().includes(t) && n.toLowerCase() !== t)).slice(0, 4);
+}
+function suggHTML(typed) {
+  return assessorSuggestions(typed).map(x =>
+    `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}</button>`).join("");
+}
+function sheetHTML() {
+  const s = sheet, cp = coachPlan(Store.state.obs, getToday());
+  const chip = pid => `<button class="pick${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">${PART_BY_ID[pid].label}</button>`;
+  let picker;
+  if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
+  else {
+    const quick = cp ? weekList(cp).filter(r => r.outstanding > 0).map(r => r.pid) : [];
+    if (s.pid && !quick.includes(s.pid)) quick.unshift(s.pid);
+    picker = !s.all && quick.length
+      ? `<div class="lbl">This week's EPAs</div><div class="pickrow">${quick.map(chip).join("")}` +
+        `<button class="pick ghost" data-action="pickall">All EPAs</button></div>`
+      : `<div class="lbl">All EPAs</div>` + ["ttd", "f", "core", "ttp"].map(st =>
+        `<div class="pickgrp">${STAGE_NAMES[st]}</div><div class="pickrow">` +
+        PARTS.filter(P => P.stage === st).map(P => chip(P.id)).join("") + `</div>`).join("");
+  }
+  const edit = s.mode === "edit";
+  return `<div class="scrim" data-action="closesheet"></div>` +
+    `<div class="sheet" role="dialog" aria-label="${edit ? "Edit" : "Log"} observation"><div class="grab"></div>` +
+    `<div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
+    `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>` + picker +
+    `<label class="lbl">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
+    `<label class="lbl">Assessor<input type="text" value="${esc(s.a)}" placeholder="Dr. Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
+    `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
+    `<label class="lbl">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` +
+    `<div class="seg"><button class="${s.status === "pending" ? "on" : ""}" data-action="sheetstatus" data-status="pending">Pending</button>` +
+    `<button class="${s.status === "approved" ? "on" : ""}" data-action="sheetstatus" data-status="approved">Approved</button></div>` +
+    (sheetError ? `<div class="err">${esc(sheetError)}</div>` : "") +
+    `<div class="sactions">${edit ? `<button class="btn danger" data-action="sheetdelete">Delete</button>` : ""}` +
+    `<button class="btn primary" data-action="sheetsave">${edit ? "Save" : "Save as " + s.status}</button></div></div>`;
+}
+// Keeps sheet fields in step with typing without re-rendering (which would
+// drop the keyboard); only the assessor suggestions redraw.
+function sheetField(t) {
+  const f = t.dataset && t.dataset.sheet;
+  if (!f || !sheet) return false;
+  sheet[f] = t.value;
+  if (f === "a") { const box = document.getElementById("sugg"); if (box) box.innerHTML = suggHTML(t.value); }
+  return true;
+}
+// Hands the backup to the iPhone share sheet when it can take a file,
+// otherwise downloads it. Only a completed hand-over counts as a backup.
+async function exportBackup() {
+  const name = "epa-backup-" + fmtDate(getToday()) + ".json";
+  const json = Store.exportJSON();
+  backupError = null;
+  if (typeof File === "function" && navigator.canShare) {
+    const file = new File([json], name, {type: "application/json"});
+    if (navigator.canShare({files: [file]})) {
+      try { await navigator.share({files: [file], title: "GI Hub backup"}); Store.markBackup(); }
+      catch (e) { if (!e || e.name !== "AbortError") backupError = "Couldn't share the backup. Try again."; }
+      route.keepScroll = true; render();
+      return;
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([json], {type: "application/json"}));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  Store.markBackup(); route.keepScroll = true; render();
+}
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function fmtDate(d) { return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function overall() { let d=0, r=0;
   for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
   return {d, r}; }
-function loggedTotal() { let n=0; for (const k in Store.state.obs) n += Store.state.obs[k].length; return n; }
-const WEEK = 604800000;
-function mondayStamp(d) { const x = new Date(d); const off = (x.getDay()+6)%7;
-  x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return +x; }
-function weekKey(d) { const m = new Date(mondayStamp(d));
-  const jan1 = new Date(m.getFullYear(),0,1);
-  const wk = Math.floor((m - jan1)/WEEK)+1;
-  return m.getFullYear()+"-W"+String(wk).padStart(2,"0"); }
-function streakInfo(today) {
-  const stamps = [...new Set(Store.logTimestamps().map(mondayStamp))].sort((a,b)=>a-b);
-  if (!stamps.length) return {current:0, best:0};
-  let best=1, run=1;
-  for (let i=1;i<stamps.length;i++){ run = (stamps[i]-stamps[i-1]===WEEK) ? run+1 : 1; best=Math.max(best,run); }
-  const set = new Set(stamps);
-  const tw = mondayStamp(today);
-  let cursor = set.has(tw) ? tw : (set.has(tw-WEEK) ? tw-WEEK : null);
-  let cur = 0;
-  while (cursor !== null && set.has(cursor)) { cur++; cursor -= WEEK; }
-  return {current:cur, best:Math.max(best,cur)};
-}
-function projection(today) {
-  const logged = loggedTotal();
-  if (logged <= 0 || today < YEAR1_START) return {rate:0, date:null, onTrack:false};
-  const weeks = Math.max(1, (today - YEAR1_START)/WEEK);
-  const rate = logged/weeks;
-  const remaining = Math.max(0, 139 - logged);
-  const date = remaining === 0 ? today : new Date(+today + (remaining/rate)*WEEK);
-  return {rate, date, onTrack: date <= new Date(2027,5,29)};
-}
-function paceInfo(today) {
-  const blk = blockFor(today); if (!blk) return null;
-  let expected = 0;
-  for (let n=1;n<blk.num;n++) expected += Object.values(PLAN[n]).reduce((a,b)=>a+b,0);
-  expected += Object.values(PLAN[blk.num]).reduce((a,b)=>a+b,0) * (blk.week/4);
-  expected = Math.round(expected);
-  const logged = loggedTotal();
-  return {expected, logged, diff: logged - expected};
-}
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-function viewStats() {
-  const today = window.__today || new Date();
-  const approved = Store.overallApproved(), pending = Store.overallPending(), logged = loggedTotal();
-  const s = streakInfo(today), pj = projection(today), earned = earnedAchievements();
-  let h = `<header class="top"><div class="htitle"><b>Stats</b>` +
-    `<span class="hcount">${approved} / 139</span></div>` +
-    `<div class="hbar"><i style="width:${Math.round(approved/139*100)}%"></i></div>` +
-    tabsHTML("stats") + `</header>`;
-  // headline
-  h += `<div class="statbig"><div class="statnum">${approved}<span>/ 139 approved</span></div>` +
-    `<div class="statsub">${pending} pending · ${logged} logged</div></div>`;
-  // streak + projection cards
-  h += `<div class="statgrid">`;
-  h += `<div class="statcard"><div class="sclabel">Weekly streak</div>` +
-    `<div class="scval">${s.current}<span> wk</span></div>` +
-    `<div class="scsub">best ${s.best} wk</div></div>`;
-  if (pj.date) {
-    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
-      `<div class="scval sm ${pj.onTrack ? "ok" : "warn"}">${MONTHS[pj.date.getMonth()]} ${pj.date.getFullYear()}</div>` +
-      `<div class="scsub">${pj.onTrack ? "on track for Year 1" : "past end of Year 1"}</div></div>`;
-  } else {
-    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
-      `<div class="scval sm">—</div><div class="scsub">log a few to project</div></div>`;
-  }
-  h += `</div>`;
-  // achievements
-  h += `<section><h2>Achievements</h2><div class="achgrid">`;
-  for (const a of ACHIEVEMENTS) {
-    const got = earned.includes(a.id);
-    h += `<div class="ach${got ? " got" : ""}"><div class="achtop">${got ? "🏅" : "🔒"} <b>${esc(a.label)}</b></div>` +
-      `<div class="achhint">${esc(a.hint)}</div></div>`;
-  }
-  h += `</div></section>`;
-  return h;
-}
-function tabsHTML(active) {
-  return `<div class="tabs">` +
-    `<button class="tab${active === "home" ? " active" : ""}" data-action="tab" data-page="home">EPAs</button>` +
-    `<button class="tab${active === "plan" ? " active" : ""}" data-action="tab" data-page="plan">Plan</button>` +
-    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button>` +
-    `<button class="tab${active === "stats" ? " active" : ""}" data-action="tab" data-page="stats">Stats</button></div>`;
+function sourceHTML(d) {
+  if (d.src === "mb")
+    return `<a class="srcrow" href="${MB_PDF}" target="_blank" rel="noopener">${ic("book")}` +
+      `<span>Shared Health §${esc(d.sec[0])} ${esc(d.sec[1])} · p. ${esc(d.sec[2])}</span>${ic("external", "sm")}</a>`;
+  const r = d.ref;
+  return r.url
+    ? `<a class="srcrow" href="${esc(r.url)}" target="_blank" rel="noopener">${ic("book")}<span>${esc(r.label)}</span>${ic("external", "sm")}</a>`
+    : `<div class="srcrow">${ic("book")}<span>${esc(r.label)}</span></div>`;
 }
 function viewBiopsy() {
   const list = biopsyFilter(biopsyTerm, biopsyCat);
-  let h = `<header class="top"><div class="htitle"><b>Biopsy protocols</b></div>` +
-    tabsHTML("biopsy") + `</header>`;
-  h += `<div class="bsub">Manitoba (Shared Health 2022) primary · ACG/AGA where noted</div>`;
-  h += `<div class="qwrap"><input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori…)" ` +
+  let h = headerHTML("Manitoba first · other sources where it's silent", "Biopsy", false);
+  h += `<a class="btn" href="${MB_PDF}" target="_blank" rel="noopener">${ic("book")}Open the full Manitoba guideline${ic("external", "sm")}</a>`;
+  h += `<div class="qwrap spaced">${ic("search")}<input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori)" ` +
     `autocomplete="off" autocapitalize="off" value="${esc(biopsyTerm)}">` +
-    (biopsyTerm ? `<button class="qclear" data-action="bclear" aria-label="Clear">×</button>` : ``) + `</div>`;
+    (biopsyTerm ? `<button class="qclear" data-action="bclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
   h += `<div class="bcats">` + BIOPSY_CATS.map(c =>
-    `<button class="bcat${biopsyCat === c[0] ? " on" : ""}" data-action="bcat" data-cat="${esc(c[0])}">${esc(c[1])}</button>`
-  ).join("") + `</div>`;
+    `<button class="bcat${biopsyCat === c[0] ? " on" : ""}" data-action="bcat" data-cat="${esc(c[0])}">${esc(c[1])}</button>`).join("") + `</div>`;
   const filtered = biopsyTerm || biopsyCat !== "all";
   h += `<div class="bcount">${filtered ? list.length + " of " + BIOPSY_DATA.length + " shown" : BIOPSY_DATA.length + " protocols"}</div>`;
-  if (!list.length) {
-    h += `<div class="bempty">No match — try a different term.</div>`;
-  } else {
-    let lastCat = "";
-    for (const d of list) {
-      if (d.cat !== lastCat) { h += `<div class="bgrp">${esc(d.cat)}</div>`; lastCat = d.cat; }
-      const tag = d.src === "mb" ? `<span class="btag mb">MB</span>` : `<span class="btag us">ACG/AGA</span>`;
-      h += `<div class="bcard"><h3>${biopsyHi(esc(d.title), biopsyTerm)} ${tag}</h3>`;
-      for (const row of d.rows) {
-        const key = row.length > 1 ? row[0] : "", val = row.length > 1 ? row[1] : row[0];
-        const cls = (key === "Notes" || key === "") ? "bv note" : "bv";
-        h += `<div class="brow"><div class="bk">${esc(key)}</div>` +
-          `<div class="${cls}">${biopsyHi(biopsyBold(esc(val)), biopsyTerm)}</div></div>`;
-      }
-      h += `</div>`;
+  if (!list.length) h += `<div class="bempty">No match. Try a different term.</div>`;
+  let lastCat = "";
+  for (const d of list) {
+    if (d.cat !== lastCat) { h += `<div class="bgrp">${esc(d.cat)}</div>`; lastCat = d.cat; }
+    const tag = d.src === "mb" ? `<span class="btag mb">MB</span>` : `<span class="btag us">${esc(d.ref.short)}</span>`;
+    h += `<div class="bcard"><h3>${biopsyHi(esc(d.title), biopsyTerm)} ${tag}</h3>`;
+    for (const row of d.rows) {
+      const key = row.length > 1 ? row[0] : "", val = row.length > 1 ? row[1] : row[0];
+      h += `<div class="brow"><div class="bk">${esc(key)}</div>` +
+        `<div class="${key === "Notes" || key === "" ? "bv note" : "bv"}">${biopsyHi(biopsyBold(esc(val)), biopsyTerm)}</div></div>`;
     }
+    h += sourceHTML(d) + `</div>`;
   }
-  h += `<div class="bfoot">Always label the jar with a standard location term first, then your descriptor. ` +
-    `Give the clinical question / differential on every requisition. ` +
-    `Reference tool — verify against current guideline &amp; clinical judgment.</div>`;
-  return h;
-}
-function viewHome() {
-  const o = overall();
-  const today = window.__today || new Date();
-  const blk = blockFor(today);
-  const focusEpas = blk ? blockEpaCodes(blk.num) : [];
-  let h = `<header class="top"><div class="htitle"><b>GI EPA Tracker</b>` +
-    `<span class="hcount">${o.d} / ${o.r}</span></div>` +
-    `<div class="hbar"><i style="width:${o.r ? Math.round(o.d/o.r*100) : 0}%"></i></div>` +
-    tabsHTML("home") + `</header>`;
-  if (Store.persistFailed)
-    h += `<div class="warnbar">Warning: progress can't be saved (private browsing?). Ticks will be lost when you close the app.</div>`;
-  if (!nudgeDismissed && needsNudge(today))
-    h += `<div class="nudge"><span>It's been a while since your last backup — export one below.</span>` +
-      `<button class="dis" data-action="dismissnudge">×</button></div>`;
-  if (blk) {
-    h += `<div class="banner"><b>Block ${blk.num} — ${esc(blk.name)} (wk ${blk.week}/4)</b>` +
-      `<div class="bhint">${esc(BLOCK_HINTS[blk.num] || "")}</div>`;
-    const pace = paceInfo(today);
-    if (pace) {
-      if (Math.abs(pace.diff) <= 1) h += `<div class="pace ok">On pace ✓</div>`;
-      else if (pace.diff > 1) h += `<div class="pace ok">${pace.diff} ahead of plan 🚀</div>`;
-      else {
-        const codes = focusEpas.slice(0, 4).join(", ");
-        h += `<div class="pace behind">${-pace.diff} behind${codes ? ` — chase ${codes}` : ""}</div>`;
-      }
-    }
-    const plan = PLAN[blk.num] || {};
-    const pids = Object.keys(plan);
-    if (pids.length) {
-      h += `<div class="strip">` + pids.map(pid => {
-        const inf = PART_INFO[pid];
-        return `<button class="mini" data-action="open" data-code="${inf.code}">` +
-          `<b>${inf.label}</b><span>×${plan[pid]} · ${Store.partDone(pid)}/${inf.required}</span></button>`;
-      }).join("") + `</div>`;
-    }
-    h += `</div>`;
-  } else {
-    h += `<div class="banner"><b>${today < YEAR1_START ? "Fellowship starts July 2026." :
-      "Year 1 plan is over"}</b>` + (today < YEAR1_START ? "" :
-      `<div class="bhint">Anything unfinished: chase it now, and ask Claude to load the Year 2 schedule.</div>`) + `</div>`;
-  }
-  for (const st of ["ttd","f","core","ttp"]) {
-    h += `<section><h2>${STAGE_NAMES[st]}</h2>`;
-    for (const e of EPA_DATA.filter(x => x.stage === st)) {
-      const p = Store.epaProgress(e.code), pct = p.req ? Math.round(p.done/p.req*100) : 0;
-      const badge = focusEpas.includes(e.code) ? `<span class="chip">this block</span>` : "";
-      const pend = e.parts.reduce((a, pt) => a + Store.partPending(pt.id), 0);
-      h += `<button class="row" data-action="open" data-code="${e.code}">` +
-        `<span class="code">${e.code}</span>` +
-        `<span class="rmid"><span class="rtitle">${esc(e.title)}${badge}</span>` +
-        `<span class="rbar"><i style="width:${pct}%"></i></span></span>` +
-        `<span class="rcount${p.done >= p.req ? " done" : ""}">${p.done}/${p.req}` +
-        `${pend ? ` <span class="rpend">${pend}⏳</span>` : ""}${p.done >= p.req ? " ✓" : ""}</span>` +
-        `</button>`;
-    }
-    h += `</section>`;
-  }
-  h += `<section><h2>Backup</h2><div class="bwrap">` +
-    `<button class="bbtn" data-action="export">Export backup</button>` +
-    `<button class="bbtn" data-action="importpick">Import backup</button>` +
-    `<input type="file" id="importfile" accept=".json,application/json" style="display:none">` +
-    `<div class="bnote">Last backup: ${Store.state.lastBackup ? esc(Store.state.lastBackup.slice(0,10)) : "never"}</div>` +
-    (importError ? `<div class="berr">${esc(importError)}</div>` : "") +
-    `</div></section>`;
-  return h;
+  return h + `<div class="bfoot">Label every jar with a standard location term first, then your descriptor. ` +
+    `Put the clinical question or differential on every requisition. ` +
+    `Reference tool: check the current guideline and use clinical judgment.</div>`;
 }
 function viewPlan() {
-  const today = window.__today || new Date();
-  const blk = blockFor(today);
-  const o = overall();
-  let h = `<header class="top"><div class="htitle"><b>Year 1 Plan</b>` +
-    `<span class="hcount">${o.d} / ${o.r}</span></div>` +
-    `<div class="hbar"><i style="width:${o.r ? Math.round(o.d/o.r*100) : 0}%"></i></div>` +
-    tabsHTML("plan") + `</header>`;
-  h += `<p class="goal"><b>Goal: all 139 observations by end of Year 1 (Jun 2027).</b> ` +
-    `Each block below carries its share — hit the targets and nothing spills into Year 2. ` +
-    `Behind on a block? The next light block (6 Radiology, 9 Pathology) is your catch-up.</p>`;
+  const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
+  const cp = blk ? coachPlan(obsBy, today) : null;
+  const curNum = blk ? blk.num : (dayIndex(today) < 0 ? 0 : 14);
+  let h = headerHTML("Recalculated from what you've logged", "Year 1 plan");
+  if (cp) h += finishHTML(paceFinish(obsBy, today), planFinish(cp));
+  h += `<p class="goal">Targets update every time you log. A miss moves to the next block where it can realistically happen; ` +
+    `getting ahead clears the end of the year first. Past blocks show what you logged.</p>`;
   for (let n = 1; n <= 13; n++) {
-    const plan = PLAN[n];
-    const total = Object.values(plan).reduce((a, b) => a + b, 0);
-    const cls = blk && blk.num === n ? " now" : (blk && n < blk.num ? " past" : "");
-    h += `<div class="pcard${cls}"><div class="pctop"><b>Block ${n} — ${esc(BLOCK_NAMES[n])}</b>` +
-      `<span class="pcdates">${blockDates(n)}</span>` +
-      (blk && blk.num === n ? `<span class="nowchip">now</span>` : "") + `</div>` +
-      `<div class="bhint">${esc(BLOCK_HINTS[n])} <span class="pcload">· ~${total} forms</span></div>` +
-      `<div class="pchips">` + Object.keys(plan).map(pid => {
-        const inf = PART_INFO[pid];
-        const done = Store.partDone(pid);
-        const full = done >= inf.required;
-        return `<button class="pchip${full ? " full" : ""}" data-action="open" data-code="${inf.code}">` +
-          `<b>${inf.label}</b> ×${plan[pid]} <span>${done}/${inf.required}</span></button>`;
-      }).join("") + `</div></div>`;
+    const chips = blockTargets(n, obsBy, cp, curNum), now = n === curNum, past = n < curNum;
+    h += `<div class="pcard${now ? " now" : past ? " past" : ""}"><div class="pctop"><b>Block ${n}: ${esc(BLOCK_NAMES[n])}</b>` +
+      (now ? `<span class="tag solid">now</span>` : "") + `<span class="pcdates">${blockDates(n)}</span></div>` +
+      `<div class="bhint">${esc(BLOCK_HINTS[n])}</div><div class="pchips">` +
+      (chips.length ? chips.map(c => `<button class="pchip${c.carried ? " carried" : c.past ? " past" : ""}" data-action="open" data-code="${c.code}">` +
+        `<b>${c.label}</b> ×${c.n}</button>`).join("") :
+        `<span class="muted">${past ? "Nothing logged here" : "Nothing left here"}</span>`) + `</div></div>`;
   }
   return h;
 }
-function editorHTML(meta, dat) {
-  const isObs = dat.includes("data-obs");
-  const statusRow = isObs ?
-    `<div class="erow" style="margin-bottom:8px"><span class="elbl">Status</span>` +
-    `<button class="spill ${meta.status === "approved" ? "approved" : "pending"}" ` +
-    `data-action="togglestatus" ${dat}>${meta.status === "approved" ? "✓ Approved" : "⏳ Pending"}</button></div>` : "";
-  return `<div class="editor">` + statusRow +
-    `<label>Date <input type="date" value="${esc(meta.d || "")}" data-field="d" ${dat}></label>` +
-    `<label>Note <input type="text" value="${esc(meta.n || "")}" placeholder="assessor, case details…" data-field="n" ${dat}></label>` +
-    `<div class="erow">` + (isObs ?
-      `<button class="del" data-action="delobs" ${dat}>Delete</button>` : `<span></span>`) +
-    `<button class="donebtn" data-action="closeedit">Done</button></div></div>`;
+function lineEditorHTML(id) {
+  const meta = Store.state.lines[id] || {};
+  return `<div class="editor">` +
+    `<label>Date <input type="date" value="${esc(meta.d || "")}" data-field="d" data-line="${id}"></label>` +
+    `<label>Note <input type="text" value="${esc(meta.n || "")}" placeholder="Assessor, case details" data-field="n" data-line="${id}"></label>` +
+    `<div class="erow"><button data-action="closeedit">Done</button></div></div>`;
 }
 function partBlock(p) {
-  const done = Store.partDone(p.id);
+  const done = Store.partDone(p.id), pend = Store.partPending(p.id), appr = Store.partApproved(p.id);
   const pct = Math.min(100, p.required ? Math.round(done / p.required * 100) : 0);
-  let h = `<div class="part">`;
-  if (p.name) h += `<h3>${esc(p.name)}</h3>`;
-  const pend = Store.partPending(p.id), appr = Store.partApproved(p.id);
-  h += `<div class="pprog"><b>${done}</b> / ${p.required} observations` +
+  let h = `<div class="part">` + (p.name ? `<h3>${esc(p.name)}</h3>` : "") +
+    `<div class="pprog"><b>${done}</b> / ${p.required} observations` +
     (pend ? ` · <span class="pendtxt">${pend} pending</span>` : "") +
-    (appr >= p.required ? ` <span class="ok">✓ complete</span>` : "") + `</div>` +
+    (appr >= p.required ? ` · <span class="ok">complete</span>` : "") + `</div>` +
     `<div class="pbarBig"><i style="width:${pct}%"></i></div>`;
-  const obs = Store.state.obs[p.id] || [];
-  for (let i = 0; i < obs.length; i++) {
-    const o = obs[i];
+  (Store.state.obs[p.id] || []).forEach((o, i) => {
     const appd = o.status === "approved";
     h += `<div class="obsrow">` +
       `<button class="spill ${appd ? "approved" : "pending"}" data-action="togglestatus" data-part="${p.id}" data-obs="${i}">` +
-      `${appd ? "✓ Approved" : "⏳ Pending"}</button>` +
-      `<button class="ometabtn" data-action="editobs" data-part="${p.id}" data-obs="${i}">` +
-      `<span class="onum">#${i+1}</span> ${esc(o.d || "no date")}${o.n ? " · " + esc(o.n) : ""}</button></div>`;
-    if (route.editObs === p.id + "|" + i)
-      h += editorHTML(o, `data-part="${p.id}" data-obs="${i}"`);
-  }
-  h += `<button class="logbtn" data-action="logobs" data-part="${p.id}">+ Log observation</button>`;
+      `${ic(appd ? "check" : "clock")}${appd ? "Approved" : "Pending"}</button>` +
+      `<button class="ometabtn" data-action="sheet" data-part="${p.id}" data-obs="${i}">` +
+      `<span class="onum">#${i + 1}</span> ${esc(o.d || "no date")}${o.a ? " · " + esc(o.a) : ""}${o.n ? " · " + esc(o.n) : ""}</button></div>`;
+  });
+  h += `<button class="logbtn" data-action="sheet" data-part="${p.id}">${ic("plus")}Log observation</button>`;
   if (p.items.length) {
     h += `<div class="ctx"><h4>Context checklist</h4>`;
     for (const it of p.items) {
       if (it.h) { h += `<div class="ihead">${esc(it.h)}</div>`; continue; }
       const v = Store.lineVal(it.id), ldone = v >= it.target;
-      const box = it.target === 1 ? (v ? "✓" : "") : `${v}/2`;
+      const box = it.target === 1 ? (v ? ic("check") : "") : `${v}/2`;
       h += `<div class="line${ldone ? " ldone" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
         `<span class="lbox">${box}</span><span class="llab">${esc(it.label)}</span>` +
-        `<button class="lmeta" data-action="linemeta" data-line="${it.id}">…</button></div>`;
-      if (route.editLine === it.id)
-        h += editorHTML(Store.state.lines[it.id] || {}, `data-line="${it.id}"`);
+        `<button class="lmeta" data-action="linemeta" data-line="${it.id}" aria-label="Date and note">…</button></div>`;
+      if (route.editLine === it.id) h += lineEditorHTML(it.id);
     }
     h += `</div>`;
   }
@@ -2485,7 +2501,7 @@ function refBlock(e) {
       (pl.collects.length ? `<ul>` + pl.collects.map(c => `<li>${esc(c)}</li>`).join("") + `</ul>` : "") +
       `<div class="rule">${esc(pl.rule)}</div></div>`;
   }
-  h += `<details><summary>CanMEDS milestones</summary>`;
+  h += `<details class="fold"><summary>CanMEDS milestones</summary>`;
   for (const g of r.milestones) {
     if (g.part) h += `<h5>${esc(g.part)}</h5>`;
     h += `<ol>` + g.list.map(m => `<li>${esc(m)}</li>`).join("") + `</ol>`;
@@ -2494,7 +2510,8 @@ function refBlock(e) {
 }
 function viewEpa(code) {
   const e = EPA_DATA.find(x => x.code === code);
-  let h = `<header class="top"><button class="back" data-action="back">← All EPAs</button></header>` +
+  const backTo = {week: "This week", plan: "Plan"}[route.from] || "All EPAs";
+  let h = `<header class="top"><button class="back" data-action="back">${ic("back")}${backTo}</button></header>` +
     `<div class="dhead"><span class="code big">${e.code}</span>` +
     `<span class="stagechip">${STAGE_NAMES[e.stage]}</span></div>` +
     `<h1 class="dtitle">${esc(e.title)}</h1>`;
@@ -2503,49 +2520,35 @@ function viewEpa(code) {
 }
 
 function render() {
-  document.getElementById("app").innerHTML =
-    route.page === "home" ? viewHome() :
-    route.page === "plan" ? viewPlan() :
-    route.page === "biopsy" ? viewBiopsy() :
-    route.page === "stats" ? viewStats() : viewEpa(route.code);
-  if (pendingCelebration && route.page !== "biopsy") {
-    document.getElementById("app").insertAdjacentHTML("beforeend",
-      `<div class="celebrate" data-action="dismisscelebrate"><div class="cbox">` +
-      `<div class="cemoji">🎉</div><b>${esc(pendingCelebration.label)}</b>` +
-      `<div class="chint">Achievement unlocked — tap to dismiss</div></div></div>`);
-  }
+  const p = route.page;
+  const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
+    p === "biopsy" ? viewBiopsy() : viewEpa(route.code);
+  document.getElementById("app").innerHTML = body + navHTML(p === "epa" ? route.from : p) + (sheet ? sheetHTML() : "");
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
 }
 function dispatch(act, d) {
-  if (act === "open") { route = {page:"epa", code:d.code, from:route.page === "plan" ? "plan" : "home"}; render(); }
-  else if (act === "back") { route = {page:route.from === "plan" ? "plan" : "home"}; render(); }
-  else if (act === "tab") { route = {page:d.page}; render(); }
-  else if (act === "logobs") {
-    const i = Store.logObs(d.part);
-    Store.setObsMeta(d.part, i, {d: fmtDate(window.__today || new Date())});
-    afterProgress();
-    route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
-  else if (act === "togglestatus") {
-    Store.toggleObsStatus(d.part, +d.obs); afterProgress(); route.keepScroll = true; render(); }
-  else if (act === "dismisscelebrate") { pendingCelebration = null; route.keepScroll = true; render(); }
-  else if (act === "editobs") {
-    const k = d.part + "|" + d.obs;
-    route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
-  else if (act === "delobs") { Store.removeObs(d.part, +d.obs); route.editObs = null; route.keepScroll = true; render(); }
-  else if (act === "cycleline") { Store.cycleLine(d.line, +d.target); route.keepScroll = true; render(); }
-  else if (act === "linemeta") {
-    route.editLine = route.editLine === d.line ? null : d.line; route.editObs = null; route.keepScroll = true; render(); }
-  else if (act === "closeedit") { route.editObs = null; route.editLine = null; route.keepScroll = true; render(); }
-  else if (act === "dismissnudge") { nudgeDismissed = true; route.keepScroll = true; render(); }
-  else if (act === "export") {
-    const json = Store.exportJSON();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([json], {type:"application/json"}));
-    a.download = "epa-backup-" + fmtDate(new Date()) + ".json";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  if (act === "open") { route = {page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page}; render(); }
+  else if (act === "back") { route = {page: route.from || "epas"}; render(); }
+  else if (act === "tab") { route = {page: d.page}; render(); }
+  else if (act === "sheet") { openSheet(d.part, d.obs); route.keepScroll = true; render(); }
+  else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
+  else if (act === "pickassessor") { sheet.a = d.name; route.keepScroll = true; render(); }
+  else if (act === "sheetstatus") { sheet.status = d.status; route.keepScroll = true; render(); }
+  else if (act === "sheetsave") { saveSheet(); route.keepScroll = true; render(); }
+  else if (act === "sheetdelete") {
+    if (confirm("Delete this observation?")) { Store.removeObs(sheet.pid, sheet.i); sheet = null; }
     route.keepScroll = true; render(); }
+  else if (act === "togglestatus") { Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
+  else if (act === "dismissrecap") { Store.setRecapSeen(d.key); route.keepScroll = true; render(); }
+  else if (act === "chaseok") { Store.setObsStatus(d.part, +d.obs, "approved"); chaseOpen = true; route.keepScroll = true; render(); }
+  else if (act === "cycleline") { Store.cycleLine(d.line, +d.target); route.keepScroll = true; render(); }
+  else if (act === "linemeta") { route.editLine = route.editLine === d.line ? null : d.line; route.keepScroll = true; render(); }
+  else if (act === "closeedit") { route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "dismissnudge") { nudgeDismissed = true; route.keepScroll = true; render(); }
+  else if (act === "export") { exportBackup(); }
   else if (act === "importpick") { document.getElementById("importfile").click(); }
   else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
   else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();
@@ -2556,6 +2559,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
+  if (sheetField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -2566,24 +2570,23 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
+  if (sheetField(t)) return;
   if (t.id === "importfile") {
     const f = t.files && t.files[0];
     if (!f) return;
     const rd = new FileReader();
     rd.onload = () => {
-      importError = null;
+      backupError = null;
       if (confirm("Replace current progress with this backup?")) {
         const res = Store.importJSON(rd.result);
-        if (!res.ok) importError = res.error;
+        if (!res.ok) backupError = res.error;
       }
       render();
     };
     rd.readAsText(f);
     return;
   }
-  if (!d.field) return;
-  if (d.part !== undefined && d.obs !== undefined) Store.setObsMeta(d.part, +d.obs, {[d.field]: t.value});
-  else if (d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
+  if (d.field && d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
 Store.load();
 render();
