@@ -2025,6 +2025,7 @@ const BIOPSY_DATA = [
 ];
 /*BIOPSY_DATA_END*/
 </script>
+<script src="coach.js"></script>
 <script>
 "use strict";
 const KEY = "epa-state-v1";
@@ -2143,70 +2144,16 @@ function biopsyHi(html, term) {
   return html.replace(new RegExp("(" + t + ")(?![^<]*>)", "ig"), "<mark>$1</mark>");
 }
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};
-const YEAR1_START = new Date(2026, 6, 1);
-const BLOCK_NAMES = {1:"Consults HSC",2:"Consults SBH",3:"Hepatology",4:"Motility/Nutrition",5:"Consults SBH",6:"Radiology",7:"Consults SBH",8:"Advanced Endoscopy",9:"Pathology",10:"Consults HSC",11:"Consults Grace",12:"Hepatology",13:"Consults HSC"};
-function blockFor(date) {
-  const days = Math.floor((date - YEAR1_START) / 86400000);
-  if (days < 0 || days >= 13 * 28) return null;
-  const num = Math.floor(days / 28) + 1;
-  return {num, name: BLOCK_NAMES[num], week: Math.floor((days % 28) / 7) + 1};
-}
-// Finish-by-end-of-Year-1 plan: per block, target observations per part.
-// Column sums per part MUST equal that part's required count (tested).
-const PLAN = {
-  1:{d1:2, d2a:1, d2b:1, f1a:2, f1b:3},
-  2:{d1:2, d2a:1, d2b:2, f1b:4, f2:1, f3a:1},
-  3:{c2:3, c3:2, c1:1, f1b:2},
-  4:{f2:1, c5:2, c2:2, f1b:2, c4:1},
-  5:{d2b:1, f1b:1, f3a:2, f4:2, c1:2, c3:2, c7:1},
-  6:{f3b:2, c8b:1, c4:1},
-  7:{c1:2, c3:2, c7:1, f3a:2, f4:2, c8a:2},
-  8:{f3a:1, f4:2, c6:6, c7:3, c8a:8, c8b:1},
-  9:{f3b:1, c8b:1, c7:1},
-  10:{c3:2, c6:2, c8a:5, c9a:2, c9b:3, c7:2},
-  11:{c2:6, c3:1, c4:1, c6:2, c8a:4},
-  12:{c2:3, c3:1, c6:2, c8a:6, c8b:1, c9a:2, c9b:3},
-  13:{p1:5}
-};
-const BLOCK_HINTS = {
-  1:"TTD first: emergencies, consent + prep, observed H&P.",
-  2:"Close out D1/D2; stack F1-B assessments; start F2 nutrition.",
-  3:"Liver block: chronic-liver C2s and liver C3s are hardest to get elsewhere.",
-  4:"Nutrition block: finish F2, both C5s, functional/refractory C2 lines.",
-  5:"Finish Foundations; complex consults; forms on every scope day.",
-  6:"Light block: procedure notes + mop up anything behind plan.",
-  7:"Complex consults + therapeutic scope cases (holiday bleeds count).",
-  8:"Endo block: form on EVERY list — colonoscopies, therapeutics, findings.",
-  9:"Light block: last procedure notes; book assessors for block 10.",
-  10:"Junior-attending block: C9 observations + colonoscopy volume.",
-  11:"Clinic-heavy: C2 forms every clinic; keep scoping.",
-  12:"Big finish: close C2/C3, remaining scopes, C9 — varices = C8 variceal ticks.",
-  13:"P1 wrap-up: run the endoscopy list; buffer for anything left."
-};
-const PART_INFO = {};
-for (const e of EPA_DATA) {
-  const multi = e.parts.length > 1;
-  e.parts.forEach((p, i) => {
-    PART_INFO[p.id] = {code: e.code, label: e.code + (multi ? ["-A","-B"][i] : ""), required: p.required};
-  });
-}
 function blockEpaCodes(num) {
   const set = [];
   for (const pid of Object.keys(PLAN[num] || {})) {
-    const c = PART_INFO[pid].code;
+    const c = PART_BY_ID[pid].code;
     if (!set.includes(c)) set.push(c);
   }
   return set;
 }
-function blockDates(num) {
-  const s = new Date(YEAR1_START.getTime() + (num - 1) * 28 * 86400000);
-  const e = new Date(s.getTime() + 27 * 86400000);
-  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${M[s.getMonth()]} ${s.getDate()} – ${M[e.getMonth()]} ${e.getDate()}`;
-}
 let route = {page:"home"};
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function fmtDate(d) { return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function overall() { let d=0, r=0;
   for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
   return {d, r}; }
@@ -2237,7 +2184,7 @@ function projection(today) {
   const rate = logged/weeks;
   const remaining = Math.max(0, 139 - logged);
   const date = remaining === 0 ? today : new Date(+today + (remaining/rate)*WEEK);
-  return {rate, date, onTrack: date <= new Date(2027,5,29)};
+  return {rate, date, onTrack: date <= YEAR1_END};
 }
 function paceInfo(today) {
   const blk = blockFor(today); if (!blk) return null;
@@ -2249,7 +2196,6 @@ function paceInfo(today) {
   return {expected, logged, diff: logged - expected};
 }
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function viewStats() {
   const today = window.__today || new Date();
   const approved = Store.overallApproved(), pending = Store.overallPending(), logged = loggedTotal();
@@ -2357,7 +2303,7 @@ function viewHome() {
     const pids = Object.keys(plan);
     if (pids.length) {
       h += `<div class="strip">` + pids.map(pid => {
-        const inf = PART_INFO[pid];
+        const inf = PART_BY_ID[pid];
         return `<button class="mini" data-action="open" data-code="${inf.code}">` +
           `<b>${inf.label}</b><span>×${plan[pid]} · ${Store.partDone(pid)}/${inf.required}</span></button>`;
       }).join("") + `</div>`;
@@ -2413,7 +2359,7 @@ function viewPlan() {
       (blk && blk.num === n ? `<span class="nowchip">now</span>` : "") + `</div>` +
       `<div class="bhint">${esc(BLOCK_HINTS[n])} <span class="pcload">· ~${total} forms</span></div>` +
       `<div class="pchips">` + Object.keys(plan).map(pid => {
-        const inf = PART_INFO[pid];
+        const inf = PART_BY_ID[pid];
         const done = Store.partDone(pid);
         const full = done >= inf.required;
         return `<button class="pchip${full ? " full" : ""}" data-action="open" data-code="${inf.code}">` +
