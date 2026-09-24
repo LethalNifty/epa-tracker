@@ -41,11 +41,11 @@ test("an old v1 backup without status imports as approved", () => {
 
 test("every page renders without throwing", () => {
   const h = load({today: "2026-09-24"});
-  for (const page of ["home", "plan", "biopsy"]) {
+  for (const page of ["epas", "plan", "biopsy"]) {
     h.run(`route = {page: ${JSON.stringify(page)}}; render();`);
     assert.ok(h.html().length > 200, page);
   }
-  h.run(`route = {page: "epa", code: "C2", from: "home"}; render();`);
+  h.run(`route = {page: "epa", code: "C2", from: "epas"}; render();`);
   assert.match(h.html(), /chronic/i);
 });
 
