@@ -2000,74 +2000,74 @@ const EPA_DATA = [
 <script>
 /*BIOPSY_DATA_START*/
 const BIOPSY_DATA = [
- {cat:"Esophagus", title:"Barrett's esophagus", src:"mb", kw:"BE reflux dysplasia seattle metaplasia surveillance", rows:[
+ {cat:"Esophagus", title:"Barrett's esophagus", src:"mb", sec:["2.4","Esophagus biopsy","2"], kw:"BE reflux dysplasia seattle metaplasia surveillance", rows:[
    ["Sites","4-quadrant biopsies + separately target any tongue, visible lesion, or high-risk area"],
    ["Number","4 per level (one each quadrant)"],
-   ["Spacing","Every 2 cm — or every 1 cm if known/suspected dysplasia (Seattle)"],
+   ["Spacing","Every 2 cm, or every 1 cm if known or suspected dysplasia (Seattle)"],
    ["Notes","Describe abnormal mucosa + exact locations; begin at top of gastric folds. Label lesions separately."]]},
- {cat:"Esophagus", title:"Eosinophilic esophagitis (EoE)", src:"mb", kw:"eosinophilic dysphagia food impaction furrows rings atopy", rows:[
+ {cat:"Esophagus", title:"Eosinophilic esophagitis (EoE)", src:"mb", sec:["2.4","Esophagus biopsy","2"], kw:"eosinophilic dysphagia food impaction furrows rings atopy", rows:[
    ["Sites","Mid ± proximal esophagus AND distal esophagus"],
    ["Number","2–4 fragments per site"],
    ["Jars","Exactly 2 (prox/mid; distal)"],
    ["Notes","Target furrows, exudates, rings. Dx = ≥15 eos/hpf. A failed PPI trial is NOT required to diagnose."]]},
- {cat:"Esophagus", title:"Infectious esophagitis (odynophagia)", src:"us", kw:"candida hsv herpes cmv cytomegalovirus odynophagia immunocompromised ulcer", rows:[
+ {cat:"Esophagus", title:"Infectious esophagitis (odynophagia)", src:"us", ref:{short:"Textbook", label:"Mayo Clinic Gastroenterology and Hepatology Board Review (2024), p. 100", url:null}, kw:"candida hsv herpes cmv cytomegalovirus odynophagia immunocompromised ulcer", rows:[
    ["Sites","Ulcer EDGE (HSV) · ulcer BASE (CMV) · plaques ± brushings (Candida)"],
    ["Number","Multiple targeted from ulcer edge and base"],
    ["Notes","Candida: brushings + biopsy of plaques → fluconazole. HSV: biopsy ulcer edge (multinucleated giant cells). CMV: biopsy ulcer base (inclusion bodies), usually immunocompromised. Send for viral IHC/culture."]]},
- {cat:"Esophagus", title:"GERD / dyspepsia (normal mucosa)", src:"mb", kw:"reflux heartburn dyspepsia", rows:[
+ {cat:"Esophagus", title:"GERD / dyspepsia (normal mucosa)", src:"mb", sec:["2.4–2.5","Esophagus and GE junction biopsy","2"], kw:"reflux heartburn dyspepsia GE junction GEJ", rows:[
    ["Sites","None"],
-   ["Notes","Do NOT biopsy normal/reactive esophagus. Distal-esophagus biopsies are not recommended to diagnose GERD. Biopsy only if an ulcer or lesion is present."]]},
- {cat:"Esophagus", title:"Stricture / lesion suspicious for malignancy", src:"mb", kw:"cancer stricture dysphagia tumour tumor", rows:[
+   ["Notes","Do NOT biopsy normal/reactive esophagus. Distal-esophagus biopsies are not recommended to diagnose GERD. Biopsy only if an ulcer or lesion is present. Don't biopsy a normal-looking GE junction to rule out Barrett's."]]},
+ {cat:"Esophagus", title:"Stricture / lesion suspicious for malignancy", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer stricture dysphagia tumour tumor", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Multiple to beat sampling error and allow molecular/IHC testing."]]},
 
- {cat:"Stomach", title:"H. pylori gastritis", src:"mb", kw:"helicobacter pylori gastritis urease breath", rows:[
+ {cat:"Stomach", title:"H. pylori gastritis", src:"mb", sec:["2.6","Gastric biopsy","3"], kw:"helicobacter pylori gastritis urease breath", rows:[
    ["Sites","Antrum AND gastric body"],
    ["Number","2 antrum + 2 body"],
    ["Jars","1 container"],
-   ["Notes","Especially important if on PPI (shifts organisms proximally). Erythema/superficial ulcer can go in same jar. OR rapid urease/culture — don't routinely do both histology + microbiology. Diminutive (<5 mm) fundic gland polyps: no biopsy."]]},
- {cat:"Stomach", title:"Gastric intestinal metaplasia / atrophic gastritis staging", src:"us", kw:"intestinal metaplasia atrophic sydney olga olgim precancerous GIM", rows:[
+   ["Notes","Especially important if on PPI (shifts organisms proximally). Erythema/superficial ulcer can go in the same jar. Rapid urease or culture works equally well; don't routinely send both histology and microbiology. Diminutive (<5 mm) fundic gland polyps: no biopsy."]]},
+ {cat:"Stomach", title:"Gastric intestinal metaplasia / atrophic gastritis staging", src:"us", ref:{short:"AGA", label:"AGA Clinical Practice Update on atrophic gastritis (Gastroenterology 2021)", url:"https://doi.org/10.1053/j.gastro.2021.06.078"}, kw:"intestinal metaplasia atrophic sydney olga olgim precancerous GIM", rows:[
    ["Sites","Antrum ×2 (greater + lesser curve), corpus ×2 (greater + lesser), incisura ×1"],
    ["Number","5 (updated Sydney)"],
    ["Jars","≥2 (antrum/incisura vs corpus) for OLGA / OLGIM"],
    ["Notes","Maps extent for cancer risk. Biopsy any visible IM or lesion separately."]]},
- {cat:"Stomach", title:"Gastric ulcer", src:"us", kw:"GU malignancy cancer healing repeat", rows:[
-   ["Sites","Ulcer rim (all quadrants)"],
-   ["Number","Multiple; ≥6–8 if suspicious"],
+ {cat:"Stomach", title:"Gastric ulcer", src:"us", ref:{short:"ASGE", label:"ASGE guideline on endoscopy in peptic ulcer disease (GIE 2010); Mayo Board Review (2024), p. 56", url:"https://doi.org/10.1016/j.gie.2009.11.026"}, kw:"GU malignancy cancer healing repeat", rows:[
+   ["Sites","Ulcer edge (all quadrants) AND base"],
+   ["Number","≥4 from the edge + ≥1 from the base (finds ~95% of cancers); ≥6–8 if it looks malignant"],
    ["Notes","Biopsy to exclude malignancy. Repeat EGD ~8–12 wk to confirm healing (esp. large/high-risk)."]]},
- {cat:"Stomach", title:"Lesion suspicious for malignancy / MALT", src:"mb", kw:"cancer lymphoma MALT tumour tumor mass", rows:[
+ {cat:"Stomach", title:"Lesion suspicious for malignancy / MALT", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer lymphoma MALT tumour tumor mass", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Adequate tissue for special stains / flow cytometry."]]},
 
- {cat:"Duodenum / Small bowel", title:"Celiac disease", src:"mb", kw:"coeliac sprue gluten marsh villous atrophy TTG", rows:[
+ {cat:"Duodenum / Small bowel", title:"Celiac disease", src:"mb", sec:["2.7","Duodenal biopsy","3"], kw:"coeliac sprue gluten marsh villous atrophy TTG", rows:[
    ["Sites","Second part of duodenum (D2) AND duodenal bulb"],
    ["Number","≥4 from D2 + 2 from bulb"],
    ["Jars","Label bulb vs D2"],
    ["Notes","Patient MUST be on a gluten-containing diet. State serology on requisition. Don't biopsy normal duodenum/bulb in an immunocompetent patient without an indication (flag if immunocompromised)."]]},
- {cat:"Duodenum / Small bowel", title:"Ileum", src:"mb", kw:"terminal ileum crohn diarrhea", rows:[
+ {cat:"Duodenum / Small bowel", title:"Ileum", src:"mb", sec:["2.8","Ileum biopsy","3"], kw:"terminal ileum crohn diarrhea", rows:[
    ["Sites","Only if abnormal or clinically indicated (IBD, diarrhea)"],
    ["Notes","Do NOT biopsy normal ileum just to document intubation."]]},
 
- {cat:"Colon", title:"IBD dysplasia surveillance", src:"mb", kw:"ulcerative colitis crohn dysplasia chromoendoscopy SCENIC surveillance", rows:[
+ {cat:"Colon", title:"IBD dysplasia surveillance", src:"mb", sec:["2.9","Colon biopsy for IBD dysplasia surveillance","3"], kw:"ulcerative colitis crohn dysplasia chromoendoscopy SCENIC surveillance", rows:[
    ["Sites","Chromoendoscopy (dye or virtual) + targeted biopsies of suspicious areas"],
    ["Spacing","Random q10 cm discouraged (low yield)"],
    ["Notes","HD white-light with careful exam is an alternative in non-high-risk. May still biopsy segments for disease activity."]]},
- {cat:"Colon", title:"IBD — initial diagnosis (mapping)", src:"us", kw:"ulcerative colitis crohn mapping diagnosis segments", rows:[
-   ["Sites","≥5 segments incl. rectum + ileum"],
-   ["Number","≥2 per segment"],
-   ["Jars","Separate jar per segment"],
+ {cat:"Colon", title:"IBD: initial diagnosis (mapping)", src:"us", ref:{short:"ECCO", label:"European consensus on the histopathology of IBD, ECCO-ESP (J Crohns Colitis 2013)", url:"https://doi.org/10.1016/j.crohns.2013.06.001"}, kw:"ulcerative colitis crohn mapping diagnosis segments", rows:[
+   ["Sites","≥5 colonic sites incl. rectum, plus terminal ileum"],
+   ["Number","≥2 per site"],
+   ["Jars","Separate jar per site"],
    ["Notes","Segmental mapping at diagnosis."]]},
- {cat:"Colon", title:"Microscopic colitis (chronic watery diarrhea, normal mucosa)", src:"mb", kw:"collagenous lymphocytic watery diarrhea", rows:[
+ {cat:"Colon", title:"Microscopic colitis (chronic watery diarrhea, normal mucosa)", src:"mb", sec:["2.10","Colon biopsy for possible microscopic colitis","3"], kw:"collagenous lymphocytic watery diarrhea", rows:[
    ["Sites","Right colon (asc + transverse) AND left colon (desc + sig + rectum)"],
    ["Number","≥4 fragments total"],
    ["Jars","≤2 (right; left)"],
    ["Notes","If adding rectal biopsies, state why (e.g. r/o quiescent UC proctitis). ASGE historically 8 biopsies; 2 asc + 2 desc validated as sufficient."]]},
- {cat:"Colon", title:"Colonic polyps", src:"mb", kw:"adenoma polypectomy surveillance coloncheck sessile serrated SSL", rows:[
+ {cat:"Colon", title:"Colonic polyps", src:"mb", sec:["2.11","Colonic polyps","3–4"], kw:"adenoma polypectomy surveillance coloncheck sessile serrated SSL", rows:[
    ["Sites","Remove; record number + size of each"],
    ["Notes","High-risk adenoma (≥10 mm, ≥3 adenomas, villous, or HGD) → 3-yr surveillance (ColonCheck MB). Note pedunculated/sessile/flat + whether completely removed."]]},
- {cat:"Colon", title:"Lesion suspicious for malignancy", src:"mb", kw:"cancer mass tumour tumor", rows:[
+ {cat:"Colon", title:"Lesion suspicious for malignancy", src:"mb", sec:["2.12","Lesion suspicious for malignancy","4"], kw:"cancer mass tumour tumor", rows:[
    ["Sites","The lesion"],
    ["Number","≥6–8 fragments"],
    ["Notes","Beat sampling error; enable IHC / molecular testing."]]},
@@ -2135,6 +2135,7 @@ function needsNudge(today) {
   const lb = Store.state.lastBackup;
   return !lb || (today - new Date(lb)) > 30 * 86400000;
 }
+const MB_PDF = "https://healthproviders.sharedhealthmb.ca/files/clinical-guideline-gi-endoscopic-biopsy.pdf";
 let biopsyTerm = "", biopsyCat = "all";
 const BIOPSY_CATS = [["all","All"],["Esophagus","Esophagus"],["Stomach","Stomach"],
   ["Duodenum / Small bowel","Duod / SB"],["Colon","Colon"]];
@@ -2143,8 +2144,8 @@ function biopsyFilter(term, cat) {
   return BIOPSY_DATA.filter(d => {
     if (cat !== "all" && d.cat !== cat) return false;
     if (!term) return true;
-    const hay = (d.title + " " + d.cat + " " + (d.kw || "") + " " +
-      d.rows.map(r => r.join(" ")).join(" ")).toLowerCase();
+    const hay = (d.title + " " + d.cat + " " + (d.kw || "") + " " + d.rows.map(r => r.join(" ")).join(" ") + " " +
+      (d.sec ? "Shared Health " + d.sec[1] : "") + " " + (d.ref ? d.ref.short + " " + d.ref.label : "")).toLowerCase();
     return hay.includes(term);
   });
 }
@@ -2394,39 +2395,42 @@ function overall() { let d=0, r=0;
   for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
   return {d, r}; }
 
+function sourceHTML(d) {
+  if (d.src === "mb")
+    return `<a class="srcrow" href="${MB_PDF}" target="_blank" rel="noopener">${ic("book")}` +
+      `<span>Shared Health §${esc(d.sec[0])} ${esc(d.sec[1])} · p. ${esc(d.sec[2])}</span>${ic("external", "sm")}</a>`;
+  const r = d.ref;
+  return r.url
+    ? `<a class="srcrow" href="${esc(r.url)}" target="_blank" rel="noopener">${ic("book")}<span>${esc(r.label)}</span>${ic("external", "sm")}</a>`
+    : `<div class="srcrow">${ic("book")}<span>${esc(r.label)}</span></div>`;
+}
 function viewBiopsy() {
   const list = biopsyFilter(biopsyTerm, biopsyCat);
-  let h = headerHTML("Endoscopy reference", "Biopsy protocols", false);
-  h += `<div class="bsub">Manitoba (Shared Health 2022) primary · ACG/AGA where noted</div>`;
-  h += `<div class="qwrap"><input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori…)" ` +
+  let h = headerHTML("Manitoba first · other sources where it's silent", "Biopsy", false);
+  h += `<a class="btn" href="${MB_PDF}" target="_blank" rel="noopener">${ic("book")}Open the full Manitoba guideline${ic("external", "sm")}</a>`;
+  h += `<div class="qwrap spaced">${ic("search")}<input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori)" ` +
     `autocomplete="off" autocapitalize="off" value="${esc(biopsyTerm)}">` +
-    (biopsyTerm ? `<button class="qclear" data-action="bclear" aria-label="Clear">×</button>` : ``) + `</div>`;
+    (biopsyTerm ? `<button class="qclear" data-action="bclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
   h += `<div class="bcats">` + BIOPSY_CATS.map(c =>
-    `<button class="bcat${biopsyCat === c[0] ? " on" : ""}" data-action="bcat" data-cat="${esc(c[0])}">${esc(c[1])}</button>`
-  ).join("") + `</div>`;
+    `<button class="bcat${biopsyCat === c[0] ? " on" : ""}" data-action="bcat" data-cat="${esc(c[0])}">${esc(c[1])}</button>`).join("") + `</div>`;
   const filtered = biopsyTerm || biopsyCat !== "all";
   h += `<div class="bcount">${filtered ? list.length + " of " + BIOPSY_DATA.length + " shown" : BIOPSY_DATA.length + " protocols"}</div>`;
-  if (!list.length) {
-    h += `<div class="bempty">No match — try a different term.</div>`;
-  } else {
-    let lastCat = "";
-    for (const d of list) {
-      if (d.cat !== lastCat) { h += `<div class="bgrp">${esc(d.cat)}</div>`; lastCat = d.cat; }
-      const tag = d.src === "mb" ? `<span class="btag mb">MB</span>` : `<span class="btag us">ACG/AGA</span>`;
-      h += `<div class="bcard"><h3>${biopsyHi(esc(d.title), biopsyTerm)} ${tag}</h3>`;
-      for (const row of d.rows) {
-        const key = row.length > 1 ? row[0] : "", val = row.length > 1 ? row[1] : row[0];
-        const cls = (key === "Notes" || key === "") ? "bv note" : "bv";
-        h += `<div class="brow"><div class="bk">${esc(key)}</div>` +
-          `<div class="${cls}">${biopsyHi(biopsyBold(esc(val)), biopsyTerm)}</div></div>`;
-      }
-      h += `</div>`;
+  if (!list.length) h += `<div class="bempty">No match. Try a different term.</div>`;
+  let lastCat = "";
+  for (const d of list) {
+    if (d.cat !== lastCat) { h += `<div class="bgrp">${esc(d.cat)}</div>`; lastCat = d.cat; }
+    const tag = d.src === "mb" ? `<span class="btag mb">MB</span>` : `<span class="btag us">${esc(d.ref.short)}</span>`;
+    h += `<div class="bcard"><h3>${biopsyHi(esc(d.title), biopsyTerm)} ${tag}</h3>`;
+    for (const row of d.rows) {
+      const key = row.length > 1 ? row[0] : "", val = row.length > 1 ? row[1] : row[0];
+      h += `<div class="brow"><div class="bk">${esc(key)}</div>` +
+        `<div class="${key === "Notes" || key === "" ? "bv note" : "bv"}">${biopsyHi(biopsyBold(esc(val)), biopsyTerm)}</div></div>`;
     }
+    h += sourceHTML(d) + `</div>`;
   }
-  h += `<div class="bfoot">Always label the jar with a standard location term first, then your descriptor. ` +
-    `Give the clinical question / differential on every requisition. ` +
-    `Reference tool — verify against current guideline &amp; clinical judgment.</div>`;
-  return h;
+  return h + `<div class="bfoot">Label every jar with a standard location term first, then your descriptor. ` +
+    `Put the clinical question or differential on every requisition. ` +
+    `Reference tool: check the current guideline and use clinical judgment.</div>`;
 }
 function viewPlan() {
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
