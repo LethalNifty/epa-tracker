@@ -120,3 +120,19 @@ test("pace estimate says what it is based on", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
   assert.match(h.html(), /<div class="ssub">16 logged in the last 8 weeks<\/div>/);
 });
+
+test("Plan: completion up top, recalculated blocks, carried marked", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "plan"});
+  const html = h.html();
+  assert.match(html, /<h2>Estimated completion<\/h2>/);
+  assert.match(html, /<div class="pcard now"><div class="pctop"><b>Block 4: Motility\/Nutrition<\/b><span class="tag solid">now<\/span>/);
+  assert.match(html, /<button class="pchip carried" data-action="open" data-code="F1"><b>F1-B<\/b> ×11<\/button>/);
+  assert.match(html, /<div class="pcard past">.*?Block 1: Consults HSC.*?Nothing logged here/);
+});
+
+test("Plan: getting ahead empties the end of the year first", () => {
+  const h = load({today: "2026-09-25", state: state({c8a: many(2, "2026-09-25")})});
+  h.click("tab", {page: "plan"});
+  assert.match(h.html(), /Block 12: Hepatology.*?<b>C8-A<\/b> ×4/);
+});

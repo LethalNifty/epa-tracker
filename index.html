@@ -2429,28 +2429,21 @@ function viewBiopsy() {
   return h;
 }
 function viewPlan() {
-  const today = window.__today || new Date();
-  const blk = blockFor(today);
-  const o = overall();
-  let h = headerHTML("Finish everything by Jun 30, 2027", "Year 1 plan");
-  h += `<p class="goal"><b>Goal: all 139 observations by end of Year 1 (Jun 2027).</b> ` +
-    `Each block below carries its share — hit the targets and nothing spills into Year 2. ` +
-    `Behind on a block? The next light block (6 Radiology, 9 Pathology) is your catch-up.</p>`;
+  const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
+  const cp = blk ? coachPlan(obsBy, today) : null;
+  const curNum = blk ? blk.num : (dayIndex(today) < 0 ? 0 : 14);
+  let h = headerHTML("Recalculated from what you've logged", "Year 1 plan");
+  if (cp) h += finishHTML(paceFinish(obsBy, today), planFinish(cp));
+  h += `<p class="goal">Targets update every time you log. A miss moves to the next block where it can realistically happen; ` +
+    `getting ahead clears the end of the year first. Past blocks show what you logged.</p>`;
   for (let n = 1; n <= 13; n++) {
-    const plan = PLAN[n];
-    const total = Object.values(plan).reduce((a, b) => a + b, 0);
-    const cls = blk && blk.num === n ? " now" : (blk && n < blk.num ? " past" : "");
-    h += `<div class="pcard${cls}"><div class="pctop"><b>Block ${n} — ${esc(BLOCK_NAMES[n])}</b>` +
-      `<span class="pcdates">${blockDates(n)}</span>` +
-      (blk && blk.num === n ? `<span class="nowchip">now</span>` : "") + `</div>` +
-      `<div class="bhint">${esc(BLOCK_HINTS[n])} <span class="pcload">· ~${total} forms</span></div>` +
-      `<div class="pchips">` + Object.keys(plan).map(pid => {
-        const inf = PART_BY_ID[pid];
-        const done = Store.partDone(pid);
-        const full = done >= inf.required;
-        return `<button class="pchip${full ? " full" : ""}" data-action="open" data-code="${inf.code}">` +
-          `<b>${inf.label}</b> ×${plan[pid]} <span>${done}/${inf.required}</span></button>`;
-      }).join("") + `</div></div>`;
+    const chips = blockTargets(n, obsBy, cp, curNum), now = n === curNum, past = n < curNum;
+    h += `<div class="pcard${now ? " now" : past ? " past" : ""}"><div class="pctop"><b>Block ${n}: ${esc(BLOCK_NAMES[n])}</b>` +
+      (now ? `<span class="tag solid">now</span>` : "") + `<span class="pcdates">${blockDates(n)}</span></div>` +
+      `<div class="bhint">${esc(BLOCK_HINTS[n])}</div><div class="pchips">` +
+      (chips.length ? chips.map(c => `<button class="pchip${c.carried ? " carried" : c.past ? " past" : ""}" data-action="open" data-code="${c.code}">` +
+        `<b>${c.label}</b> ×${c.n}</button>`).join("") :
+        `<span class="muted">${past ? "Nothing logged here" : "Nothing left here"}</span>`) + `</div></div>`;
   }
   return h;
 }
