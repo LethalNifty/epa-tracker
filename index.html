@@ -2030,11 +2030,13 @@ const BIOPSY_DATA = [
 "use strict";
 const KEY = "epa-state-v1";
 const Store = {
-  state: {v:1, obs:{}, lines:{}, lastBackup:null, celebrated:[]},
+  state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
   load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) this.state = s; } catch(e){} this.migrate(); },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch(e){ this.persistFailed = true; } },
-  migrate() { this.state.celebrated ||= [];
+  migrate() {
+    delete this.state.celebrated;
+    if (this.state.recapSeen === undefined) this.state.recapSeen = null;
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved"; },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -2043,17 +2045,13 @@ const Store = {
   setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.state.obs[p][i].status = s; this.save(); } },
   toggleObsStatus(p, i) { const o = this.state.obs[p][i];
     o.status = o.status === "approved" ? "pending" : "approved"; this.save(); return o.status; },
+  setRecapSeen(key) { this.state.recapSeen = key; this.save(); },
   partApproved(p) { return (this.state.obs[p]||[]).filter(o => o.status === "approved").length; },
   partPending(p) { return (this.state.obs[p]||[]).filter(o => o.status !== "approved").length; },
   overallApproved() { let d = 0; for (const e of EPA_DATA) for (const p of e.parts)
     d += Math.min(this.partApproved(p.id), p.required); return d; },
   overallPending() { let n = 0; for (const k in this.state.obs)
     n += this.state.obs[k].filter(o => o.status !== "approved").length; return n; },
-  epaApproved(code) { const e = EPA_DATA.find(x => x.code === code); let done = 0, req = 0;
-    for (const p of e.parts) { req += p.required; done += Math.min(this.partApproved(p.id), p.required); }
-    return {done, req}; },
-  logTimestamps() { const out = []; for (const k in this.state.obs)
-    for (const o of this.state.obs[k]) if (o.ts) out.push(new Date(o.ts)); return out; },
   cycleLine(id, target) { const cur = this.lineVal(id), nv = (cur + 1) % (target + 1);
     if (nv === 0) { const meta = this.state.lines[id]; delete this.state.lines[id];
       if (meta && (meta.d || meta.n)) { this.state.lines[id] = {v:0, d:meta.d, n:meta.n}; } }
@@ -2066,16 +2064,14 @@ const Store = {
     let done = 0, req = 0;
     for (const p of e.parts) { req += p.required; done += Math.min(this.partDone(p.id), p.required); }
     return {done, req}; },
-  exportJSON() {
-    this.state.lastBackup = new Date().toISOString(); this.save();
-    return JSON.stringify(this.state, null, 1);
-  },
+  exportJSON() { return JSON.stringify(this.state, null, 1); },
+  markBackup() { this.state.lastBackup = new Date().toISOString(); this.save(); },
   importJSON(text) {
     try {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, celebrated:s.celebrated || []};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -2089,36 +2085,6 @@ function needsNudge(today) {
   if (!Store.hasData()) return false;
   const lb = Store.state.lastBackup;
   return !lb || (today - new Date(lb)) > 30 * 86400000;
-}
-const PROC_EPAS = ["F3","F4","C6","C8","P1"];
-function epaFullyApproved(code) { const p = Store.epaApproved(code); return p.done >= p.req; }
-const ACHIEVEMENTS = [
-  {id:"first", label:"First Steps", hint:"Log your first observation", earned:() => loggedTotal() >= 1},
-  {id:"pct25", label:"25% There", hint:"35 observations logged", earned:() => loggedTotal() >= 35},
-  {id:"pct50", label:"Halfway", hint:"70 observations logged", earned:() => loggedTotal() >= 70},
-  {id:"pct75", label:"75% There", hint:"105 observations logged", earned:() => loggedTotal() >= 105},
-  {id:"century", label:"Century", hint:"100 observations logged", earned:() => loggedTotal() >= 100},
-  {id:"closer", label:"Closer", hint:"First EPA fully approved", earned:() => EPA_DATA.some(e => epaFullyApproved(e.code))},
-  {id:"ttd", label:"Transition Complete", hint:"D1 & D2 fully approved", earned:() => ["D1","D2"].every(epaFullyApproved)},
-  {id:"foundations", label:"Foundations Complete", hint:"F1–F4 fully approved", earned:() => ["F1","F2","F3","F4"].every(epaFullyApproved)},
-  {id:"scope", label:"Scope Master", hint:"All procedural EPAs approved", earned:() => PROC_EPAS.every(epaFullyApproved)},
-  {id:"core", label:"Core Complete", hint:"C1–C9 fully approved", earned:() => ["C1","C2","C3","C4","C5","C6","C7","C8","C9"].every(epaFullyApproved)},
-  {id:"streak4", label:"4-Week Streak", hint:"Log something 4 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 4},
-  {id:"streak12", label:"12-Week Streak", hint:"12 weeks running", earned:() => streakInfo(window.__today||new Date()).best >= 12},
-  {id:"finisher", label:"Finisher", hint:"All 139 approved", earned:() => Store.overallApproved() >= 139},
-];
-function earnedAchievements() {
-  return ACHIEVEMENTS.filter(a => { try { return a.earned(); } catch(e) { return false; } }).map(a => a.id);
-}
-let pendingCelebration = null;
-function afterProgress() {
-  const now = earnedAchievements();
-  const fresh = now.filter(id => !Store.state.celebrated.includes(id));
-  if (!fresh.length) return;
-  Store.state.celebrated.push(...fresh); Store.save();
-  const order = ACHIEVEMENTS.map(a => a.id);
-  fresh.sort((a,b) => order.indexOf(b) - order.indexOf(a));  // highest-value first
-  pendingCelebration = ACHIEVEMENTS.find(a => a.id === fresh[0]);
 }
 let biopsyTerm = "", biopsyCat = "all";
 const BIOPSY_CATS = [["all","All"],["Esophagus","Esophagus"],["Stomach","Stomach"],
@@ -2157,86 +2123,12 @@ function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").re
 function overall() { let d=0, r=0;
   for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
   return {d, r}; }
-function loggedTotal() { let n=0; for (const k in Store.state.obs) n += Store.state.obs[k].length; return n; }
-const WEEK = 604800000;
-function mondayStamp(d) { const x = new Date(d); const off = (x.getDay()+6)%7;
-  x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return +x; }
-function weekKey(d) { const m = new Date(mondayStamp(d));
-  const jan1 = new Date(m.getFullYear(),0,1);
-  const wk = Math.floor((m - jan1)/WEEK)+1;
-  return m.getFullYear()+"-W"+String(wk).padStart(2,"0"); }
-function streakInfo(today) {
-  const stamps = [...new Set(Store.logTimestamps().map(mondayStamp))].sort((a,b)=>a-b);
-  if (!stamps.length) return {current:0, best:0};
-  let best=1, run=1;
-  for (let i=1;i<stamps.length;i++){ run = (stamps[i]-stamps[i-1]===WEEK) ? run+1 : 1; best=Math.max(best,run); }
-  const set = new Set(stamps);
-  const tw = mondayStamp(today);
-  let cursor = set.has(tw) ? tw : (set.has(tw-WEEK) ? tw-WEEK : null);
-  let cur = 0;
-  while (cursor !== null && set.has(cursor)) { cur++; cursor -= WEEK; }
-  return {current:cur, best:Math.max(best,cur)};
-}
-function projection(today) {
-  const logged = loggedTotal();
-  if (logged <= 0 || today < YEAR1_START) return {rate:0, date:null, onTrack:false};
-  const weeks = Math.max(1, (today - YEAR1_START)/WEEK);
-  const rate = logged/weeks;
-  const remaining = Math.max(0, 139 - logged);
-  const date = remaining === 0 ? today : new Date(+today + (remaining/rate)*WEEK);
-  return {rate, date, onTrack: date <= YEAR1_END};
-}
-function paceInfo(today) {
-  const blk = blockFor(today); if (!blk) return null;
-  let expected = 0;
-  for (let n=1;n<blk.num;n++) expected += Object.values(PLAN[n]).reduce((a,b)=>a+b,0);
-  expected += Object.values(PLAN[blk.num]).reduce((a,b)=>a+b,0) * (blk.week/4);
-  expected = Math.round(expected);
-  const logged = loggedTotal();
-  return {expected, logged, diff: logged - expected};
-}
 
-function viewStats() {
-  const today = window.__today || new Date();
-  const approved = Store.overallApproved(), pending = Store.overallPending(), logged = loggedTotal();
-  const s = streakInfo(today), pj = projection(today), earned = earnedAchievements();
-  let h = `<header class="top"><div class="htitle"><b>Stats</b>` +
-    `<span class="hcount">${approved} / 139</span></div>` +
-    `<div class="hbar"><i style="width:${Math.round(approved/139*100)}%"></i></div>` +
-    tabsHTML("stats") + `</header>`;
-  // headline
-  h += `<div class="statbig"><div class="statnum">${approved}<span>/ 139 approved</span></div>` +
-    `<div class="statsub">${pending} pending · ${logged} logged</div></div>`;
-  // streak + projection cards
-  h += `<div class="statgrid">`;
-  h += `<div class="statcard"><div class="sclabel">Weekly streak</div>` +
-    `<div class="scval">${s.current}<span> wk</span></div>` +
-    `<div class="scsub">best ${s.best} wk</div></div>`;
-  if (pj.date) {
-    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
-      `<div class="scval sm ${pj.onTrack ? "ok" : "warn"}">${MONTHS[pj.date.getMonth()]} ${pj.date.getFullYear()}</div>` +
-      `<div class="scsub">${pj.onTrack ? "on track for Year 1" : "past end of Year 1"}</div></div>`;
-  } else {
-    h += `<div class="statcard"><div class="sclabel">Projected finish</div>` +
-      `<div class="scval sm">—</div><div class="scsub">log a few to project</div></div>`;
-  }
-  h += `</div>`;
-  // achievements
-  h += `<section><h2>Achievements</h2><div class="achgrid">`;
-  for (const a of ACHIEVEMENTS) {
-    const got = earned.includes(a.id);
-    h += `<div class="ach${got ? " got" : ""}"><div class="achtop">${got ? "🏅" : "🔒"} <b>${esc(a.label)}</b></div>` +
-      `<div class="achhint">${esc(a.hint)}</div></div>`;
-  }
-  h += `</div></section>`;
-  return h;
-}
 function tabsHTML(active) {
   return `<div class="tabs">` +
     `<button class="tab${active === "home" ? " active" : ""}" data-action="tab" data-page="home">EPAs</button>` +
     `<button class="tab${active === "plan" ? " active" : ""}" data-action="tab" data-page="plan">Plan</button>` +
-    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button>` +
-    `<button class="tab${active === "stats" ? " active" : ""}" data-action="tab" data-page="stats">Stats</button></div>`;
+    `<button class="tab${active === "biopsy" ? " active" : ""}" data-action="tab" data-page="biopsy">Biopsy</button></div>`;
 }
 function viewBiopsy() {
   const list = biopsyFilter(biopsyTerm, biopsyCat);
@@ -2290,15 +2182,6 @@ function viewHome() {
   if (blk) {
     h += `<div class="banner"><b>Block ${blk.num} — ${esc(blk.name)} (wk ${blk.week}/4)</b>` +
       `<div class="bhint">${esc(BLOCK_HINTS[blk.num] || "")}</div>`;
-    const pace = paceInfo(today);
-    if (pace) {
-      if (Math.abs(pace.diff) <= 1) h += `<div class="pace ok">On pace ✓</div>`;
-      else if (pace.diff > 1) h += `<div class="pace ok">${pace.diff} ahead of plan 🚀</div>`;
-      else {
-        const codes = focusEpas.slice(0, 4).join(", ");
-        h += `<div class="pace behind">${-pace.diff} behind${codes ? ` — chase ${codes}` : ""}</div>`;
-      }
-    }
     const plan = PLAN[blk.num] || {};
     const pids = Object.keys(plan);
     if (pids.length) {
@@ -2452,14 +2335,7 @@ function render() {
   document.getElementById("app").innerHTML =
     route.page === "home" ? viewHome() :
     route.page === "plan" ? viewPlan() :
-    route.page === "biopsy" ? viewBiopsy() :
-    route.page === "stats" ? viewStats() : viewEpa(route.code);
-  if (pendingCelebration && route.page !== "biopsy") {
-    document.getElementById("app").insertAdjacentHTML("beforeend",
-      `<div class="celebrate" data-action="dismisscelebrate"><div class="cbox">` +
-      `<div class="cemoji">🎉</div><b>${esc(pendingCelebration.label)}</b>` +
-      `<div class="chint">Achievement unlocked — tap to dismiss</div></div></div>`);
-  }
+    route.page === "biopsy" ? viewBiopsy() : viewEpa(route.code);
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
 }
@@ -2470,11 +2346,9 @@ function dispatch(act, d) {
   else if (act === "logobs") {
     const i = Store.logObs(d.part);
     Store.setObsMeta(d.part, i, {d: fmtDate(window.__today || new Date())});
-    afterProgress();
     route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
   else if (act === "togglestatus") {
-    Store.toggleObsStatus(d.part, +d.obs); afterProgress(); route.keepScroll = true; render(); }
-  else if (act === "dismisscelebrate") { pendingCelebration = null; route.keepScroll = true; render(); }
+    Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
   else if (act === "editobs") {
     const k = d.part + "|" + d.obs;
     route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
@@ -2491,7 +2365,7 @@ function dispatch(act, d) {
     a.download = "epa-backup-" + fmtDate(new Date()) + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    route.keepScroll = true; render(); }
+    Store.markBackup(); route.keepScroll = true; render(); }
   else if (act === "importpick") { document.getElementById("importfile").click(); }
   else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
   else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();

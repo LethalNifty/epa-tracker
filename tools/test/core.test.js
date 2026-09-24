@@ -41,10 +41,40 @@ test("an old v1 backup without status imports as approved", () => {
 
 test("every page renders without throwing", () => {
   const h = load({today: "2026-09-24"});
-  for (const page of ["home", "plan", "biopsy", "stats"]) {
+  for (const page of ["home", "plan", "biopsy"]) {
     h.run(`route = {page: ${JSON.stringify(page)}}; render();`);
     assert.ok(h.html().length > 200, page);
   }
   h.run(`route = {page: "epa", code: "C2", from: "home"}; render();`);
   assert.match(h.html(), /chronic/i);
+});
+
+test("gamification is gone", () => {
+  const h = load({today: "2026-09-24"});
+  for (const name of ["ACHIEVEMENTS", "afterProgress", "streakInfo", "projection", "paceInfo", "viewStats", "loggedTotal"])
+    assert.equal(h.run(`typeof ${name}`), "undefined", name);
+  assert.doesNotMatch(h.html(), /data-page="stats"|Achievement/);
+});
+
+test("a backup that still carries 'celebrated' imports and drops it", () => {
+  const h = load({today: "2026-09-24"});
+  const text = JSON.stringify({v: 1, obs: {c2: [{d: "2026-08-01", status: "approved"}]}, lines: {}, celebrated: ["first"]});
+  assert.equal(h.val(`Store.importJSON(${JSON.stringify(text)}).ok`), true);
+  assert.equal(h.val(`"celebrated" in Store.state`), false);
+  assert.equal(h.val(`Store.state.recapSeen`), null);
+  assert.equal(h.saved().obs.c2.length, 1);
+});
+
+test("recapSeen persists", () => {
+  const h = load({today: "2026-09-24"});
+  h.run(`Store.setRecapSeen("4-1")`);
+  assert.equal(h.saved().recapSeen, "4-1");
+});
+
+test("exportJSON has no side effects; markBackup stamps the date", () => {
+  const h = load({today: "2026-09-24"});
+  h.run(`Store.exportJSON()`);
+  assert.equal(h.val(`Store.state.lastBackup`), null);
+  h.run(`Store.markBackup()`);
+  assert.match(h.saved().lastBackup, /^\d{4}-\d{2}-\d{2}T/);
 });
