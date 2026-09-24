@@ -2286,6 +2286,80 @@ function viewWeek() {
   if (chase.length) h += chaseHTML(chase);
   return h + finishHTML(paceFinish(obsBy, today), planFinish(cp));
 }
+let sheet = null, sheetError = null;
+function openSheet(pid, i) {
+  const o = pid && i !== undefined && Store.state.obs[pid] && Store.state.obs[pid][+i];
+  sheet = o
+    ? {mode: "edit", pid, i: +i, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
+    : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false};
+  sheetError = null;
+}
+function saveSheet() {
+  if (!sheet.pid) { sheetError = "Pick an EPA first."; return; }
+  const meta = {d: sheet.d, a: sheet.a.trim(), n: sheet.n.trim(), status: sheet.status};
+  const i = sheet.mode === "new" ? Store.logObs(sheet.pid) : sheet.i;
+  Store.setObsMeta(sheet.pid, i, meta);
+  sheet = null; sheetError = null;
+}
+// Every assessor name used so far, most recently logged first, one spelling each.
+function assessorNames() {
+  const all = [];
+  for (const k in Store.state.obs) for (const o of Store.state.obs[k]) if (o.a && o.a.trim()) all.push(o);
+  all.sort((x, y) => String(y.ts || "").localeCompare(String(x.ts || "")));
+  const out = [];
+  for (const o of all) {
+    const name = o.a.trim();
+    if (!out.some(x => x.toLowerCase() === name.toLowerCase())) out.push(name);
+  }
+  return out;
+}
+function assessorSuggestions(typed) {
+  const t = (typed || "").trim().toLowerCase();
+  return assessorNames().filter(n => !t || (n.toLowerCase().includes(t) && n.toLowerCase() !== t)).slice(0, 4);
+}
+function suggHTML(typed) {
+  return assessorSuggestions(typed).map(x =>
+    `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}</button>`).join("");
+}
+function sheetHTML() {
+  const s = sheet, cp = coachPlan(Store.state.obs, getToday());
+  const chip = pid => `<button class="pick${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">${PART_BY_ID[pid].label}</button>`;
+  let picker;
+  if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
+  else {
+    const quick = cp ? weekList(cp).filter(r => r.outstanding > 0).map(r => r.pid) : [];
+    if (s.pid && !quick.includes(s.pid)) quick.unshift(s.pid);
+    picker = !s.all && quick.length
+      ? `<div class="lbl">This week's EPAs</div><div class="pickrow">${quick.map(chip).join("")}` +
+        `<button class="pick ghost" data-action="pickall">All EPAs</button></div>`
+      : `<div class="lbl">All EPAs</div>` + ["ttd", "f", "core", "ttp"].map(st =>
+        `<div class="pickgrp">${STAGE_NAMES[st]}</div><div class="pickrow">` +
+        PARTS.filter(P => P.stage === st).map(P => chip(P.id)).join("") + `</div>`).join("");
+  }
+  const edit = s.mode === "edit";
+  return `<div class="scrim" data-action="closesheet"></div>` +
+    `<div class="sheet" role="dialog" aria-label="${edit ? "Edit" : "Log"} observation"><div class="grab"></div>` +
+    `<div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
+    `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>` + picker +
+    `<label class="lbl">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
+    `<label class="lbl">Assessor<input type="text" value="${esc(s.a)}" placeholder="Dr. Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
+    `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
+    `<label class="lbl">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` +
+    `<div class="seg"><button class="${s.status === "pending" ? "on" : ""}" data-action="sheetstatus" data-status="pending">Pending</button>` +
+    `<button class="${s.status === "approved" ? "on" : ""}" data-action="sheetstatus" data-status="approved">Approved</button></div>` +
+    (sheetError ? `<div class="err">${esc(sheetError)}</div>` : "") +
+    `<div class="sactions">${edit ? `<button class="btn danger" data-action="sheetdelete">Delete</button>` : ""}` +
+    `<button class="btn primary" data-action="sheetsave">${edit ? "Save" : "Save as " + s.status}</button></div></div>`;
+}
+// Keeps sheet fields in step with typing without re-rendering (which would
+// drop the keyboard); only the assessor suggestions redraw.
+function sheetField(t) {
+  const f = t.dataset && t.dataset.sheet;
+  if (!f || !sheet) return false;
+  sheet[f] = t.value;
+  if (f === "a") { const box = document.getElementById("sugg"); if (box) box.innerHTML = suggHTML(t.value); }
+  return true;
+}
 // Hands the backup to the iPhone share sheet when it can take a file,
 // otherwise downloads it. Only a completed hand-over counts as a backup.
 async function exportBackup() {
@@ -2373,53 +2447,40 @@ function viewPlan() {
   }
   return h;
 }
-function editorHTML(meta, dat) {
-  const isObs = dat.includes("data-obs");
-  const statusRow = isObs ?
-    `<div class="erow" style="margin-bottom:8px"><span class="elbl">Status</span>` +
-    `<button class="spill ${meta.status === "approved" ? "approved" : "pending"}" ` +
-    `data-action="togglestatus" ${dat}>${meta.status === "approved" ? "✓ Approved" : "⏳ Pending"}</button></div>` : "";
-  return `<div class="editor">` + statusRow +
-    `<label>Date <input type="date" value="${esc(meta.d || "")}" data-field="d" ${dat}></label>` +
-    `<label>Note <input type="text" value="${esc(meta.n || "")}" placeholder="assessor, case details…" data-field="n" ${dat}></label>` +
-    `<div class="erow">` + (isObs ?
-      `<button class="del" data-action="delobs" ${dat}>Delete</button>` : `<span></span>`) +
-    `<button class="donebtn" data-action="closeedit">Done</button></div></div>`;
+function lineEditorHTML(id) {
+  const meta = Store.state.lines[id] || {};
+  return `<div class="editor">` +
+    `<label>Date <input type="date" value="${esc(meta.d || "")}" data-field="d" data-line="${id}"></label>` +
+    `<label>Note <input type="text" value="${esc(meta.n || "")}" placeholder="Assessor, case details" data-field="n" data-line="${id}"></label>` +
+    `<div class="erow"><button data-action="closeedit">Done</button></div></div>`;
 }
 function partBlock(p) {
-  const done = Store.partDone(p.id);
+  const done = Store.partDone(p.id), pend = Store.partPending(p.id), appr = Store.partApproved(p.id);
   const pct = Math.min(100, p.required ? Math.round(done / p.required * 100) : 0);
-  let h = `<div class="part">`;
-  if (p.name) h += `<h3>${esc(p.name)}</h3>`;
-  const pend = Store.partPending(p.id), appr = Store.partApproved(p.id);
-  h += `<div class="pprog"><b>${done}</b> / ${p.required} observations` +
+  let h = `<div class="part">` + (p.name ? `<h3>${esc(p.name)}</h3>` : "") +
+    `<div class="pprog"><b>${done}</b> / ${p.required} observations` +
     (pend ? ` · <span class="pendtxt">${pend} pending</span>` : "") +
-    (appr >= p.required ? ` <span class="ok">✓ complete</span>` : "") + `</div>` +
+    (appr >= p.required ? ` · <span class="ok">complete</span>` : "") + `</div>` +
     `<div class="pbarBig"><i style="width:${pct}%"></i></div>`;
-  const obs = Store.state.obs[p.id] || [];
-  for (let i = 0; i < obs.length; i++) {
-    const o = obs[i];
+  (Store.state.obs[p.id] || []).forEach((o, i) => {
     const appd = o.status === "approved";
     h += `<div class="obsrow">` +
       `<button class="spill ${appd ? "approved" : "pending"}" data-action="togglestatus" data-part="${p.id}" data-obs="${i}">` +
-      `${appd ? "✓ Approved" : "⏳ Pending"}</button>` +
-      `<button class="ometabtn" data-action="editobs" data-part="${p.id}" data-obs="${i}">` +
-      `<span class="onum">#${i+1}</span> ${esc(o.d || "no date")}${o.n ? " · " + esc(o.n) : ""}</button></div>`;
-    if (route.editObs === p.id + "|" + i)
-      h += editorHTML(o, `data-part="${p.id}" data-obs="${i}"`);
-  }
-  h += `<button class="logbtn" data-action="logobs" data-part="${p.id}">+ Log observation</button>`;
+      `${ic(appd ? "check" : "clock")}${appd ? "Approved" : "Pending"}</button>` +
+      `<button class="ometabtn" data-action="sheet" data-part="${p.id}" data-obs="${i}">` +
+      `<span class="onum">#${i + 1}</span> ${esc(o.d || "no date")}${o.a ? " · " + esc(o.a) : ""}${o.n ? " · " + esc(o.n) : ""}</button></div>`;
+  });
+  h += `<button class="logbtn" data-action="sheet" data-part="${p.id}">${ic("plus")}Log observation</button>`;
   if (p.items.length) {
     h += `<div class="ctx"><h4>Context checklist</h4>`;
     for (const it of p.items) {
       if (it.h) { h += `<div class="ihead">${esc(it.h)}</div>`; continue; }
       const v = Store.lineVal(it.id), ldone = v >= it.target;
-      const box = it.target === 1 ? (v ? "✓" : "") : `${v}/2`;
+      const box = it.target === 1 ? (v ? ic("check") : "") : `${v}/2`;
       h += `<div class="line${ldone ? " ldone" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
         `<span class="lbox">${box}</span><span class="llab">${esc(it.label)}</span>` +
-        `<button class="lmeta" data-action="linemeta" data-line="${it.id}">…</button></div>`;
-      if (route.editLine === it.id)
-        h += editorHTML(Store.state.lines[it.id] || {}, `data-line="${it.id}"`);
+        `<button class="lmeta" data-action="linemeta" data-line="${it.id}" aria-label="Date and note">…</button></div>`;
+      if (route.editLine === it.id) h += lineEditorHTML(it.id);
     }
     h += `</div>`;
   }
@@ -2458,7 +2519,7 @@ function render() {
   const p = route.page;
   const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
     p === "biopsy" ? viewBiopsy() : viewEpa(route.code);
-  document.getElementById("app").innerHTML = body + navHTML(p === "epa" ? route.from : p);
+  document.getElementById("app").innerHTML = body + navHTML(p === "epa" ? route.from : p) + (sheet ? sheetHTML() : "");
   if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
 }
@@ -2466,21 +2527,22 @@ function dispatch(act, d) {
   if (act === "open") { route = {page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page}; render(); }
   else if (act === "back") { route = {page: route.from || "epas"}; render(); }
   else if (act === "tab") { route = {page: d.page}; render(); }
-  else if (act === "logobs") {
-    const i = Store.logObs(d.part);
-    Store.setObsMeta(d.part, i, {d: fmtDate(getToday())});
-    route.editObs = d.part + "|" + i; route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "sheet") { openSheet(d.part, d.obs); route.keepScroll = true; render(); }
+  else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
+  else if (act === "pickassessor") { sheet.a = d.name; route.keepScroll = true; render(); }
+  else if (act === "sheetstatus") { sheet.status = d.status; route.keepScroll = true; render(); }
+  else if (act === "sheetsave") { saveSheet(); route.keepScroll = true; render(); }
+  else if (act === "sheetdelete") {
+    if (confirm("Delete this observation?")) { Store.removeObs(sheet.pid, sheet.i); sheet = null; }
+    route.keepScroll = true; render(); }
   else if (act === "togglestatus") { Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
   else if (act === "dismissrecap") { Store.setRecapSeen(d.key); route.keepScroll = true; render(); }
   else if (act === "chaseok") { Store.setObsStatus(d.part, +d.obs, "approved"); chaseOpen = true; route.keepScroll = true; render(); }
-  else if (act === "editobs") {
-    const k = d.part + "|" + d.obs;
-    route.editObs = route.editObs === k ? null : k; route.editLine = null; route.keepScroll = true; render(); }
-  else if (act === "delobs") { Store.removeObs(d.part, +d.obs); route.editObs = null; route.keepScroll = true; render(); }
   else if (act === "cycleline") { Store.cycleLine(d.line, +d.target); route.keepScroll = true; render(); }
-  else if (act === "linemeta") {
-    route.editLine = route.editLine === d.line ? null : d.line; route.editObs = null; route.keepScroll = true; render(); }
-  else if (act === "closeedit") { route.editObs = null; route.editLine = null; route.keepScroll = true; render(); }
+  else if (act === "linemeta") { route.editLine = route.editLine === d.line ? null : d.line; route.keepScroll = true; render(); }
+  else if (act === "closeedit") { route.editLine = null; route.keepScroll = true; render(); }
   else if (act === "dismissnudge") { nudgeDismissed = true; route.keepScroll = true; render(); }
   else if (act === "export") { exportBackup(); }
   else if (act === "importpick") { document.getElementById("importfile").click(); }
@@ -2493,6 +2555,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
+  if (sheetField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -2503,6 +2566,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
+  if (sheetField(t)) return;
   if (t.id === "importfile") {
     const f = t.files && t.files[0];
     if (!f) return;
@@ -2518,9 +2582,7 @@ document.getElementById("app").addEventListener("change", ev => {
     rd.readAsText(f);
     return;
   }
-  if (!d.field) return;
-  if (d.part !== undefined && d.obs !== undefined) Store.setObsMeta(d.part, +d.obs, {[d.field]: t.value});
-  else if (d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
+  if (d.field && d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
 Store.load();
 render();
