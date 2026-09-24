@@ -96,3 +96,51 @@ function attrDate(o) {
   }
   return null;
 }
+
+// Rotation types where the July plan ever placed this part.
+function feasibleFamilies(pid) {
+  const out = [];
+  for (const b in PLAN) if (PLAN[b][pid] > 0 && !out.includes(BLOCK_FAMILY[b])) out.push(BLOCK_FAMILY[b]);
+  return out;
+}
+
+// The recalculated plan on `today`. Per part: logged (all of it, or only up to
+// opts.asOf), inCur and inWeek (logged in the current block and week),
+// planned[b] (the July plan's share still to do in block b, filled in date
+// order so getting ahead empties the latest blocks first) and carried[b]
+// (missed earlier; placed on the next block whose rotation suits the part,
+// else on the current block as overdue). Null outside Year 1.
+function coachPlan(obsByPart, today, opts) {
+  const blk = blockFor(today);
+  if (!blk) return null;
+  const cur = blk.num;
+  const cutoff = opts && opts.asOf ? dayIndex(opts.asOf) : null;
+  const parts = {};
+  for (const P of PARTS) {
+    const list = (obsByPart[P.id] || []).filter(o => {
+      if (cutoff === null) return true;
+      const d = attrDate(o);
+      return !d || dayIndex(d) <= cutoff;
+    });
+    let inCur = 0, inWeek = 0;
+    for (const o of list) {
+      const d = attrDate(o), b = d && blockFor(d);
+      if (b && b.num === cur) { inCur++; if (b.week === blk.week) inWeek++; }
+    }
+    let left = Math.max(0, P.required - list.length);
+    const planned = {}, carried = {};
+    for (let b = cur; b <= 13; b++) {
+      const cap = Math.max(0, (PLAN[b][P.id] || 0) - (b === cur ? inCur : 0));
+      const take = Math.min(cap, left);
+      if (take > 0) { planned[b] = take; left -= take; }
+    }
+    if (left > 0) {
+      const fams = feasibleFamilies(P.id);
+      let target = cur;
+      for (let b = cur; b <= 13; b++) if (fams.includes(BLOCK_FAMILY[b])) { target = b; break; }
+      carried[target] = left;
+    }
+    parts[P.id] = {logged: list.length, inCur, inWeek, planned, carried};
+  }
+  return {block: blk, parts};
+}
