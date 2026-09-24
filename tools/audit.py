@@ -85,6 +85,17 @@ def main():
         for s in badsrc:
             if s not in ("mb", "us"):
                 errs.append(f"BIOPSY_DATA: bad src '{s}'")
+        nmb = len(re.findall(r'src:"mb"', blob))
+        nus = len(re.findall(r'src:"us"', blob))
+        nsec = len(re.findall(r'sec:\["[^"]+","[^"]+","[^"]+"\]', blob))
+        nref = len(re.findall(r'ref:\{short:"[^"]+", label:"[^"]+", url:(?:"https://[^"]+"|null)\}', blob))
+        if nsec != nmb:
+            errs.append(f"BIOPSY_DATA: {nsec} sec entries for {nmb} Manitoba protocols")
+        if nref != nus:
+            errs.append(f"BIOPSY_DATA: {nref} ref entries for {nus} other-source protocols")
+    pdf = 'const MB_PDF = "https://healthproviders.sharedhealthmb.ca/files/clinical-guideline-gi-endoscopic-biopsy.pdf";'
+    if pdf not in src:
+        errs.append("MB_PDF link missing or changed")
 
     if errs:
         print("AUDIT FAIL")
