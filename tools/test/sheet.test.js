@@ -16,7 +16,7 @@ test("the + button opens an empty log sheet; saving without an EPA asks for one"
 test("a week row opens the sheet with that EPA picked; save logs it", () => {
   const h = load({today: "2026-09-24"});
   h.click("sheet", {part: "c5"});
-  assert.match(h.html(), /class="pick on" data-action="pickpart" data-part="c5"/);
+  assert.match(h.html(), /class="pick st-core on" data-action="pickpart" data-part="c5"/);
   h.run(`sheet.a = "Dr. A"; sheet.n = "TPN review";`);
   h.click("sheetstatus", {status: "approved"});
   assert.match(h.html(), />Save as approved</);
@@ -61,7 +61,7 @@ test("All EPAs shows every part grouped by stage", () => {
   const h = load({today: "2026-09-24"});
   h.click("sheet");
   h.click("pickall");
-  assert.match(h.html(), /<div class="pickgrp">Core<\/div>/);
+  assert.match(h.html(), /<div class="pickgrp mono st-core"><i><\/i>Core<\/div>/);
   assert.equal((h.html().match(/data-action="pickpart"/g) || []).length, 21);
 });
 
@@ -73,4 +73,50 @@ test("EPA detail: log button opens the sheet; no emoji or check glyphs left", ()
   h.click("sheet", {part: "c2"});
   h.click("closesheet");
   assert.doesNotMatch(h.html(), /class="sheet"/);
+});
+
+test("logging shows a toast that can undo it", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("sheet", {part: "f2"});
+  h.click("sheetsave");
+  assert.match(h.html(), /F2 logged as pending/);
+  assert.equal(h.saved().obs.f2.length, 1);
+  h.click("undo");
+  assert.equal(h.saved().obs.f2.length, 0);
+  assert.doesNotMatch(h.html(), /id="toast"/);
+});
+
+test("a deleted observation can be brought back", () => {
+  const h = load({today: "2026-09-24", state: state({f2: [obs("2026-09-20", {a: "Dr. A"}), obs("2026-09-21", {a: "Dr. B"})]})});
+  h.click("sheet", {part: "f2", obs: "0"});
+  h.click("sheetdelete");
+  assert.deepEqual(h.saved().obs.f2.map(o => o.a), ["Dr. B"]);
+  h.click("undo");
+  assert.deepEqual(h.saved().obs.f2.map(o => o.a), ["Dr. A", "Dr. B"]);
+});
+
+test("approving from the chase list can be undone", () => {
+  const h = load({today: "2026-09-24", state: state({c2: [obs("2026-09-01", {status: "pending"})]})});
+  h.click("chaseok", {part: "c2", obs: "0"});
+  assert.match(h.html(), /C2 marked approved/);
+  h.click("undo");
+  assert.equal(h.saved().obs.c2[0].status, "pending");
+});
+
+test("date shortcuts: Today is picked by default, Yesterday sets the day before", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("sheet");
+  assert.match(h.html(), /class="pick ghost on" data-action="sheetdate" data-date="2026-09-24">Today/);
+  h.click("sheetdate", {date: "2026-09-23"});
+  assert.equal(h.val("sheet.d"), "2026-09-23");
+  assert.match(h.html(), /class="pick ghost on" data-action="sheetdate" data-date="2026-09-23">Yesterday/);
+});
+
+test("the sheet slides in when it opens, not again on every tap inside it", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("sheet");
+  assert.match(h.html(), /class="sheet fresh"/);
+  h.click("pickpart", {part: "f2"});
+  assert.doesNotMatch(h.html(), /class="sheet fresh"/);
+  assert.match(h.html(), /class="sheet"/);
 });

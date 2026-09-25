@@ -43,7 +43,9 @@ function load(opts = {}) {
     },
   };
   const ctx = {
-    console, setTimeout, clearTimeout,
+    console, clearTimeout,
+    // Unref'd so a pending toast timer never holds the test process open.
+    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t.unref) t.unref(); return t; },
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
       setItem: (k, v) => { store.set(k, String(v)); },
