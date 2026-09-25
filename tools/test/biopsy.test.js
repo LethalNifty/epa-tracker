@@ -40,5 +40,6 @@ test("biopsy Notes rows are not restyled by the backup note", () => {
   assert.doesNotMatch(html, /^\.note\{/m);
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "epas"});
-  assert.match(h.html(), /<div class="bnote">Last backup: never<\/div>/);
+  assert.match(h.html(), /Last backup: never/);
+  assert.match(h.html(), /<p class="bnote mono">/);
 });
