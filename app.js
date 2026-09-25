@@ -99,9 +99,6 @@ let route = {page:"week"};
 function getToday() { return window.__today || new Date(); }
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function ic(name, cls) { return `<svg class="ic${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
-function overall() { let d=0, r=0;
-  for (const e of EPA_DATA) { const p = Store.epaProgress(e.code); d += p.done; r += p.req; }
-  return {d, r}; }
 const pct = (n, of) => of ? Math.round(n / of * 1000) / 10 : 0;
 
 // Logged, approved and pending for a set of parts, each capped at what is required.
@@ -148,6 +145,24 @@ function dialSVG(segs, o) {
   }
   const rings = (o.rings || []).map(r => `<circle class="fold-ring" cx="${c}" cy="${c}" r="${r}"/>`).join("");
   return `<svg class="dial${o.cls ? " " + o.cls : ""}" viewBox="0 0 ${S} ${S}" aria-hidden="true">${rings}${lines}</svg>`;
+}
+// The small version for one EPA: a ring of arcs, one per required observation,
+// with a wider gap between parts. Reads well even with only a handful.
+function ringSVG(segs, o) {
+  const S = o.size, c = S / 2, r = o.r, gap = o.gap || 0, cut = o.cut || 0.16;
+  const slots = segs.reduce((a, s) => a + s.total + gap, 0), step = 2 * Math.PI / slots;
+  const f = v => Math.round(v * 100) / 100;
+  let k = gap / 2, arcs = "";
+  for (const s of segs) {
+    for (let j = 0; j < s.total; j++, k++) {
+      const kind = j < s.approved ? "lit" : j < s.approved + s.pending ? "pend" : "off";
+      const a0 = -Math.PI / 2 + (k + cut / 2) * step, a1 = a0 + (1 - cut) * step;
+      arcs += `<path class="t ${kind}${kind === "off" && s.next ? " next" : ""} st-${s.stage}" d="M${f(c + r * Math.cos(a0))} ${f(c + r * Math.sin(a0))}` +
+        `A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${f(c + r * Math.cos(a1))} ${f(c + r * Math.sin(a1))}"/>`;
+    }
+    k += gap;
+  }
+  return `<svg class="dial ring" viewBox="0 0 ${S} ${S}" aria-hidden="true">${arcs}</svg>`;
 }
 const stageSegs = cur => STAGE_ORDER.map(st => {
   const t = stageTally(st);
@@ -241,7 +256,7 @@ function recapHTML(rc, rows) {
 function thisWeekHTML(rows, stage) {
   const due = rows.reduce((a, r) => a + r.outstanding, 0);
   let h = `<section class="sec"><div class="sec-head"><h2>This week</h2><span class="mono">${stage ? STAGE_NAMES[stage] + " · " : ""}${due} due</span></div>`;
-  if (!rows.length) return h + `<div class="card empty">Nothing due this week. Log anything you get.</div></section>`;
+  if (!rows.length) return h + `<div class="card empty">${stage ? "Nothing due this week. Log anything you get." : "Every required observation is logged."}</div></section>`;
   h += `<div class="card list st-${stage}">`;
   for (const r of rows) {
     const done = r.outstanding === 0;
@@ -277,7 +292,7 @@ function finishHTML(pace, plan, today) {
     (r.done ? `<div class="fin-val ok">Done</div>` : r.date ?
       `<div class="fin-val ${r.onTrack ? "ok" : "warn"}">${fmt(r.date)}</div>` + (note ? `<div class="fin-note">${note}</div>` : "") :
       `<div class="fin-val">–</div><div class="fin-note">${empty}</div>`) + `</div>`;
-  const paceNote = pace.date ? `${pace.n} logged in the last ${pace.weeks} week${pace.weeks === 1 ? "" : "s"}` : "";
+  const paceNote = pace.date ? `${pace.n} in the last ${pace.weeks} week${pace.weeks === 1 ? "" : "s"}` : "";
   const bar = (r, cls) => r.done ? `<i class="${cls}" style="width:${onSpan(today)}%"></i>` : r.date ?
     `<i class="${cls}${dayIndex(r.date) > SPAN ? " over" : ""}" style="width:${onSpan(r.date)}%"></i>` : "";
   const goal = pct(363, SPAN), now = onSpan(today);
@@ -302,11 +317,11 @@ function viewWeek() {
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>`;
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
+  h += thisWeekHTML(rows, cp.active);
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
   }
-  h += thisWeekHTML(rows, cp.active);
   const look = lookFor(rows, id => Store.lineVal(id));
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
@@ -425,7 +440,7 @@ function viewEpa(code) {
   const segs = e.parts.map(p => { const pt = tally([PART_BY_ID[p.id]]);
     return {stage: st, total: p.required, approved: pt.approved, pending: pt.pending, next: true}; });
   let h = `<header class="ph"><button class="back" data-action="back">${ic("back")}${backTo}</button></header>` +
-    `<div class="epa-hero st-${st}"><div class="dial-wrap">${dialSVG(segs, {size: 104, r2: 50, r1: 37, r1off: 43, gap: e.parts.length > 1 ? 2 : 0, cls: "sm"})}` +
+    `<div class="epa-hero st-${st}"><div class="dial-wrap">${ringSVG(segs, {size: 104, r: 45, gap: e.parts.length > 1 ? .6 : 0})}` +
     `<div class="dial-center"><div class="dial-num">${t.logged}</div><div class="dial-lbl">of ${t.req}</div></div></div>` +
     `<div><p class="eyebrow mono">${e.code} · ${STAGE_NAMES[st]}</p><h1 class="detail-title">${esc(e.title)}</h1>` +
     `<div class="ph-meta mono">${t.approved} approved · ${t.pending} pending</div></div></div>`;
@@ -620,6 +635,7 @@ async function exportBackup() {
 
 // ---- Render and dispatch ---------------------------------------------------------
 let enterNext = true;
+const scrollMemo = {};
 function render() {
   const p = route.page;
   let html;
@@ -636,7 +652,8 @@ function render() {
   const countUp = p === "week" && !introDone;
   if (p === "week") introDone = true;
   enterNext = false; sheetFresh = false; toastFresh = false;
-  if (!route.keepScroll) window.scrollTo(0, 0);
+  if (route.restoreY !== undefined) { window.scrollTo(0, route.restoreY); delete route.restoreY; }
+  else if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
   if (countUp) countUpDial();
 }
@@ -655,11 +672,18 @@ function countUpDial() {
   el.textContent = "0";
   requestAnimationFrame(step);
 }
-function go(next) { route = next; enterNext = true; render(); }
+// Navigate. Tabs and Back return to where that page was last scrolled.
+function go(next, restore) {
+  if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
+  route = next;
+  if (restore && scrollMemo[next.page]) route.restoreY = scrollMemo[next.page];
+  enterNext = true;
+  render();
+}
 function dispatch(act, d) {
   if (act === "open") go({page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page});
-  else if (act === "back") go({page: route.from || "epas"});
-  else if (act === "tab") { if (route.page !== d.page) go({page: d.page}); else { window.scrollTo(0, 0); } }
+  else if (act === "back") go({page: route.from || "epas"}, true);
+  else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo(0, 0); }
   else if (act === "sheet") { openSheet(d.part, d.obs); route.keepScroll = true; render(); }
   else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }

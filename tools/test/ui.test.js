@@ -119,7 +119,7 @@ test("recap separates what's carried onto this week from what moved to a later b
 
 test("pace estimate says what it is based on", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
-  assert.match(h.html(), /<div class="fin-note">16 logged in the last 8 weeks<\/div>/);
+  assert.match(h.html(), /<div class="fin-note">16 in the last 8 weeks<\/div>/);
 });
 
 test("Plan: completion up top, Foundations now, Core after", () => {
@@ -189,4 +189,21 @@ test("a screen that throws shows a recovery screen with export, not a blank page
   assert.match(h.html(), /This screen hit a problem/);
   assert.match(h.html(), /data-action="export"/);
   assert.match(h.html(), /data-action="reload"/);
+});
+
+test("This week comes before the week in review", () => {
+  const h = load({today: "2026-09-24"});
+  assert.ok(h.html().indexOf("<h2>This week</h2>") < h.html().indexOf("Your week, Jared"));
+});
+
+test("Back returns to where the list was scrolled", () => {
+  const h = load({today: "2026-09-24"});
+  const pos = [];
+  h.ctx.scrollTo = (x, y) => { pos.push(y); h.ctx.scrollY = y; };
+  h.click("tab", {page: "epas"});
+  h.ctx.scrollY = 640;
+  h.click("open", {code: "C2"});
+  assert.equal(pos.at(-1), 0);        // the detail opens at the top
+  h.click("back");
+  assert.equal(pos.at(-1), 640);      // and Back lands where you were
 });
