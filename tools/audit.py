@@ -94,7 +94,7 @@ def main():
         if nref != nus:
             errs.append(f"BIOPSY_DATA: {nref} ref entries for {nus} other-source protocols")
     pdf = 'const MB_PDF = "https://healthproviders.sharedhealthmb.ca/files/clinical-guideline-gi-endoscopic-biopsy.pdf";'
-    if pdf not in src:
+    if pdf not in (APP.parent / "app.js").read_text(encoding="utf-8"):
         errs.append("MB_PDF link missing or changed")
 
     if errs:
