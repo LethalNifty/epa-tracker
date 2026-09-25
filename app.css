@@ -72,6 +72,7 @@ input { font: inherit; }
   font-variant-numeric: tabular-nums; }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--dim); }
+.spaced { margin-top: 14px; }
 
 /* Page header */
 .ph { padding: calc(env(safe-area-inset-top) + 20px) 2px 6px; }
@@ -124,7 +125,7 @@ section.sec { margin-top: 28px; }
 .warnbar { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-md);
   background: color-mix(in srgb, var(--mucosa) 16%, transparent); color: #ffd9d3; font-size: 14px; }
 .nudge { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 8px 10px 14px; font-size: 14px; }
-.nudge .ic { color: var(--capillary); }
+.nudge > .ic { color: var(--capillary); }
 .nudge span { flex: 1; }
 .nudge .btn { width: auto; min-height: 36px; padding: 0 14px; }
 
@@ -132,7 +133,7 @@ section.sec { margin-top: 28px; }
 .monitor { --cut: 20px; position: relative; margin-top: 16px; padding: 1px; background: var(--fold-2);
   clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)),
     calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut)); }
-.monitor-in { position: relative; padding: 14px 14px 12px;
+.monitor-in { position: relative; padding: 12px 14px 11px;
   clip-path: polygon(calc(var(--cut) - .4px) 0, calc(100% - var(--cut) + .4px) 0, 100% calc(var(--cut) - .4px),
     100% calc(100% - var(--cut) + .4px), calc(100% - var(--cut) + .4px) 100%, calc(var(--cut) - .4px) 100%,
     0 calc(100% - var(--cut) + .4px), 0 calc(var(--cut) - .4px));
@@ -140,7 +141,7 @@ section.sec { margin-top: 28px; }
 .ov { display: flex; justify-content: space-between; gap: 10px; color: var(--dim); position: relative; z-index: 1; }
 .ov .pend { color: var(--capillary); }
 .ov .ok { color: var(--nbi-ink); }
-.dial-wrap { position: relative; width: min(100%, 300px); margin: 2px auto 0; aspect-ratio: 1; }
+.dial-wrap { position: relative; width: min(100%, 272px); margin: 0 auto; aspect-ratio: 1; }
 .dial { display: block; width: 100%; height: 100%; overflow: visible; }
 .dial .t { stroke-width: 2.3; stroke-linecap: round; }
 .dial .t.off { stroke: var(--fold-2); }
@@ -150,10 +151,10 @@ section.sec { margin-top: 28px; }
 .dial .fold-ring { fill: none; stroke: var(--fold); stroke-width: 1; }
 .dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; pointer-events: none; }
-.dial-num { font-size: 58px; line-height: 1; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.dial-num { font-size: 54px; line-height: 1; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .dial-lbl { margin-top: 6px; color: var(--dim); font-size: 13.5px; }
 .dial-sub { margin-top: 10px; color: var(--c, var(--nbi-ink)); }
-.dial.sm .t { stroke-width: 3; }
+.dial.ring .t { fill: none; stroke-width: 6.5; stroke-linecap: butt; }
 
 /* Intro: the dial lights up tick by tick the first time it is drawn. */
 @keyframes tickOn { from { stroke: var(--fold-2); } }
@@ -515,7 +516,7 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .toast.fresh { animation: toastIn .3s var(--ease-out) both; }
 
 /* Crash screen */
-.crash { margin-top: 40px; padding: 22px 18px; text-align: center; }
+.crash { margin-top: calc(env(safe-area-inset-top) + 28px); padding: 22px 18px; text-align: center; }
 .crash h1 { margin: 12px 0 6px; font-size: 20px; font-weight: 620; }
 .crash p { margin: 0 0 18px; color: var(--dim); font-size: 14px; }
 .crash .mark { width: 64px; height: 64px; margin: 0 auto; }
