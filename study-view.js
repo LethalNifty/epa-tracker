@@ -16,10 +16,17 @@ function studyState() {
   const today = getToday(), s = Store.state.study, str = studyStretchList();
   return {today, s, str, t: studyTonight(today, s, str)};
 }
-// "Ch 3" and a title for run indices [from, to); two chapters read as one line.
+// "Ch 3" and a title for run indices [from, to). A range across two
+// chapters is named for the one it spends most pages in; the other is a note
+// ("Starts with the last page of Ch 7").
 function studyWhat(from, to) {
   const pc = studyPieces(from, to), items = pc.map(x => x.item).filter((v, i, a) => a.indexOf(v) === i);
-  return {lbl: items.map(studyItemLabel).join(" → "), title: items.map(it => it.title).join(", then "), items};
+  const main = pc.slice().sort((a, b) => (b.z - b.a) - (a.z - a.a))[0];
+  const side = pc.filter(x => x !== main).map(x => {
+    const pages = x.a === x.z ? (x.z === x.item.p[1] ? "the last page" : x.z === x.item.p[0] ? "the first page" : "p. " + x.a) : "pp. " + x.a + "–" + x.z;
+    return (pc.indexOf(x) < pc.indexOf(main) ? "Starts with " : "Ends with ") + pages + " of " + studyItemLabel(x.item);
+  });
+  return {lbl: items.map(studyItemLabel).join(" → "), title: main ? main.item.title : "", note: side.join(". "), items};
 }
 const studyPages = n => n + (n === 1 ? " page" : " pages");
 function studyDeltaLabel(dl) {
@@ -57,7 +64,7 @@ function studyHeroHTML(st) {
   } else if (t.kind === "read" && !t.ahead && !t.done) {
     const w = studyWhat(t.from, t.to);
     body = `<div class="sm-ch mono">${w.lbl}</div><div class="sm-title">${esc(w.title)}</div>` + range(t.from, t.to) +
-      `<div class="sm-sub">${studyPages(t.n)} · PDF ${studyPdfPP(t.from, t.to)}` +
+      `<div class="sm-sub">${w.note ? esc(w.note) + ". " : ""}${studyPages(t.n)} · PDF ${studyPdfPP(t.from, t.to)}` +
       (t.partial ? ` · <span class="flu">read to p. ${studyAt(t.now - 1).page}</span>` : "") + `</div>`;
     strip = w.items; tn = {from: t.from, to: t.to};
   } else if (t.kind === "read" && t.done) {
