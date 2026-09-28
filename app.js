@@ -14,7 +14,10 @@ const Store = {
     const sd = this.state.study;
     this.state.study = {log: sd && typeof sd.log === "object" && sd.log ? sd.log : {},
       q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : []};
-    for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved"; },
+    for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved";
+    const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
+    this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
+      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null}; },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
@@ -49,13 +52,13 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
   hasData() {
     return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
-      Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0;
+      Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0 || this.state.scopes.cases.length > 0;
   },
   // Study: the bookmark is saved against the day it was set.
   setStudyCursor(c, day) {
@@ -67,7 +70,27 @@ const Store = {
     this.state.study.pauses.sort((x, y) => x.a < y.a ? -1 : x.a > y.a ? 1 : 0); this.save(); },
   removePause(i) { this.state.study.pauses.splice(i, 1); this.save(); },
   studySnapshot() { return JSON.parse(JSON.stringify(this.state.study)); },
-  restoreStudy(snap) { this.state.study = snap; this.save(); }
+  restoreStudy(snap) { this.state.study = snap; this.save(); },
+  // Scope log: cases, the staff roster (names live only here and in backups), learned words.
+  addCases(list) { this.state.scopes.cases.push(...list); this.save(); },
+  updateCase(id, c) { const i = this.state.scopes.cases.findIndex(x => x.id === id); if (i >= 0) { this.state.scopes.cases[i] = c; this.save(); } },
+  removeCase(id) { this.state.scopes.cases = this.state.scopes.cases.filter(x => x.id !== id); this.save(); },
+  scopeSnapshot() { return JSON.parse(JSON.stringify(this.state.scopes)); },
+  restoreScopes(snap) { this.state.scopes = JSON.parse(JSON.stringify(snap)); this.save(); },
+  addStaff(name) {
+    const nm = String(name || "").trim().slice(0, 60), hit = this.state.scopes.staff.find(p => scopeLetters(p.name) === scopeLetters(nm));
+    if (hit) { hit.hidden = false; this.save(); return hit.id; }
+    const id = "s" + scopeId();
+    this.state.scopes.staff.push({id, name: nm, aliases: [], hidden: false}); this.save(); return id; },
+  learnStaff(id, heard) {
+    const p = this.state.scopes.staff.find(x => x.id === id), h = String(heard || "").trim().toLowerCase();
+    if (!p || !h || scopeStaffScore(h, p) >= 3) return;
+    p.aliases = (p.aliases || []).concat(h).slice(-8); this.save(); },
+  learn(kind, heard, code) {
+    const h = String(heard || "").trim().toLowerCase();
+    if (!h) return;
+    this.state.scopes.learned = this.state.scopes.learned.filter(l => l.heard !== h).concat({kind, heard: h, code}).slice(-200); this.save(); },
+  markReport(iso) { this.state.scopes.lastReport = iso; this.save(); }
 };
 
 let nudgeDismissed = false, backupError = null;
@@ -184,7 +207,7 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 });
 
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
-const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["biopsy", "Biopsy", "jar"]];
+const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"]];
 // Pages that light up another tab in the bar: the year plan sits inside EPAs.
 const NAV_HOME = {plan: "epas"};
 function navHTML(active) {
@@ -193,7 +216,7 @@ function navHTML(active) {
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span></button>`;
   const split = NAV.length - 2;
   return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.slice(0, split).map(item).join("")}` +
-    `<button class="fab" data-action="sheet" aria-label="Log observation">${ic("plus")}</button>` +
+    `<button class="fab" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>` +
     `${NAV.slice(split).map(item).join("")}</div></nav>`;
 }
 function warningsHTML(today) {
@@ -266,6 +289,8 @@ function recapHTML(rc, rows) {
   if (!rc.slipped.length) items.push(`<li>${ic("shield")}<span>Nothing slipped.</span></li>`);
   if (onNow.length) items.push(`<li class="warn">${ic("carry")}<span>Carried onto this week: <b>${list(onNow)}</b></span></li>`);
   if (later.length) items.push(`<li>${ic("forward")}<span>Moved to a later block: <b>${list(later)}</b></span></li>`);
+  const scopes = scopeRecapItem(rc);
+  if (scopes) items.push(scopes);
   return `<section class="brief" aria-label="Week in review"><div class="brief-head"><span class="mono">Week in review</span>` +
     `<button class="iconbtn" data-action="dismissrecap" data-key="${rc.key}" aria-label="Dismiss">${ic("x")}</button></div>` +
     `<h2>Your week, Jared</h2><ul>${items.join("")}</ul></section>`;
@@ -526,9 +551,10 @@ function sourceHTML(d) {
     ? `<a class="srcrow" href="${esc(r.url)}" target="_blank" rel="noopener">${ic("book")}<span>${esc(r.label)}</span>${ic("external", "sm")}</a>`
     : `<div class="srcrow">${ic("book")}<span>${esc(r.label)}</span></div>`;
 }
-function viewBiopsy() {
+// Embedded: drawn inside the Endo tab, under its header and switch.
+function viewBiopsy(opts = {}) {
   const list = biopsyFilter(biopsyTerm, biopsyCat);
-  let h = `<header class="ph"><p class="eyebrow mono">Shared Health Manitoba · 2022</p><h1 class="title">Biopsy</h1>` +
+  let h = opts.embedded ? "" : `<header class="ph"><p class="eyebrow mono">Shared Health Manitoba · 2022</p><h1 class="title">Biopsy</h1>` +
     `<p class="ph-note">Manitoba first; other sources where it's silent.</p></header>`;
   h += `<a class="btn guide" href="${MB_PDF}" target="_blank" rel="noopener">${ic("book")}Open the full Manitoba guideline${ic("external", "sm")}</a>`;
   h += `<div class="qwrap">${ic("search")}<input id="biopsyq" type="search" placeholder="Search (celiac, reflux, H. pylori)" aria-label="Search protocols" ` +
@@ -675,9 +701,10 @@ function render() {
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "biopsy" ? viewBiopsy() : p === "call" ? viewCall() : p === "study" ? viewStudy() : viewEpa(route.code);
+      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
-      (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (toast ? toastHTML() : "");
+      (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
+      (scopePick ? scopePickHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -692,6 +719,7 @@ function render() {
   if (countUp) countUpDial();
   callAfterRender();
   studyAfterRender();
+  scopeAfterRender();
   remindAfterRender();
 }
 // The dial's number counts up once, the first time Week is drawn.
@@ -711,6 +739,8 @@ function countUpDial() {
 }
 // Navigate. Tabs and Back return to where that page was last scrolled.
 function go(next, restore) {
+  // Biopsy moved inside the Endo tab.
+  if (next.page === "biopsy") { next = {...next, page: "endo"}; scopeTab = "biopsy"; }
   if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
   route = next; callError = null;
   if (restore && scrollMemo[next.page]) route.restoreY = scrollMemo[next.page];
@@ -719,10 +749,15 @@ function go(next, restore) {
 }
 function dispatch(act, d) {
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("scope")) {
+    if (act === "scopetab") { scopeDispatch(act, d); render(); return; }
+    if (scopeDispatch(act, d) !== false) { route.keepScroll = true; render(); }
+    return;
+  }
   if (act === "open") go({page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page});
   else if (act === "back") go({page: route.from || "epas"}, true);
   else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo(0, 0); }
-  else if (act === "sheet") { openSheet(d.part, d.obs); route.keepScroll = true; render(); }
+  else if (act === "sheet") { scopeSheet = null; openSheet(d.part, d.obs); route.keepScroll = true; render(); }
   else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
@@ -774,7 +809,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target)) return;
+  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -785,7 +820,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (sheetField(t) || studyField(t)) return;
+  if (sheetField(t) || studyField(t) || scopeFieldChange(t)) return;
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {
@@ -809,7 +844,8 @@ document.getElementById("app").addEventListener("change", ev => {
 // and checks whether a reminder has arrived.
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   const a = document.activeElement;
-  if (document.visibilityState === "visible" && !sheet && !studySheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); remindInit(); }
+  if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
+      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); }
 });
 // A tapped call reminder opens the Call screen: by link when the app was
 // closed, by message from the service worker when it was open.
@@ -819,8 +855,8 @@ if (typeof location !== "undefined" && (location.hash === "#call" || location.ha
 }
 if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
   navigator.serviceWorker.addEventListener("message", ev => {
-    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; go({page: "call", from: "week"}); }
-    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; go({page: "study"}); }
+    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; go({page: "call", from: "week"}); }
+    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; go({page: "study"}); }
   });
 Store.load();
 CallStore.load();

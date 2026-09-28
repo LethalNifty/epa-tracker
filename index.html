@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GI Hub</title>
-<meta name="description" content="Weekly EPA coach and biopsy reference for GI fellowship.">
+<meta name="description" content="Weekly EPA coach, procedure log and biopsy reference for GI fellowship.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -26,6 +26,10 @@
  <symbol id="i-liver" viewBox="0 0 24 24"><path d="M3.2 9.8c0-2.7 2.5-4.3 5.6-4.3 3.9 0 6.9 1.1 9.9 1.1 1.7 0 2.5 1.4 1.6 3-1.8 3.2-5.4 6.8-9.6 8.8-1.4.7-2.5-.1-2.7-1.4-.3-2.2-1.2-3.5-3.2-4.4-1.1-.6-1.6-1.6-1.6-2.8z"/><path d="M12.8 6.6c-.3 2.6-1.5 4.8-3.3 6.4" stroke-opacity=".55"/></symbol>
  <symbol id="i-panc" viewBox="0 0 24 24"><path d="M3.3 14c0-2.6 1.9-3.8 4-3.4 2.5.5 3.6-1.9 6.5-1.9 2.4 0 3.8 1 5.3.6 1.3-.4 1.9.8 1.2 1.8-1.4 1.8-4.1 2.7-6.6 3-2.3.3-3.4 1.3-4.2 2.9-.9 1.7-3.2 2-5 .6-.8-.6-1.2-1.9-1.2-3.6z"/><path d="M6.4 13.6c3.6-.6 8-1.7 11.4-2.5" stroke-opacity=".55"/></symbol>
  <symbol id="i-scope" viewBox="0 0 24 24"><path d="M3.5 21v-8.5a7 7 0 0 1 7-7h5"/><path d="M15.5 3.5h3.2a1.8 1.8 0 0 1 1.8 1.8v.4a1.8 1.8 0 0 1-1.8 1.8h-3.2z"/><circle cx="18.6" cy="5.5" r=".5"/></symbol>
+ <symbol id="i-endo" viewBox="0 0 24 24"><path d="M12.4 21.5V19c0-1.7 1.6-2.3 3-1.9 1.5.4 2.6-.3 2.6-1.8V8.1a3 3 0 0 0-3-3H8.9a3 3 0 0 0-3 3v8.4c0 1.6.9 2.4 2.2 2.4 1.2 0 1.8-.8 1.8-1.8"/><circle cx="9.9" cy="16.1" r="1.25" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.8 11.5a6.2 6.2 0 0 0 12.4 0M12 17.7V20.5"/></symbol>
+ <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2.4"/><path d="M15.5 8.5V6.9a2.4 2.4 0 0 0-2.4-2.4H6.9a2.4 2.4 0 0 0-2.4 2.4v6.2a2.4 2.4 0 0 0 2.4 2.4h1.6"/><path d="M14 11.8v4.4M11.8 14h4.4"/></symbol>
+ <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.6"/><path d="M5.2 19.8c.9-3.4 3.6-5.3 6.8-5.3s5.9 1.9 6.8 5.3"/></symbol>
  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.3"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.3"/></symbol>
  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.6 14.6A8 8 0 0 1 9.4 4.4a8 8 0 1 0 10.2 10.2z"/></symbol>
  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
@@ -1871,6 +1875,9 @@ const BIOPSY_DATA = [
 <script src="notify.js"></script>
 <script src="remind.js"></script>
 <script src="study-view.js"></script>
+<script src="scope-chart.js"></script>
+<script src="scope-view.js"></script>
+<script src="scope-report.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

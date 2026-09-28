@@ -407,7 +407,7 @@ function scopeReadCase(text, ctx) {
   const lower = text.toLowerCase(), used = new Uint8Array(lower.length);
   const mark = (a, b) => { for (let i = Math.max(0, a); i < Math.min(lower.length, b); i++) used[i] = 1; };
   const all = rx => { const out = []; rx.lastIndex = 0; let m; while ((m = rx.exec(lower))) { out.push(m); if (!m[0].length) rx.lastIndex++; } return out; };
-  const draft = {d: null, staff: null, staffHeard: null, staffAlt: [], site: null, loc: null, urg: null,
+  const draft = {d: null, staff: null, staffHeard: null, staffSaid: null, staffAlt: [], site: null, loc: null, urg: null,
     procs: [], reach: null, why: [], found: [], leftover: [], n: 1};
   const add = (list, c) => { if (c && !list.includes(c)) list.push(c); };
 
@@ -538,6 +538,7 @@ function scopeReadCase(text, ctx) {
   }
   if (best) {
     if (best.r.id) draft.staff = best.r.id; else draft.staffAlt = best.r.alts;
+    draft.staffSaid = text.slice(best.a, best.b);
     mark(best.a, best.b);
   } else {
     // An unknown name after a cue becomes "New staff: ..." for the card.

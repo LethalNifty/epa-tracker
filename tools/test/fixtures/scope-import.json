@@ -1,0 +1,15 @@
+{
+  "kind": "gi-scopes",
+  "v": 1,
+  "note": "Test fixture: placeholder names only.",
+  "staff": [
+    {"id": "p1", "name": "Brook, Casey", "aliases": ["brooke"]},
+    {"id": "p2", "name": "Foxtrot, Golf", "aliases": []}
+  ],
+  "cases": [
+    {"id": "t-2026-07-12-1", "d": "2026-07-12", "staff": "p1", "procs": ["egd.dx"], "why": [], "found": ["esophagitis"]},
+    {"id": "t-2026-07-22-1", "d": "2026-07-22", "staff": "p2", "procs": ["colo.dx"], "reach": "hf", "why": [], "found": ["normal"]},
+    {"id": "t-2026-08-05-1", "d": "2026-08-05", "staff": "p2", "procs": ["egd.dx", "egd.nv.clip", "egd.nv.inj"], "why": ["ogib"], "found": []},
+    {"id": "t-2026-08-21-1", "d": "2026-08-21", "staff": null, "procs": ["egd.dx", "colo.screen"], "reach": "sig", "why": [], "found": []}
+  ]
+}
