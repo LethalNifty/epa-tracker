@@ -124,9 +124,9 @@ function studyNightsHTML(st) {
   for (let w = 0; w < 4; w++) {
     rows += `<div class="ng-row"><span class="ng-wk mono">Wk ${w + 1}</span>`;
     for (let k = 0; k < 7; k++) {
-      const x = nights[w * 7 + k], cls = `ng k-${x.kind} s-${x.state}${x.state === "today" && t.done ? " tdone" : ""}`;
+      const x = nights[w * 7 + k], cls = `ng k-${x.kind} s-${x.state}${x.state === "today" && x.kind === "read" && t.done ? " tdone" : ""}`;
       let mark = "";
-      if (x.state === "done" || (x.state === "today" && t.done)) mark = ic("check");
+      if (x.state === "done" || (x.state === "today" && x.kind === "read" && t.done)) mark = ic("check");
       else if (x.kind === "read" && x.pages) mark = `<b>${x.pages}</b>`;
       else if (x.kind === "call") mark = `<span class="ng-call"></span>`;
       else if (x.state === "extra") mark = `<span class="ng-dot"></span>`;
@@ -259,7 +259,7 @@ function viewStudy() {
   let h = `<header class="ph"><p class="eyebrow mono">Mayo Board Review · Pass 1</p><h1 class="title">Study</h1>` +
     `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>`;
   h += warningsHTML(today) + studyHeroHTML(st) + studyScoreAskHTML(st.s);
-  if (t.kind !== "after") h += studyNightsHTML(st);
+  if (t.kind !== "after" && t.kind !== "complete") h += studyNightsHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyBlockHTML(st);
   h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyPauseHTML(st);

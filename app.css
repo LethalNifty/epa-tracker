@@ -520,7 +520,8 @@ a.btn.callbtn .ic { color: inherit; }
 .node { position: absolute; left: 4px; top: 16px; width: 14px; height: 14px; border-radius: 50%;
   background: var(--field); box-shadow: inset 0 0 0 2px var(--c, var(--fold-2)); }
 .blk.past .node { background: var(--fold-2); box-shadow: none; }
-.blk.now .node { background: var(--field); box-shadow: inset 0 0 0 2.5px var(--c, var(--nbi)), 0 0 0 4px color-mix(in srgb, var(--c, var(--nbi)) 16%, transparent); }
+/* The block you're in is marked by the scope tip alone, at this week. */
+.blk.now .node { display: none; }
 .wk { position: absolute; left: 7px; width: 8px; height: 1.5px; background: var(--fold-2); }
 .tip { position: absolute; left: 3px; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: var(--nbi-ink);
   box-shadow: 0 0 0 4px rgba(142, 241, 224, .18), 0 0 18px rgba(82, 223, 198, .55); }
@@ -884,6 +885,7 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .pickrow.chips::-webkit-scrollbar { display: none; }
 .pickrow.chips .pick { flex: 0 0 auto; }
 .studysheet .pick.on { color: #1d2206; }
+.studysheet .pick.ghost.on { background: var(--flu); color: #1d2206; }
 .studysheet .pick.read:not(.on) { opacity: .55; }
 .pg-title { display: flex; align-items: baseline; gap: 8px; margin-top: 16px; font-size: 14.5px; font-weight: 560; }
 .pg-title .mono { color: var(--flu); font-size: 10.5px; }
