@@ -123,7 +123,7 @@ test("call-times reads the block file with the app's parser: one start per stret
 });
 
 test("the workflow runs every 15 minutes, can send a test, and only reads its secrets", () => {
-  const wf = fs.readFileSync(path.join(__dirname, "..", "..", ".github", "workflows", "reminders.yml"), "utf8");
+  const wf = fs.readFileSync(path.join(__dirname, "..", "..", ".github", "workflows", "reminders.yml"), "utf8").replace(/\r\n/g, "\n");
   assert.match(wf, /cron: "4,19,34,49 \* \* \* \*"/);
   assert.match(wf, /workflow_dispatch:/);
   assert.match(wf, /run: node tools\/push\/send\.js/);
