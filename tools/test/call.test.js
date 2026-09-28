@@ -208,6 +208,8 @@ test("Week before a shift: the next one with a countdown, the week ahead, then w
   // The weekend, one row, then Nov 3.
   assert.match(html, /<span class="xd mono">Fri 30 Oct<\/span><span class="xt">17:00 → Mon 08:00<\/span><span class="xh mono long">64 h<\/span>/);
   assert.match(html, /<span class="xd mono">Tue 3 Nov<\/span>/);
+  // Before the shift, the card says what the paging numbers will do.
+  assert.match(html, /<p class="cx-hint">[\s\S]*?From Wed 17:00, the top of Week shows who's on at each site. Save the paging numbers/);
   // A week of hour ticks: 168, with the call hours standing tall.
   const svg = /<div class="tr-bar"[^>]*><svg[^>]*>([\s\S]*?)<\/svg>/.exec(html)[1];
   assert.equal((svg.match(/<line/g) || []).length, 168);
@@ -235,7 +237,7 @@ test("Week on call: the panel leads the page with both sites, the off time and s
 test("saved numbers become tap-to-call buttons; they stay out of the EPA backup", () => {
   const h = withBlock("2026-10-31T20:00");
   h.run(`callNumDone({dataset: {callnum: "hsc"}, value: " (204) 555-0100 "})`);
-  assert.equal(h.val(`toast.msg`), "HSC number saved");
+  assert.equal(h.val(`CallStore.state.nums.hsc`), "(204) 555-0100");
   h.run(`CallStore.setNum("stb", "204 555 0199")`);
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
   const html = h.html();
@@ -347,4 +349,19 @@ test("every screen has exactly one call file picker, with no accept filter", () 
   full.setNow("2026-11-19T10:00"); full.run(`render()`);
   assert.equal(count(full), 1);
   assert.doesNotMatch(full.html(), /id="callfile"[^>]*accept/);
+});
+
+test("saved numbers say Saved under the field, and the Week card says when the Call buttons appear", () => {
+  const h = withBlock("2026-10-27T12:00");
+  h.run(`CallStore.setNum("hsc", "(204) 555-0100"); CallStore.setNum("stb", "204 555 0199")`);
+  h.click("callopen");
+  const html = h.html();
+  assert.match(html, /id="numstat-hsc" aria-live="polite"><svg[^>]*><use href="#i-check"\/><\/svg>Saved<\/div>/);
+  assert.match(html, /id="numstat-stb" aria-live="polite"><svg[^>]*><use href="#i-check"\/><\/svg>Saved<\/div>/);
+  h.click("back");
+  assert.match(h.html(), /From Wed 17:00, the top of Week shows who's on, with a Call button for HSC and St. Boniface./);
+  // Half-typed numbers stay quiet while typing and are flagged once you leave the field.
+  assert.equal(h.run(`callNumStatus("20", true)`), "");
+  assert.match(h.run(`callNumStatus("20", false)`), /Not a phone number/);
+  assert.equal(h.run(`callNumStatus("", false)`), "");
 });
