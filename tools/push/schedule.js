@@ -2,7 +2,9 @@
 // Which reminders fall due in a window of time. Pure: wall times are read in
 // the process's time zone, which send.js sets to America/Winnipeg.
 const HOUR = 3600000;
-const WEEKLY = {day: 4, hour: 8};     // Thursday 08:00, the first day of each block week
+// EPAs: Monday 08:00, the week's plan; Wednesday 08:00, the last day of each
+// block week, what's still due so you can ask for it.
+const EPA_TIMES = [{day: 1, hour: 8, kind: "week"}, {day: 3, hour: 8, kind: "ask"}];
 const CALL_LEAD = HOUR;               // an hour before each call starts
 // Tonight's Mayo pages: 20:00 on reading nights (Mon, Tue, Wed, Fri) while
 // the plan runs, not on a day a call stretch starts by 20:00. These must
@@ -34,9 +36,11 @@ function dueReminders(lo, hi, callStarts) {
   const out = [];
   const d = new Date(lo);
   for (let day = new Date(d.getFullYear(), d.getMonth(), d.getDate()); day.getTime() <= hi; day.setDate(day.getDate() + 1)) {
-    if (day.getDay() !== WEEKLY.day) continue;
-    const t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), WEEKLY.hour).getTime();
-    if (t > lo && t <= hi) out.push({kind: "week", t});
+    for (const r of EPA_TIMES) {
+      if (day.getDay() !== r.day) continue;
+      const t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), r.hour).getTime();
+      if (t > lo && t <= hi) out.push({kind: r.kind, t});
+    }
   }
   for (const s of callStarts) {
     const t = s - CALL_LEAD;
@@ -60,4 +64,4 @@ function windowFor(prevStart, thisStart) {
   return {lo, hi};
 }
 
-module.exports = {HOUR, WEEKLY, CALL_LEAD, STUDY, wallMs, wallString, parseCallTimes, dueReminders, windowFor};
+module.exports = {HOUR, EPA_TIMES, CALL_LEAD, STUDY, wallMs, wallString, parseCallTimes, dueReminders, windowFor};
