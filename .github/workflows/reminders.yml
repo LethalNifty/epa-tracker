@@ -1,5 +1,5 @@
-# Sends GI Hub's push reminders: Thursdays at 08:00 (the week's EPAs) and an
-# hour before each call (who's on). Pushes carry no names; the phone writes
+# Sends GI Hub's push reminders: Thursdays at 08:00 (the week's EPAs), an
+# hour before each call (who's on) and 20:00 on reading nights (tonight's pages). Pushes carry no names; the phone writes
 # the notification from what it has saved. See tools/push/.
 name: Reminders
 
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: "Also send one now: test, week or call (blank for none)"
+        description: "Also send one now: test, week, call or study (blank for none)"
         required: false
         default: ""
 

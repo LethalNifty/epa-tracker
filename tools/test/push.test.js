@@ -84,7 +84,7 @@ test("sending: the right headers, and a body only the phone can read", async () 
 
 test("Thursday at 08:00 Winnipeg time, through the clock change", () => {
   // Oct 29 is before the change (CDT), Nov 5 after (CST): 08:00 local both times.
-  const due = dueReminders(at(2026, 10, 28, 12), at(2026, 11, 6, 12), []);
+  const due = dueReminders(at(2026, 10, 28, 12), at(2026, 11, 6, 12), []).filter(x => x.kind !== "study");
   assert.deepEqual(due, [{kind: "week", t: at(2026, 10, 29, 8)}, {kind: "week", t: at(2026, 11, 5, 8)}]);
   assert.equal(new Date(due[1].t).toISOString(), "2026-11-05T14:00:00.000Z");
   assert.equal(new Date(due[0].t).toISOString(), "2026-10-29T13:00:00.000Z");
@@ -97,7 +97,22 @@ test("an hour before each call, and nothing twice across back-to-back windows", 
   // Every 15-minute window over two days, stitched end to end: each reminder once.
   const seen = [];
   for (let t = at(2026, 10, 28); t < at(2026, 10, 31); t += 15 * 60000) seen.push(...dueReminders(t, t + 15 * 60000, starts));
+  // Wed 28 and Fri 30 are call nights, so no study reminder either night.
   assert.deepEqual(seen.map(x => x.kind), ["call", "week", "call"]);
+});
+
+test("tonight's pages at 20:00 on reading nights while the plan runs", () => {
+  const study = (lo, hi, starts = []) => dueReminders(lo, hi, starts).filter(x => x.kind === "study").map(x => new Date(x.t).toString().slice(0, 21));
+  // Tue 29 Sep is before the start; Wed 30 is the first night; Thu 1 Oct is soccer; Fri 2 Oct reads.
+  assert.deepEqual(study(at(2026, 9, 29), at(2026, 10, 4)), ["Wed Sep 30 2026 20:00", "Fri Oct 02 2026 20:00"]);
+  // Nothing after 2 Jun 2027, the plan's last day.
+  assert.deepEqual(study(at(2027, 6, 1), at(2027, 6, 8)), ["Tue Jun 01 2027 20:00", "Wed Jun 02 2027 20:00"]);
+});
+
+test("no study reminder on a night whose call stretch starts by 20:00", () => {
+  const starts = [at(2026, 10, 5, 17)];
+  const kinds = dueReminders(at(2026, 10, 5, 12), at(2026, 10, 6, 21), starts).map(x => x.kind + " " + new Date(x.t).getDate());
+  assert.deepEqual(kinds, ["call 5", "study 6"]);
 });
 
 test("each run covers the time since the last run; a long pause doesn't fire a backlog", () => {

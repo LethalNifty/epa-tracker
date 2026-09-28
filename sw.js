@@ -1,8 +1,8 @@
 importScripts("notify.js");
-const CACHE = "epa-v10";
+const CACHE = "epa-v11";
 // Kept across updates: the brief remind.js saves for writing notifications.
 const BRIEF = "gi-brief";
-const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "notify.js", "remind.js", "app.js", "manifest.webmanifest", "icon.svg",
+const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "notify.js", "remind.js", "study-view.js", "app.js", "manifest.webmanifest", "icon.svg",
   "icon-180.png", "icon-192.png", "icon-512.png",
   "fonts/plex-sans-var.woff2", "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"];
 self.addEventListener("install", e => {
@@ -35,7 +35,7 @@ self.addEventListener("notificationclick", e => {
   const url = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({type: "window", includeUncontrolled: true}).then(list => {
     const w = list[0];
-    if (w) { if (url.includes("#call")) w.postMessage({go: "call"}); return w.focus(); }
+    if (w) { if (url.includes("#call")) w.postMessage({go: "call"}); else if (url.includes("#study")) w.postMessage({go: "study"}); return w.focus(); }
     return self.clients.openWindow(url);
   }));
 });
