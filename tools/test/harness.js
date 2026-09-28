@@ -43,7 +43,7 @@ function load(opts = {}) {
     },
   };
   const ctx = {
-    console, clearTimeout, TextDecoder,
+    console, clearTimeout, TextDecoder, atob, btoa,
     // Unref'd so a pending toast timer never holds the test process open.
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t.unref) t.unref(); return t; },
     localStorage: {

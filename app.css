@@ -372,6 +372,29 @@ a.btn.callbtn .ic { color: inherit; }
 .cnote { margin: 12px 2px 14px; font-size: 13px; line-height: 1.5; color: var(--dim); }
 .cnote b { color: var(--light); font-weight: 520; overflow-wrap: anywhere; }
 
+/* Reminders: set up on Week, managed on the EPAs tab */
+.remindcard { margin-top: 28px; padding: 14px 16px 16px; border-color: color-mix(in srgb, var(--nbi) 30%, var(--fold)); }
+.rc-head { display: flex; align-items: center; gap: 10px; margin: -4px -8px 0 0; }
+.rc-head > .ic { color: var(--nbi-ink); }
+.rc-head b { flex: 1; font-size: 16px; font-weight: 620; }
+.remindcard p, .rnote { margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: var(--dim); }
+.rlist { list-style: none; margin: 10px 0 14px; padding: 0; }
+.rlist li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--fold); font-size: 14px; }
+.rlist li:first-child { border-top: 0; }
+.rlist .mono { color: var(--nbi-ink); font-size: 10px; }
+.remind .rlist { margin-top: 0; }
+.rcode { margin: 12px 0 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--field); border: 1px dashed var(--fold-2);
+  color: var(--dim); font-size: 10.5px; letter-spacing: .02em; text-transform: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rbtns { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+.rbtns .btn + .btn { margin-top: 0; }
+.rbtns .btn:last-child:not(.danger) { padding: 0 18px; }
+.remind .rbtns { grid-template-columns: 1fr 1fr; }
+.remind > .textbtn { display: block; margin: 8px auto 0; color: var(--dim); }
+.rrow { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--fold); font-size: 14px; color: var(--dim); }
+.rrow .mono { font-size: 10px; color: var(--faint); }
+.rrow b { color: var(--light); font-weight: 560; }
+.sec-head .mono.ok { color: var(--nbi-ink); }
+
 /* EPAs */
 .stage-sec { margin-top: 26px; }
 .stage-head { display: flex; align-items: center; gap: 8px; margin: 0 2px; }

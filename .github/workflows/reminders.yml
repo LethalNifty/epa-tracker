@@ -1,0 +1,39 @@
+# Sends GI Hub's push reminders: Thursdays at 08:00 (the week's EPAs) and an
+# hour before each call (who's on). Pushes carry no names; the phone writes
+# the notification from what it has saved. See tools/push/.
+name: Reminders
+
+on:
+  schedule:
+    - cron: "4,19,34,49 * * * *"
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Also send one now: test, week or call (blank for none)"
+        required: false
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+      - name: Send reminders that are due
+        run: node tools/push/send.js
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTION: ${{ secrets.PUSH_SUBSCRIPTION }}
+          CALL_TIMES: ${{ secrets.CALL_TIMES }}
+          SEND_NOW: ${{ inputs.kind }}

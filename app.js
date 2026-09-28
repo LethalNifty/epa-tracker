@@ -317,7 +317,7 @@ function viewWeek() {
   if (!blk) {
     return h + `<div class="card pad empty spaced">${dayIndex(today) < 0 ? "Fellowship starts July 2, 2026." :
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
-      (cs.cur ? "" : callCardHTML(cs, now));
+      (cs.cur ? "" : callCardHTML(cs, now)) + remindCardHTML();
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
   h += thisWeekHTML(rows, cp.active);
@@ -326,6 +326,7 @@ function viewWeek() {
     if (rc) h += recapHTML(rc, rows);
   }
   if (!cs.cur) h += callCardHTML(cs, now);
+  h += remindCardHTML();
   const look = lookFor(rows, id => Store.lineVal(id));
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
@@ -373,7 +374,7 @@ function viewEpas() {
     if (done.length) h += `<details class="donegrp"><summary>${ic("chev")}Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
     h += `</section>`;
   }
-  return h + backupHTML();
+  return h + backupHTML() + remindSectionHTML();
 }
 
 // ---- EPA detail --------------------------------------------------------------
@@ -661,6 +662,7 @@ function render() {
   route.keepScroll = false;
   if (countUp) countUpDial();
   callAfterRender();
+  remindAfterRender();
 }
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
@@ -727,6 +729,11 @@ function dispatch(act, d) {
     CallStore.clear(); callError = null;
     showToast("Call data cleared", () => CallStore.restore(before));
     route.keepScroll = true; render(); }
+  else if (act === "remindon") { remindEnable(); }
+  else if (act === "remindshare") { remindShare(); }
+  else if (act === "remindcopy") { remindCopy(); }
+  else if (act === "remindoff") { remindOff(); }
+  else if (act === "reminddismiss") { RemindStore.state.dismissed = true; RemindStore.save(); route.keepScroll = true; render(); }
   else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
   else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();
     const q = document.getElementById("biopsyq"); if (q) q.focus(); }
@@ -767,12 +774,24 @@ document.getElementById("app").addEventListener("change", ev => {
   }
   if (d.field && d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
-// Coming back to the app redraws it, so the call card and the week are current.
+// Coming back to the app redraws it, so the call card and the week are current,
+// and checks whether a reminder has arrived.
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   const a = document.activeElement;
-  if (document.visibilityState === "visible" && !sheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); }
+  if (document.visibilityState === "visible" && !sheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); remindInit(); }
 });
+// A tapped call reminder opens the Call screen: by link when the app was
+// closed, by message from the service worker when it was open.
+if (typeof location !== "undefined" && location.hash === "#call") {
+  route = {page: "call", from: "week"};
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+}
+if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
+  navigator.serviceWorker.addEventListener("message", ev => {
+    if (ev.data && ev.data.go === "call") { sheet = null; go({page: "call", from: "week"}); }
+  });
 Store.load();
 CallStore.load();
 render();
+remindInit();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
