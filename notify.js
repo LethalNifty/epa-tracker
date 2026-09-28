@@ -24,15 +24,20 @@ function noteCall(st, now) {
   if (noteLong(st) && st.s > now) parts.push(`Off ${noteWd(st.e)} ${noteHM(st.e)}.`);
   return {title, body: parts.join(" "), tag: "gi-call-" + st.s, url: "./#call"};
 }
-// Thursday morning: the week's EPAs and any call that week.
+const noteDue = w => w.rows.map(r => r.label + (r.n > 1 ? " ×" + r.n : "")).join(", ");
+// Monday morning: the week's EPAs, call in the next seven days, last week's reading.
 function noteWeek(w, brief, now) {
-  const today = new Date(now).toDateString() === new Date(w.start).toDateString();
-  const due = w.rows.length ? "Due: " + w.rows.map(r => r.label + (r.n > 1 ? " ×" + r.n : "")).join(", ") + "."
-    : "Nothing due this week. Log anything you get.";
-  const calls = (brief.call || []).filter(st => st.s >= w.start && st.s < w.start + NOTE_WEEK);
+  const due = w.rows.length ? `Due: ${noteDue(w)}.` : "Nothing due this week. Log anything you get.";
+  const calls = (brief.call || []).filter(st => st.s >= now && st.s < now + NOTE_WEEK);
   const call = calls.length ? " Call: " + calls.map(st => `${noteWd(st.s)} ${noteHM(st.s)}${noteLong(st) ? " (weekend)" : ""}`).join(", ") + "." : "";
   const lw = brief.study && brief.study.week, read = lw && (lw.read || lw.planned) ? ` Reading: ${lw.read} of ${lw.planned} pages last week.` : "";
-  return {title: `Block ${w.block}, week ${w.week} of 4${today ? " starts today" : ""}`, body: due + call + read, tag: "gi-week-" + w.start, url: "./"};
+  return {title: "This week's EPAs", body: `Block ${w.block}, week ${w.week}. ` + due + call + read, tag: "gi-week-" + now, url: "./"};
+}
+// Wednesday morning, the last day of each block week: what's still due, to ask for today.
+function noteAsk(w) {
+  const tag = "gi-ask-" + w.start, url = "./";
+  if (!w.rows.length) return {title: "This week's EPAs are covered", body: `Nothing still due for block ${w.block}, week ${w.week}. Log anything extra you get.`, tag, url};
+  return {title: "Ask for your EPAs today", body: `Last day of block ${w.block}, week ${w.week}. Still due: ${noteDue(w)}.`, tag, url};
 }
 // 20:00 on a reading night: tonight's Mayo pages, or that they're done.
 // The brief carries tonight and the next 13 days, written out by study.js.
@@ -52,12 +57,12 @@ function noteStudy(brief, now) {
   if (n.kind === "pause") return {title: "Reading paused", body: "No pages tonight.", tag, url};
   return {title: "No reading tonight", body: next, tag, url};
 }
-// msg: {kind: "week" | "call" | "study" | "test", t, s?}; brief: what the app saved, or null.
+// msg: {kind: "week" | "ask" | "call" | "study" | "test", t, s?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
-    return {title: "GI Hub reminders are on", body: "Thursdays at 08:00: the week's EPAs. An hour before each call: who's on at each site. " +
-      "20:00 on reading nights: tonight's pages.", tag: "gi-test", url: "./"};
+    return {title: "GI Hub reminders are on", body: "Mondays at 08:00: the week's EPAs. Wednesdays at 08:00: what's still due, to ask for. " +
+      "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages.", tag: "gi-test", url: "./"};
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "call") {
     const list = b ? b.call || [] : [];
@@ -65,9 +70,11 @@ function noticeFor(msg, brief, now) {
     return st ? noteCall(st, now) : {title: msg.s ? `On call from ${noteHM(msg.s)}` : "GI call soon",
       body: "Open GI Hub for who's on at each site.", tag: "gi-call", url: "./#call"};
   }
-  if (kind === "week") {
+  if (kind === "week" || kind === "ask") {
     const w = b && (b.weeks || []).find(x => x.start <= now && now < x.start + NOTE_WEEK);
-    return w ? noteWeek(w, b, now) : {title: "A new GI Hub week", body: "Open GI Hub for this week's EPAs.", tag: "gi-week", url: "./"};
+    if (w) return kind === "week" ? noteWeek(w, b, now) : noteAsk(w);
+    return kind === "week" ? {title: "This week's EPAs", body: "Open GI Hub for this week's EPAs.", tag: "gi-week", url: "./"}
+      : {title: "Ask for your EPAs today", body: "Open GI Hub for what's still due this week.", tag: "gi-ask", url: "./"};
   }
   return {title: "GI Hub", body: "Open GI Hub for this week.", tag: "gi-hub", url: "./"};
 }

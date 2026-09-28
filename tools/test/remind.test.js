@@ -47,12 +47,22 @@ test("weekend reminder: the Friday team, and when you're off", () => {
   assert.equal(n.body, "HSC: Attending C, no resident. St. B: Attending D with Resident G. Sign-out from Fellow E (HSC) and Fellow F (St B). Off Mon 08:00.");
 });
 
-test("Thursday reminder: the week's EPAs and the call that week", () => {
-  const h = withBlock("2026-10-29T08:00", {state: state({d1: many(4, "2026-07-10")})});
+test("Monday reminder: the week's EPAs, call in the next seven days, last week's reading", () => {
+  const h = withBlock("2026-11-02T08:00", {state: state({d1: many(4, "2026-07-10")})});
   const n = h.val(`noticeFor({kind: "week", t: callNow()}, remindBrief(callNow()), callNow())`);
-  assert.match(n.title, /^Block 5, week 2 of 4 starts today$/);
-  assert.match(n.body, /^Due: F1-B ×\d, [^.]*F1-A[^.]*\. Call: Fri 17:00 \(weekend\), Tue 17:00\. Reading: 0 of \d+ pages last week\.$/);
+  assert.equal(n.title, "This week's EPAs");
+  assert.match(n.body, /^Block 5, week 2\. Due: F1-B ×\d, [^.]*F1-A[^.]*\. Call: Tue 17:00\. Reading: \d+ of \d+ pages last week\.$/);
   assert.equal(n.url, "./");
+});
+
+test("Wednesday reminder: the last day of the block week, what's still due to ask for", () => {
+  const h = withBlock("2026-11-04T08:00", {state: state({d1: many(4, "2026-07-10")})});
+  const n = h.val(`noticeFor({kind: "ask", t: callNow()}, remindBrief(callNow()), callNow())`);
+  assert.equal(n.title, "Ask for your EPAs today");
+  assert.match(n.body, /^Last day of block 5, week 2\. Still due: F1-B ×\d, [^.]*F1-A[^.]*\.$/);
+  // Nothing left: it says so instead.
+  assert.deepEqual(h.val(`noteAsk({start: 1, block: 5, week: 2, rows: []})`), {title: "This week's EPAs are covered",
+    body: "Nothing still due for block 5, week 2. Log anything extra you get.", tag: "gi-ask-1", url: "./"});
 });
 
 test("20:00 reminder: tonight's pages, done nights, and the Study tab on tap", () => {
@@ -75,7 +85,8 @@ test("with nothing saved on the phone, reminders still say something useful", ()
   const h = load();
   assert.deepEqual(h.val(`noticeFor({kind: "call", s: ${at(2026, 10, 28, 17)}}, null, ${at(2026, 10, 28, 16)})`),
     {title: "On call from 17:00", body: "Open GI Hub for who's on at each site.", tag: "gi-call", url: "./#call"});
-  assert.equal(h.val(`noticeFor({kind: "week"}, null, 0)`).title, "A new GI Hub week");
+  assert.equal(h.val(`noticeFor({kind: "week"}, null, 0)`).title, "This week's EPAs");
+  assert.equal(h.val(`noticeFor({kind: "ask"}, null, 0)`).title, "Ask for your EPAs today");
   assert.equal(h.val(`noticeFor({kind: "test"}, null, 0)`).title, "GI Hub reminders are on");
   assert.equal(h.val(`noticeFor({}, null, 0)`).title, "GI Hub");
 });
@@ -103,7 +114,7 @@ test("Week offers to turn reminders on; Not now hides the card for good", () => 
   const h = withBlock("2026-10-27T12:00");
   pushPhone(h);
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
-  assert.match(h.html(), /class="card remindcard"[\s\S]*?Reminders on this phone[\s\S]*?Thu 08:00[\s\S]*?data-action="remindon"/);
+  assert.match(h.html(), /class="card remindcard"[\s\S]*?Reminders on this phone[\s\S]*?Mon 08:00[\s\S]*?Wed 08:00[\s\S]*?data-action="remindon"/);
   h.click("reminddismiss");
   assert.doesNotMatch(h.html(), /remindcard/);
   assert.deepEqual(JSON.parse(h.store.get("gi-remind-v1")), {dismissed: true});
@@ -148,9 +159,11 @@ test("EPAs tab: once a reminder has arrived, status On, the next reminder and th
   // Wednesday noon: the call reminder at 16:00 beats tonight's reading.
   h.setNow("2026-10-28T12:00"); h.run(`render()`);
   assert.match(h.html(), /<b>Wed 28 Oct, 16:00<\/b> · On call from 17:00/);
-  // Thursday early: the week's reminder is next.
-  h.setNow("2026-11-05T07:00"); h.run(`render()`);
-  assert.match(h.html(), /<b>Thu 5 Nov, 08:00<\/b> · Block 5, week 3 of 4 starts today/);
+  // Monday and Wednesday mornings: the EPA reminders are next.
+  h.setNow("2026-11-09T07:00"); h.run(`render()`);
+  assert.match(h.html(), /<b>Mon 9 Nov, 08:00<\/b> · This week's EPAs/);
+  h.setNow("2026-11-11T07:00"); h.run(`render()`);
+  assert.match(h.html(), /<b>Wed 11 Nov, 08:00<\/b> · Ask for your EPAs today/);
 });
 
 test("blocked notifications, and Safari outside the home-screen app, each say what to do", () => {

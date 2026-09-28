@@ -121,14 +121,18 @@ function remindAfterRender() {
   caches.open(REMIND_CACHE).then(c => c.put("__gi-brief.json",
     new Response(JSON.stringify(brief), {headers: {"content-type": "application/json"}}))).catch(() => { remindBriefKey = ""; });
 }
-// The next reminder this phone expects: Thursday 08:00, or an hour before a call.
+// The next reminder this phone expects: Monday or Wednesday 08:00, an hour
+// before a call, or 20:00 on a reading night, whichever comes first.
 function remindNext(now) {
   const d = new Date(now);
-  let t = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (4 - d.getDay() + 7) % 7, 8).getTime();
-  if (t <= now) t += 7 * DAY_MS;
-  let msg = {kind: "week", t};
+  let msg = null;
+  for (let k = 0; k < 8 && !msg; k++) {
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 8).getTime();
+    const kind = {1: "week", 3: "ask"}[day.getDay()];
+    if (kind && t > now) msg = {kind, t};
+  }
   const st = callStretches(CallStore.list()).find(x => x.s - HOUR_MS > now);
-  if (st && st.s - HOUR_MS < t) msg = {kind: "call", t: st.s - HOUR_MS, s: st.s};
+  if (st && st.s - HOUR_MS < msg.t) msg = {kind: "call", t: st.s - HOUR_MS, s: st.s};
   // The next 20:00 on a reading night, if it comes first.
   const str = callStretches(CallStore.list());
   for (let k = 0; k < 8; k++) {
@@ -140,7 +144,8 @@ function remindNext(now) {
 }
 
 // ---- Views -------------------------------------------------------------------------
-const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Thu 08:00</span><span>The week's EPAs, and any call that week</span></li>` +
+const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Mon 08:00</span><span>The week's EPAs, and any call coming up</span></li>` +
+  `<li><span class="mono">Wed 08:00</span><span>What's still due, so you can ask today</span></li>` +
   `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li>` +
   `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li></ul>`;
 function remindCodeHTML() {

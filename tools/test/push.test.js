@@ -82,12 +82,12 @@ test("sending: the right headers, and a body only the phone can read", async () 
   assert.deepEqual(JSON.parse(decrypt(seen.init.body, phone.priv, auth)), {kind: "call", t: 1, s: 2});
 });
 
-test("Thursday at 08:00 Winnipeg time, through the clock change", () => {
-  // Oct 29 is before the change (CDT), Nov 5 after (CST): 08:00 local both times.
-  const due = dueReminders(at(2026, 10, 28, 12), at(2026, 11, 6, 12), []).filter(x => x.kind !== "study");
-  assert.deepEqual(due, [{kind: "week", t: at(2026, 10, 29, 8)}, {kind: "week", t: at(2026, 11, 5, 8)}]);
-  assert.equal(new Date(due[1].t).toISOString(), "2026-11-05T14:00:00.000Z");
-  assert.equal(new Date(due[0].t).toISOString(), "2026-10-29T13:00:00.000Z");
+test("Monday and Wednesday at 08:00 Winnipeg time, through the clock change; nothing on Thursday", () => {
+  // Oct 26 and 28 are before the change (CDT), Nov 2 and 4 after (CST): 08:00 local every time.
+  const due = dueReminders(at(2026, 10, 25, 12), at(2026, 11, 6, 12), []).filter(x => x.kind !== "study");
+  assert.deepEqual(due, [{kind: "week", t: at(2026, 10, 26, 8)}, {kind: "ask", t: at(2026, 10, 28, 8)},
+    {kind: "week", t: at(2026, 11, 2, 8)}, {kind: "ask", t: at(2026, 11, 4, 8)}]);
+  assert.deepEqual(due.map(x => new Date(x.t).toISOString().slice(11, 16)), ["13:00", "13:00", "14:00", "14:00"]);
 });
 
 test("an hour before each call, and nothing twice across back-to-back windows", () => {
@@ -98,7 +98,7 @@ test("an hour before each call, and nothing twice across back-to-back windows", 
   const seen = [];
   for (let t = at(2026, 10, 28); t < at(2026, 10, 31); t += 15 * 60000) seen.push(...dueReminders(t, t + 15 * 60000, starts));
   // Wed 28 and Fri 30 are call nights, so no study reminder either night.
-  assert.deepEqual(seen.map(x => x.kind), ["call", "week", "call"]);
+  assert.deepEqual(seen.map(x => x.kind), ["ask", "call", "call"]);
 });
 
 test("tonight's pages at 20:00 on reading nights while the plan runs", () => {
