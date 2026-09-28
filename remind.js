@@ -7,9 +7,8 @@
 // they run.
 
 // The sender's public VAPID key. Public by design; the private half lives only
-// in the repository's secrets. Empty until the sender is set up, which hides
-// reminders entirely.
-const REMIND_VAPID = "";
+// in the repository's secrets. Empty hides reminders entirely.
+const REMIND_VAPID = "BKg1uXqUWNOYSb4WYx7x2WVfng1BfNtWXQOkIzZbR7UXZ_kCrW65m0s-PMbPrHzy1iCFS8-FQ5nV6BTvTtOj-kQ";
 const REMIND_KEY = "gi-remind-v1";
 const REMIND_CACHE = "gi-brief";
 // Tests set window.__vapid to stand in for the key.

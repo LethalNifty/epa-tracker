@@ -91,7 +91,7 @@ test("the brief: this week and the next two, shifts to come with who's on, nothi
 
 // ---- Setting it up ---------------------------------------------------------------------
 
-test("until the sender is set up, reminders don't appear at all", () => {
+test("in a browser without push, reminders don't appear at all", () => {
   const h = withBlock("2026-10-27T12:00");
   h.click("tab", {page: "epas"});
   assert.doesNotMatch(h.html(), /Reminders/);
@@ -215,4 +215,12 @@ test("the service worker keeps the brief when it updates, and caches the reminde
   assert.match(sw, /^importScripts\("notify\.js"\);/);
   assert.match(sw, /k !== CACHE && k !== BRIEF/);
   for (const f of ["notify.js", "remind.js"]) assert.ok(sw.includes(`"${f}"`), f);
+});
+
+test("the app carries the sender's public key: a P-256 point, 65 bytes", () => {
+  const src = fs.readFileSync(path.join(ROOT, "remind.js"), "utf8");
+  const key = /^const REMIND_VAPID = "([A-Za-z0-9_-]+)";$/m.exec(src)[1];
+  const raw = Buffer.from(key, "base64url");
+  assert.equal(raw.length, 65);
+  assert.equal(raw[0], 4);
 });
