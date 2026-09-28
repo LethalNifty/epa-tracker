@@ -76,26 +76,26 @@ test("Block 4 has 13 reading nights from 30 Sep", () => {
   assert.equal(v(`studyCountNights(${D("2026-09-30")}, blockEnd(4), [], [])`), 13);
 });
 
-test("the first night: 42 pages over 13 nights is 4, pp. 35–38", () => {
+test("the first night: 42 pages over 13 nights is 3, pp. 35–37", () => {
   const t = tonight("2026-09-30", {});
   assert.equal(t.kind, "read");
-  assert.deepEqual([t.from, t.to, t.n], [0, 4, 4]);
-  assert.equal(v("studyPP(0, 4)"), "35–38");
+  assert.deepEqual([t.from, t.to, t.n], [0, 3, 3]);
+  assert.equal(v("studyPP(0, 3)"), "35–37");
   assert.equal(t.done, false);
-  assert.equal(t.next.from, 4);   // Friday picks up where tonight ends
+  assert.equal(t.next.from, 3);   // Friday picks up where tonight ends
 });
 
 test("before the start, the card previews Wednesday", () => {
   const t = tonight("2026-09-28", {});
   assert.equal(t.kind, "before");
   assert.equal(v(`fmtDate(new Date(${JSON.stringify(t.next.day)}))`), "2026-09-30");
-  assert.deepEqual([t.next.from, t.next.to], [0, 4]);
+  assert.deepEqual([t.next.from, t.next.to], [0, 3]);
 });
 
 test("done once the bookmark reaches the end of tonight", () => {
-  const t = tonight("2026-09-30", {"2026-09-30": 4});
+  const t = tonight("2026-09-30", {"2026-09-30": 3});
   assert.equal(t.done, true);
-  assert.deepEqual([t.from, t.to], [0, 4]);
+  assert.deepEqual([t.from, t.to], [0, 3]);
   const f = tonight("2026-10-02", {"2026-09-30": 4});
   assert.equal(f.from, 4);
 });
@@ -106,21 +106,22 @@ test("part-read tonight is partial, not done", () => {
   assert.equal(t.done, false);
 });
 
-test("a range ends on the chapter when the chapter ends within 2 pages", () => {
+test("a range ends on the chapter when the chapter ends a page away", () => {
   // From 7 with 4 due, the end would be 11: Ch 3 ends at 10, so stop there.
   assert.deepEqual(v("studySnap(7, 4)"), {from: 7, to: 10});
   // From 5 with 4 due, the end would be 9: finish the chapter at 10.
   assert.deepEqual(v("studySnap(5, 4)"), {from: 5, to: 10});
-  // Far from any boundary, unchanged.
+  // Two pages away, or far from any boundary: unchanged.
+  assert.deepEqual(v("studySnap(4, 4)"), {from: 4, to: 8});
   assert.deepEqual(v("studySnap(12, 4)"), {from: 12, to: 16});
 });
 
 test("unfinished pages carry into the next block", () => {
   // Fri 23 Oct, Block 5's first reading night, with 30 read: 96 - 30 = 66
-  // over 16 nights is 5, and 30..35 snaps to Ch 21's end at 36.
+  // over 16 nights is 4 (4.1, rounded): pp. 30..34 of the run.
   assert.equal(v(`studyCountNights(${D("2026-10-23")}, blockEnd(5), [], [])`), 16);
   const t = tonight("2026-10-23", {"2026-10-21": 30});
-  assert.deepEqual([t.from, t.to], [30, 36]);
+  assert.deepEqual([t.from, t.to], [30, 34]);
 });
 
 test("the last night of a block is capped at 10 pages", () => {
@@ -160,18 +161,21 @@ test("pace needs a week; then pages per week and a finish date", () => {
   assert.ok(p.date);
 });
 
-test("the nights grid: 28 days from Thursday, planned pages ahead", () => {
+test("the nights grid: 28 days from Thursday, pages spread evenly", () => {
   const n = v(`studyNights(4, ${D("2026-09-30")}, ${st({})}, [])`);
   assert.equal(n.length, 28);
   assert.equal(v(`fmtDate(new Date(${JSON.stringify(n[0].date)}))`), "2026-09-24");
   const wed = n.find(x => x.key === "2026-09-30");
   assert.equal(wed.state, "today");
-  assert.equal(wed.pages, 4);
+  assert.equal(wed.pages, 3);
   const fri = n.find(x => x.key === "2026-10-02");
   assert.equal(fri.state, "future");
   assert.ok(fri.pages >= 3);
   const total = n.reduce((a, x) => a + x.pages, 0);
   assert.equal(total, 42);
+  const nights = n.filter(x => x.kind === "read").map(x => x.pages);
+  assert.equal(nights.length, 13);
+  assert.ok(Math.min(...nights) >= 2 && Math.max(...nights) <= 5, nights.join(","));
 });
 
 test("the nights grid marks done, missed and extra", () => {
@@ -193,7 +197,7 @@ test("the brief writes out tonight and 13 days after", () => {
   const b = v(`studyBriefNights(${D("2026-09-30")}, ${st({})}, [])`);
   assert.equal(b.length, 14);
   assert.equal(b[0].kind, "read");
-  assert.equal(b[0].pp, "35–38");
+  assert.equal(b[0].pp, "35–37");
   assert.equal(b[0].what, "Ch 3 · Esophageal Motility");
   assert.equal(b[1].kind, "thu");
 });

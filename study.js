@@ -14,7 +14,7 @@ const STUDY_END = new Date(2027, 5, 2);      // the plan's finish: the last day 
 const STUDY_LAST = new Date(2027, 5, 30);    // Block 13 is spare: catch-up, then questions
 const STUDY_NIGHTS = [1, 2, 3, 5];           // Mon, Tue, Wed and Fri; Thursday is soccer
 const STUDY_CAP = 10;                        // the most pages one night is given
-const STUDY_SNAP = 2;                        // finish on a chapter when one ends this close
+const STUDY_SNAP = 1;                        // finish on a chapter when one ends this close
 const STUDY_EVENING = 20;                    // 20:00: the reminder, and the call-night test
 const STUDY_PDF = 15;                        // PDF page = printed page + 15
 const STUDY_KEEP = 4;                        // pages offered when you're ahead
@@ -219,7 +219,8 @@ function studyCursorNow(log) {
 }
 
 // ---- Tonight -----------------------------------------------------------------------
-// End a range on a chapter boundary when one is within STUDY_SNAP pages.
+// End a range on a chapter boundary when one is within STUDY_SNAP pages, so
+// a chapter isn't left with a page dangling or started with a single page.
 function studySnap(from, n) {
   const S = studySeq(), end = Math.min(from + n, S.total);
   let best = end, gap = STUDY_SNAP + 1;
@@ -239,7 +240,9 @@ function studyShare(day, cursor, stretches, pauses) {
   const due = studyDue(Math.min(b, 13)) - cursor;
   if (due <= 0) return null;
   const nights = Math.max(1, studyCountNights(day, blockEnd(b), stretches, pauses));
-  const n = Math.min(Math.ceil(due / nights), STUDY_CAP, S.total - cursor);
+  // Rounded, not rounded up: 42 pages over 13 nights reads 3, 3, 3 ... with
+  // a 4 now and then, instead of front-loading and leaving the last night bare.
+  const n = Math.min(Math.max(1, Math.round(due / nights)), STUDY_CAP, S.total - cursor);
   return studySnap(cursor, n);
 }
 // The first reading night after `day`, within the next 60 days, or null.

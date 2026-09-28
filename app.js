@@ -11,6 +11,9 @@ const Store = {
   migrate() {
     delete this.state.celebrated;
     if (this.state.recapSeen === undefined) this.state.recapSeen = null;
+    const sd = this.state.study;
+    this.state.study = {log: sd && typeof sd.log === "object" && sd.log ? sd.log : {},
+      q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : []};
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved"; },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -46,14 +49,25 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
   hasData() {
     return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
-      Object.keys(this.state.lines).length > 0;
-  }
+      Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0;
+  },
+  // Study: the bookmark is saved against the day it was set.
+  setStudyCursor(c, day) {
+    this.state.study.log[fmtDate(day)] = Math.max(0, Math.min(studySeq().total, Math.round(c))); this.save(); },
+  setStudyScore(id, r, of) { this.state.study.q[id] = {r, of, d: fmtDate(getToday())}; this.save(); },
+  addPause(a, b) {
+    if (b < a) [a, b] = [b, a];
+    this.state.study.pauses.push({a, b});
+    this.state.study.pauses.sort((x, y) => x.a < y.a ? -1 : x.a > y.a ? 1 : 0); this.save(); },
+  removePause(i) { this.state.study.pauses.splice(i, 1); this.save(); },
+  studySnapshot() { return JSON.parse(JSON.stringify(this.state.study)); },
+  restoreStudy(snap) { this.state.study = snap; this.save(); }
 };
 
 let nudgeDismissed = false, backupError = null;
@@ -170,8 +184,11 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 });
 
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
-const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["plan", "Plan", "plan"], ["biopsy", "Biopsy", "jar"]];
+const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["biopsy", "Biopsy", "jar"]];
+// Pages that light up another tab in the bar: the year plan sits inside EPAs.
+const NAV_HOME = {plan: "epas"};
 function navHTML(active) {
+  active = NAV_HOME[active] || active;
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span></button>`;
   const split = NAV.length - 2;
@@ -320,7 +337,7 @@ function viewWeek() {
       (cs.cur ? "" : callCardHTML(cs, now)) + remindCardHTML();
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
-  h += thisWeekHTML(rows, cp.active);
+  h += thisWeekHTML(rows, cp.active) + studyCardHTML();
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
@@ -354,12 +371,19 @@ function backupHTML() {
     `<p class="bnote mono">Saved on this phone only</p>` +
     (backupError ? `<div class="err">${esc(backupError)}</div>` : "") + `</div></section>`;
 }
+// EPAs and the year plan share a tab, with a switch under the header.
+function epaSwitchHTML(on) {
+  const b = (page, label) => `<button class="${on === page ? "on" : ""}" data-action="tab" data-page="${page}"` +
+    (on === page ? ` aria-current="page"` : "") + `>${label}</button>`;
+  return `<div class="segtabs" role="group" aria-label="EPA views">${b("epas", "Checklist")}${b("plan", "Year plan")}</div>`;
+}
 const LOCK_NOTE = {core: "Opens once every Foundations observation is logged.", ttp: "Opens once every Core observation is logged."};
 function viewEpas() {
   const today = getToday(), cp = coachPlan(Store.state.obs, today), focus = cp ? blockFocus(cp) : [];
   const cur = currentStage(), t = tally(PARTS);
   let h = `<header class="ph"><p class="eyebrow mono">Royal College · Adult Gastroenterology</p><h1 class="title">EPAs</h1>` +
-    `<div class="ph-meta mono"><b>${t.logged}</b>/${t.req} logged · <b>${Store.overallPending()}</b> pending</div></header>` + warningsHTML(today);
+    `<div class="ph-meta mono"><b>${t.logged}</b>/${t.req} logged · <b>${Store.overallPending()}</b> pending</div></header>` +
+    epaSwitchHTML("epas") + warningsHTML(today);
   for (const st of STAGE_ORDER) {
     const s = stageTally(st), state = stageState(st, cur);
     const list = EPA_DATA.filter(x => x.stage === st);
@@ -458,7 +482,8 @@ function viewPlan() {
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs;
   const cp = blk ? coachPlan(obsBy, today) : null;
   const curNum = blk ? blk.num : (dayIndex(today) < 0 ? 0 : 14);
-  let h = `<header class="ph"><p class="eyebrow mono">Recalculated from what you've logged</p><h1 class="title">Year 1 plan</h1></header>`;
+  let h = `<header class="ph"><p class="eyebrow mono">Recalculated from what you've logged</p><h1 class="title">Year 1 plan</h1></header>` +
+    epaSwitchHTML("plan");
   if (cp) h += finishHTML(paceFinish(obsBy, today), planFinish(cp), today);
   const order = {
     f: "You're on Foundations. Core opens once every Foundations observation is logged, then Transition to Practice (P1). ",
@@ -473,13 +498,17 @@ function viewPlan() {
     const weight = {};
     for (const c of chips) { const s = PART_BY_ID[c.pid].stage; weight[s] = (weight[s] || 0) + c.n; }
     const dom = past ? null : Object.keys(weight).sort((a, b) => weight[b] - weight[a])[0];
+    // Week marks start below the block's node, so the scope tip in week 1
+    // doesn't sit on top of it.
+    const wkTop = w => `calc(40px + ${w - 1} * (100% - 66px) / 3)`;
     let rail = `<span class="node"></span>`;
-    for (let w = 1; w <= 4; w++) rail += `<span class="wk" style="top:${w * 20 + 6}%"></span>`;
-    if (now) rail += `<span class="tip" style="top:${blk.week * 20 + 6}%"></span>`;
+    for (let w = 1; w <= 4; w++) rail += `<span class="wk" style="top:${wkTop(w)}"></span>`;
+    if (now) rail += `<span class="tip" style="top:${wkTop(blk.week)}"></span>`;
+    const hint = past ? "" : blockHint(n, cp ? cp.active : null, Object.keys(weight));
     h += `<li class="blk${now ? " now" : past ? " past" : ""}${dom ? " st-" + dom : ""}"><div class="rail" aria-hidden="true">${rail}</div>` +
       `<div class="blk-body"><div class="blk-top"><span class="mono">Blk ${String(n).padStart(2, "0")}</span>` +
       (now ? `<span class="tag solid">Now</span>` : "") + `<span class="mono dates">${blockDates(n)}</span></div>` +
-      `<h3>${esc(BLOCK_NAMES[n])}</h3><p class="hint">${esc(BLOCK_HINTS[n])}</p><div class="pchips">` +
+      `<h3>${esc(BLOCK_NAMES[n])}</h3>${hint ? `<p class="hint">${esc(hint)}</p>` : ""}<div class="pchips">` +
       (chips.length ? chips.map(c => `<button class="pchip st-${PART_BY_ID[c.pid].stage}${c.past ? " past" : ""}" data-action="open" data-code="${c.code}">` +
         `<b>${c.label}</b><span class="x">×${c.n}</span></button>`).join("") :
         `<span class="pnone">${past ? "Nothing logged here" : "Nothing left here"}</span>`) + `</div></div></li>`;
@@ -646,9 +675,9 @@ function render() {
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "biopsy" ? viewBiopsy() : p === "call" ? viewCall() : viewEpa(route.code);
+      p === "biopsy" ? viewBiopsy() : p === "call" ? viewCall() : p === "study" ? viewStudy() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
-      (sheet ? sheetHTML() : "") + (toast ? toastHTML() : "");
+      (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -662,6 +691,7 @@ function render() {
   route.keepScroll = false;
   if (countUp) countUpDial();
   callAfterRender();
+  studyAfterRender();
   remindAfterRender();
 }
 // The dial's number counts up once, the first time Week is drawn.
@@ -688,6 +718,7 @@ function go(next, restore) {
   render();
 }
 function dispatch(act, d) {
+  if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "open") go({page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page});
   else if (act === "back") go({page: route.from || "epas"}, true);
   else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo(0, 0); }
@@ -743,7 +774,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target) || callField(ev.target)) return;
+  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -754,7 +785,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (sheetField(t)) return;
+  if (sheetField(t) || studyField(t)) return;
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {
@@ -778,17 +809,18 @@ document.getElementById("app").addEventListener("change", ev => {
 // and checks whether a reminder has arrived.
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   const a = document.activeElement;
-  if (document.visibilityState === "visible" && !sheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); remindInit(); }
+  if (document.visibilityState === "visible" && !sheet && !studySheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); remindInit(); }
 });
 // A tapped call reminder opens the Call screen: by link when the app was
 // closed, by message from the service worker when it was open.
-if (typeof location !== "undefined" && location.hash === "#call") {
-  route = {page: "call", from: "week"};
+if (typeof location !== "undefined" && (location.hash === "#call" || location.hash === "#study")) {
+  route = location.hash === "#call" ? {page: "call", from: "week"} : {page: "study"};
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
 if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
   navigator.serviceWorker.addEventListener("message", ev => {
-    if (ev.data && ev.data.go === "call") { sheet = null; go({page: "call", from: "week"}); }
+    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; go({page: "call", from: "week"}); }
+    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; go({page: "study"}); }
   });
 Store.load();
 CallStore.load();
