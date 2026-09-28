@@ -253,26 +253,35 @@ function callReadFile(f) {
   else { const rd = new FileReader(); rd.onload = () => done(icsText(new Uint8Array(rd.result))); rd.onerror = fail; rd.readAsArrayBuffer(f); }
 }
 // Numbers save as they are typed; leaving the field confirms it.
+// Under each number: Saved once it can be dialled. A half-typed number shows
+// nothing until you leave the field, then says what's wrong.
+function callNumStatus(v, typing) {
+  if (!v) return "";
+  if (callTel(v)) return `${ic("check")}Saved`;
+  return typing ? "" : "Not a phone number. Use digits, and a comma to pause.";
+}
+function callShowStatus(site, v, typing) {
+  const el = document.getElementById("numstat-" + site);
+  if (!el) return;
+  el.innerHTML = callNumStatus(v, typing);
+  el.className = "numstat" + (v && !callTel(v) && !typing ? " bad" : "");
+}
 function callField(t) {
   const site = t.dataset && t.dataset.callnum;
   if (!site) return false;
   CallStore.setNum(site, t.value.trim());
+  callShowStatus(site, t.value.trim(), true);
   return true;
 }
 function callNumDone(t) {
-  const site = t.dataset.callnum, v = t.value.trim(), name = site === "hsc" ? "HSC" : "St. Boniface";
+  const site = t.dataset.callnum, v = t.value.trim();
   CallStore.setNum(site, v);
-  if (v && callTel(v)) showToast(`${name} number saved`);
-  else if (!v) showToast(`${name} number removed`);
+  callShowStatus(site, v, false);
   // Tapping the other field fires this first: redraw only once no field has
   // the keyboard, so the keyboard stays up while moving between them.
   setTimeout(() => {
     const a = document.activeElement;
-    if (a && a.tagName === "INPUT") {
-      const old = document.getElementById("toast");
-      if (old) old.remove();
-      if (toast) { document.getElementById("app").insertAdjacentHTML("beforeend", toastHTML()); toastFresh = false; }
-    } else { route.keepScroll = true; render(); }
+    if (!(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); }
   }, 0);
 }
 
@@ -361,12 +370,20 @@ function callCardHTML(cs, now) {
     `<span class="cx-title">${callTitle(nx)}</span>` +
     `<span class="cx-who">${CALL_SITES.map(([k, short]) => `<span><i>${short}</i>${callWho(first[k].att)}</span>`).join("")}</span>` +
     (nx.segs.length > 1 ? `<span class="cx-note">${nx.segs.length} shifts back to back. Tap for who's on each.</span>` : "") +
-    `</button>` + callTraceHTML(callMidnight(now), 7, now, callStretches(CallStore.list()), null);
+    `</button>` + callTraceHTML(callMidnight(now), 7, now, callStretches(CallStore.list()), null) + callHintHTML(nx);
   if (rest.length) h += `<div class="xlist">` + rest.map(st => `<button class="xrow" data-action="callopen">` +
     `<span class="xd mono">${callDay(st.s)}</span><span class="xt">${callRange(st.s, st.e)}</span>` +
     `<span class="xh mono${st.e - st.s > 24 * HOUR_MS ? " long" : ""}">${callHours(st.s, st.e)} h</span></button>`).join("") + `</div>`;
   return h + `<button class="cx-all" data-action="callopen"><span>${more > 0 ? `${more} more, plus contacts and numbers` :
     "All shifts, contacts and numbers"}</span>${ic("forward", "sm")}</button></div></section>`;
+}
+// What the numbers are for, said before the shift that uses them.
+function callHintHTML(nx) {
+  const when = `${callWd(nx.s)} ${callHM(nx.s)}`, n = CALL_SITES.filter(([k]) => callTel(CallStore.state.nums[k])).length;
+  return `<p class="cx-hint">${ic("phone")}<span>` + (n === CALL_SITES.length
+    ? `From ${when}, the top of Week shows who's on, with a Call button for HSC and St. Boniface.`
+    : `From ${when}, the top of Week shows who's on at each site. Save the paging numbers to get a Call button for each.`) +
+    `</span></p>`;
 }
 function callSegHTML(x, many) {
   return `<div class="cseg"><div class="cseg-when mono">${many ? `${callWd(x.s)} ${callHM(x.s)} → ${callWd(x.e)} ${callHM(x.e)}` : callRange(x.s, x.e)}</div>` +
@@ -392,11 +409,11 @@ function callNumbersHTML() {
     const v = CallStore.state.nums[k], bad = v && !callTel(v);
     return `<label class="lbl mono">${full}<input type="tel" inputmode="tel" autocomplete="off" data-callnum="${k}" ` +
       `value="${esc(v)}" placeholder="Paging or locating number"${bad ? ` aria-invalid="true"` : ""}></label>` +
-      (bad ? `<div class="numhint bad">Not a phone number. Use digits, and a comma to pause.</div>` : "");
+      `<div class="numstat${bad ? " bad" : ""}" id="numstat-${k}" aria-live="polite">${callNumStatus(v, false)}</div>`;
   };
   return `<section class="sec"><div class="sec-head"><h2>Paging numbers</h2><span class="mono">One per site</span></div>` +
     `<div class="card pad callnums">${CALL_SITES.map(field).join("")}` +
-    `<p class="numhint">On call, each site gets a button that dials its number.</p></div></section>`;
+    `<p class="numhint">During a shift, each site gets a Call button that dials its number.</p></div></section>`;
 }
 const callLastImport = () => { const l = CallStore.state.last;
   return l ? `Imported ${MONTHS[new Date(l.at).getMonth()]} ${new Date(l.at).getDate()}` : "Nothing imported"; };
