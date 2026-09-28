@@ -107,7 +107,9 @@ function remindBrief(now) {
   }
   const call = callStretches(CallStore.list()).filter(st => st.e > now).slice(0, 16)
     .map(st => ({s: st.s, e: st.e, segs: st.segs.map(x => ({s: x.s, e: x.e, hsc: x.hsc, stb: x.stb, so: x.so}))}));
-  return {v: 1, at: now, weeks, call};
+  const str = callStretches(CallStore.list()), day = new Date(now);
+  const study = {nights: studyBriefNights(day, Store.state.study, str), week: studyLastWeek(day, Store.state.study, str)};
+  return {v: 1, at: now, weeks, call, study};
 }
 function remindAfterRender() {
   if (!remindSub || typeof caches === "undefined") return;
@@ -127,12 +129,20 @@ function remindNext(now) {
   let msg = {kind: "week", t};
   const st = callStretches(CallStore.list()).find(x => x.s - HOUR_MS > now);
   if (st && st.s - HOUR_MS < t) msg = {kind: "call", t: st.s - HOUR_MS, s: st.s};
+  // The next 20:00 on a reading night, if it comes first.
+  const str = callStretches(CallStore.list());
+  for (let k = 0; k < 8; k++) {
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), ts = studyEveningMs(day);
+    if (ts <= now || fmtDate(day) > fmtDate(STUDY_END)) continue;
+    if (studyNightKind(day, str, []) === "read") { if (ts < msg.t) msg = {kind: "study", t: ts}; break; }
+  }
   return {msg, notice: noticeFor(msg, remindBrief(msg.t), msg.t)};
 }
 
 // ---- Views -------------------------------------------------------------------------
 const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Thu 08:00</span><span>The week's EPAs, and any call that week</span></li>` +
-  `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li></ul>`;
+  `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li>` +
+  `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li></ul>`;
 function remindCodeHTML() {
   return `<div class="rcode mono" aria-label="Connection code">${esc(remindSub.endpoint.replace(/^https:\/\//, "").slice(0, 38))}…</div>` +
     `<div class="rbtns"><button class="btn primary" data-action="remindshare">${ic("share")}Share code</button>` +

@@ -121,3 +121,23 @@ test("coachPlan is null outside Year 1", () => {
   assert.equal(h.val(`coachPlan({}, ${dateExpr("2026-06-30")})`), null);
   assert.equal(h.val(`coachPlan({}, ${dateExpr("2027-07-01")})`), null);
 });
+
+test("block hints follow the stage: no Core advice while Foundations is open", () => {
+  const h = load({today: "2026-09-28"});
+  const hint = (n, active, stages) => h.val(`blockHint(${n}, ${JSON.stringify(active)}, ${JSON.stringify(stages)})`);
+  for (let n = 1; n <= 12; n++) assert.doesNotMatch(hint(n, "f", ["f"]), /\bC\d/, "block " + n);
+  assert.match(hint(4, "f", ["f"]), /F2/);
+  assert.match(hint(6, "f", ["core"]), /^Once Foundations is done: /);
+  assert.match(hint(4, "core", ["core"]), /C5/);
+  assert.match(hint(13, "ttp", ["ttp"]), /P1/);
+});
+
+test("the plan shows hints only for this block and those to come", () => {
+  const h = load({today: "2026-09-28"});
+  h.click("tab", {page: "plan"});
+  const html = h.html();
+  const blk = n => html.slice(html.indexOf(`Blk ${String(n).padStart(2, "0")}`), html.indexOf(`Blk ${String(n + 1).padStart(2, "0")}`));
+  assert.doesNotMatch(blk(3), /class="hint"/);
+  assert.match(blk(4), /class="hint">Nutrition block: finish F2/);
+  assert.doesNotMatch(blk(4), /C5|C2/);
+});

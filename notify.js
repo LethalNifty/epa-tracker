@@ -31,14 +31,34 @@ function noteWeek(w, brief, now) {
     : "Nothing due this week. Log anything you get.";
   const calls = (brief.call || []).filter(st => st.s >= w.start && st.s < w.start + NOTE_WEEK);
   const call = calls.length ? " Call: " + calls.map(st => `${noteWd(st.s)} ${noteHM(st.s)}${noteLong(st) ? " (weekend)" : ""}`).join(", ") + "." : "";
-  return {title: `Block ${w.block}, week ${w.week} of 4${today ? " starts today" : ""}`, body: due + call, tag: "gi-week-" + w.start, url: "./"};
+  const lw = brief.study && brief.study.week, read = lw && (lw.read || lw.planned) ? ` Reading: ${lw.read} of ${lw.planned} pages last week.` : "";
+  return {title: `Block ${w.block}, week ${w.week} of 4${today ? " starts today" : ""}`, body: due + call + read, tag: "gi-week-" + w.start, url: "./"};
 }
-// msg: {kind: "week" | "call" | "test", t, s?}; brief: what the app saved, or null.
+// 20:00 on a reading night: tonight's Mayo pages, or that they're done.
+// The brief carries tonight and the next 13 days, written out by study.js.
+const NOTE_STUDY_GENERIC = {title: "Tonight's reading", body: "Open GI Hub for tonight's pages.", tag: "gi-study", url: "./#study"};
+function noteStudy(brief, now) {
+  const nights = brief && brief.study && brief.study.nights || [];
+  const day = new Date(now), key = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const i = nights.findIndex(x => x.d === key), n = nights[i];
+  if (!n) return NOTE_STUDY_GENERIC;
+  const tag = "gi-study-" + key, url = "./#study";
+  const nx = nights.slice(i + 1).find(x => x.kind === "read" && x.pp);
+  const next = nx ? `Next: ${NOTE_DAYS[new Date(nx.d).getDay()]}, pp. ${nx.pp}.` : "";
+  if (n.kind === "complete") return {title: "Mayo pass 1 is read", body: "All the pages are done. Questions next.", tag, url};
+  if (n.kind === "read" && n.done) return {title: "Reading done for tonight", body: next || "Nothing more tonight.", tag, url};
+  if (n.kind === "read" && n.pp) return {title: `Tonight: pp. ${n.pp}`, body: `${n.what}. ${n.n} page${n.n === 1 ? "" : "s"}.`, tag, url};
+  if (n.kind === "ahead") return {title: "You're ahead of plan", body: "Tonight is free. " + (next || "Keep going in GI Hub if you like."), tag, url};
+  if (n.kind === "pause") return {title: "Reading paused", body: "No pages tonight.", tag, url};
+  return {title: "No reading tonight", body: next, tag, url};
+}
+// msg: {kind: "week" | "call" | "study" | "test", t, s?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
-    return {title: "GI Hub reminders are on", body: "Thursdays at 08:00: the week's EPAs. An hour before each call: who's on at each site.",
-      tag: "gi-test", url: "./"};
+    return {title: "GI Hub reminders are on", body: "Thursdays at 08:00: the week's EPAs. An hour before each call: who's on at each site. " +
+      "20:00 on reading nights: tonight's pages.", tag: "gi-test", url: "./"};
+  if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "call") {
     const list = b ? b.call || [] : [];
     const st = (msg.s && list.find(x => Math.abs(x.s - msg.s) < 60000)) || list.find(x => x.e > now && x.s - now < 3 * 3600000);

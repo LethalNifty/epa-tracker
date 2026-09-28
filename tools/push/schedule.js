@@ -4,6 +4,10 @@
 const HOUR = 3600000;
 const WEEKLY = {day: 4, hour: 8};     // Thursday 08:00, the first day of each block week
 const CALL_LEAD = HOUR;               // an hour before each call starts
+// Tonight's Mayo pages: 20:00 on reading nights (Mon, Tue, Wed, Fri) while
+// the plan runs, not on a day a call stretch starts by 20:00. These must
+// match study.js (STUDY_NIGHTS, STUDY_EVENING, STUDY_START, STUDY_END).
+const STUDY = {hour: 20, days: [1, 2, 3, 5], from: "2026-09-30", to: "2027-06-02"};
 
 // "2026-10-07T17:00" (Winnipeg wall time) to epoch ms.
 function wallMs(s) {
@@ -38,6 +42,13 @@ function dueReminders(lo, hi, callStarts) {
     const t = s - CALL_LEAD;
     if (t > lo && t <= hi) out.push({kind: "call", t, s});
   }
+  for (let day = new Date(d.getFullYear(), d.getMonth(), d.getDate()); day.getTime() <= hi; day.setDate(day.getDate() + 1)) {
+    const key = wallString(day.getTime()).slice(0, 10);
+    if (!STUDY.days.includes(day.getDay()) || key < STUDY.from || key > STUDY.to) continue;
+    const t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), STUDY.hour).getTime();
+    const onCall = callStarts.some(s => wallString(s).slice(0, 10) === key && s <= t);
+    if (t > lo && t <= hi && !onCall) out.push({kind: "study", t});
+  }
   return out.sort((a, b) => a.t - b.t);
 }
 // The window a run covers: from the last run that actually ran to this one's
@@ -49,4 +60,4 @@ function windowFor(prevStart, thisStart) {
   return {lo, hi};
 }
 
-module.exports = {HOUR, WEEKLY, CALL_LEAD, wallMs, wallString, parseCallTimes, dueReminders, windowFor};
+module.exports = {HOUR, WEEKLY, CALL_LEAD, STUDY, wallMs, wallString, parseCallTimes, dueReminders, windowFor};

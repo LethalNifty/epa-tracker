@@ -29,21 +29,35 @@ const PLAN = {
   12:{c2:3, c3:1, c6:2, c8a:6, c8b:1, c9a:2, c9b:3},
   13:{p1:5}
 };
+// What each rotation is good for. "f" is what to chase while Foundations is
+// open (Core can't be logged yet); "core" is for once it opens. Past blocks
+// show no hint: they show what was logged.
 const BLOCK_HINTS = {
-  1:"TTD first: emergencies, consent and prep, observed H&P.",
-  2:"Close out D1/D2; stack F1-B assessments; start F2 nutrition.",
-  3:"Liver block: chronic-liver C2s and liver C3s are hardest to get elsewhere.",
-  4:"Nutrition block: finish F2, both C5s, functional/refractory C2 lines.",
-  5:"Finish Foundations; complex consults; forms on every scope day.",
-  6:"Light block: procedure notes, and mop up anything behind plan.",
-  7:"Complex consults and therapeutic scope cases (holiday bleeds count).",
-  8:"Endo block: a form on every list (colonoscopies, therapeutics, findings).",
-  9:"Light block: last procedure notes; book assessors for Block 10.",
-  10:"Junior-attending block: C9 observations and colonoscopy volume.",
-  11:"Clinic-heavy: C2 forms every clinic; keep scoping.",
-  12:"Big finish: close C2/C3, remaining scopes, C9. Varices count as C8 variceal ticks.",
-  13:"P1 wrap-up: run the endoscopy list; buffer for anything left."
+  1: {f: "Emergencies, consent and prep, and observed histories and physicals."},
+  2: {f: "Stack F1-B assessments on consults; start F2 nutrition."},
+  3: {f: "F1-B assessments on liver consults.", core: "Chronic-liver C2s and liver C3s are hardest to get elsewhere."},
+  4: {f: "Nutrition block: finish F2, and keep F1-B assessments coming.", core: "Both C5s, and the functional or refractory C2 lines."},
+  5: {f: "Finish Foundations: an EGD, EGD note or flex sig form on every scope day.", core: "Complex consults, and forms on every scope day."},
+  6: {f: "Light block: mop up any Foundations still open.", core: "Procedure notes, referrals, and anything behind plan."},
+  7: {f: "Consults: close any Foundations still open.", core: "Complex consults and therapeutic scope cases (holiday bleeds count)."},
+  8: {f: "Endo block: a form on every list.", core: "A form on every list: colonoscopies, therapeutics, findings."},
+  9: {f: "Light block: catch up anything still open.", core: "Last procedure notes; book assessors for Block 10."},
+  10: {f: "Close out Foundations so Core opens.", core: "Junior-attending block: C9 observations and colonoscopy volume."},
+  11: {f: "Close out Foundations so Core opens.", core: "Clinic-heavy: C2 forms every clinic; keep scoping."},
+  12: {f: "Close out Foundations so Core opens.", core: "Big finish: close C2 and C3, remaining scopes, C9. Varices count as C8 variceal ticks."},
+  13: {f: "Buffer for anything left.", core: "Buffer for anything left.", ttp: "P1 wrap-up: run the endoscopy list; buffer for anything left."}
 };
+// The hint for a block that is now or to come, given the stage the coach is
+// working on and the stages of what the plan put in that block.
+function blockHint(n, active, chipStages) {
+  const h = BLOCK_HINTS[n] || {};
+  if (active === "ttp") return h.ttp || h.core || h.f || "";
+  if (active === "core") return h.core || h.f || "";
+  // Foundations open: a block holding only later stages gets its Core advice,
+  // said as what comes after Foundations.
+  if (chipStages.length && !chipStages.includes("f") && h.core) return "Once Foundations is done: " + h.core.charAt(0).toLowerCase() + h.core.slice(1);
+  return h.f || "";
+}
 // One short name per part, for the week list and the log sheet.
 const PART_SHORT = {d1:"GI emergencies", d2a:"Consent", d2b:"Scope preparation", f1a:"History and physical",
   f1b:"Assessment and plan", f2:"Nutrition", f3a:"EGD", f3b:"EGD note", f4:"Flex sig", c1:"Complex patients",

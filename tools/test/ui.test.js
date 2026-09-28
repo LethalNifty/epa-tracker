@@ -13,19 +13,30 @@ test("EPAs tab: stage groups, done EPAs folded, pending shown as text", () => {
   assert.doesNotMatch(html, /[\u23F3\u{1F680}\u{1F3C5}\u{1F512}\u{1F389}]/u);
 });
 
-test("bottom bar: tabs plus the log button, current tab highlighted", () => {
+test("bottom bar: Week, EPAs, the log button, Study, Biopsy; current tab highlighted", () => {
   const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "study"});
+  const nav = h.html().slice(h.html().indexOf('<nav class="bnav"'));
+  assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "epas", "study", "biopsy"]);
+  assert.ok(nav.indexOf('class="fab"') > nav.indexOf('data-page="epas"') && nav.indexOf('class="fab"') < nav.indexOf('data-page="study"'));
+  assert.match(nav, /class="nv on" data-action="tab" data-page="study"/);
+});
+
+test("the year plan lives inside EPAs: the switch shows it and EPAs stays lit", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "epas"});
+  assert.match(h.html(), /class="segtabs"/);
   h.click("tab", {page: "plan"});
-  assert.match(h.html(), /<nav class="bnav"/);
-  assert.match(h.html(), /class="nv on" data-action="tab" data-page="plan"/);
-  assert.match(h.html(), /class="fab" data-action="sheet"/);
+  assert.match(h.html(), /Year 1 plan/);
+  assert.match(h.html(), /class="on" data-action="tab" data-page="plan"/);
+  assert.match(h.html(), /class="nv on" data-action="tab" data-page="epas"/);
 });
 
 test("EPA detail keeps its tab highlighted and goes back to it", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "plan"});
   h.click("open", {code: "C2"});
-  assert.match(h.html(), /class="nv on" data-action="tab" data-page="plan"/);
+  assert.match(h.html(), /class="nv on" data-action="tab" data-page="epas"/);
   h.click("back");
   assert.equal(h.val("route.page"), "plan");
 });

@@ -51,8 +51,24 @@ test("Thursday reminder: the week's EPAs and the call that week", () => {
   const h = withBlock("2026-10-29T08:00", {state: state({d1: many(4, "2026-07-10")})});
   const n = h.val(`noticeFor({kind: "week", t: callNow()}, remindBrief(callNow()), callNow())`);
   assert.match(n.title, /^Block 5, week 2 of 4 starts today$/);
-  assert.match(n.body, /^Due: F1-B ×\d, [^.]*F1-A[^.]*\. Call: Fri 17:00 \(weekend\), Tue 17:00\.$/);
+  assert.match(n.body, /^Due: F1-B ×\d, [^.]*F1-A[^.]*\. Call: Fri 17:00 \(weekend\), Tue 17:00\. Reading: 0 of \d+ pages last week\.$/);
   assert.equal(n.url, "./");
+});
+
+test("20:00 reminder: tonight's pages, done nights, and the Study tab on tap", () => {
+  const h = load({today: "2026-09-30"});
+  h.setNow("2026-09-30T20:00");
+  const note = () => h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
+  let n = note();
+  assert.equal(n.title, "Tonight: pp. 35–37");
+  assert.equal(n.body, "Ch 3 · Esophageal Motility. 3 pages.");
+  assert.equal(n.url, "./#study");
+  h.run(`Store.setStudyCursor(3, getToday())`);
+  n = note();
+  assert.equal(n.title, "Reading done for tonight");
+  assert.match(n.body, /^Next: Fri, pp\. 38–/);
+  // Nothing saved: still a useful nudge.
+  assert.equal(h.val(`noticeFor({kind: "study", t: 0}, null, 0).title`), "Tonight's reading");
 });
 
 test("with nothing saved on the phone, reminders still say something useful", () => {
@@ -125,11 +141,15 @@ test("EPAs tab: once a reminder has arrived, status On, the next reminder and th
   h.click("tab", {page: "epas"});
   const html = h.html();
   assert.match(html, /<h2>Reminders<\/h2><span class="mono ok">On<\/span>/);
-  assert.match(html, /<span class="mono">Next<\/span><span><b>Wed 28 Oct, 16:00<\/b> · On call from 17:00<\/span>/);
+  // Tuesday evening: tonight's reading comes first.
+  assert.match(html, /<span class="mono">Next<\/span><span><b>Tue 27 Oct, 20:00<\/b> · Tonight: pp\. 35–44<\/span>/);
   assert.match(html, /<span class="mono">Last<\/span><span>Thu 22 Oct, 08:00<\/span>/);
   assert.match(html, /data-action="remindoff">Turn off/);
-  // No call soon: the next is Thursday's.
-  h.setNow("2026-11-04T09:00"); h.run(`render()`);
+  // Wednesday noon: the call reminder at 16:00 beats tonight's reading.
+  h.setNow("2026-10-28T12:00"); h.run(`render()`);
+  assert.match(h.html(), /<b>Wed 28 Oct, 16:00<\/b> · On call from 17:00/);
+  // Thursday early: the week's reminder is next.
+  h.setNow("2026-11-05T07:00"); h.run(`render()`);
   assert.match(h.html(), /<b>Thu 5 Nov, 08:00<\/b> · Block 5, week 3 of 4 starts today/);
 });
 
