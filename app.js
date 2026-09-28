@@ -306,15 +306,18 @@ function finishHTML(pace, plan, today) {
     `<span style="left:${goal}%">Jun 30</span></div></div></div>` +
     `<p class="fin-goal">Goal: everything logged by Jun 30, 2027.</p></div></section>`;
 }
+// On call, the Call panel leads the page; otherwise the Call card follows This week.
 function viewWeek() {
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs, cur = currentStage();
+  const now = callNow(), cs = callStatus(CallStore.list(), now);
   let h = `<header class="ph">` + (blk
     ? `<p class="eyebrow mono">Block ${blk.num} · ${esc(blk.name)}</p><h1 class="title">Week ${blk.week} of 4</h1>`
     : `<p class="eyebrow mono">GI Hub</p><h1 class="title">${dayIndex(today) < 0 ? "Almost time" : "Year 1 done"}</h1>`) + `</header>`;
-  h += warningsHTML(today) + monitorHTML(today, cur) + stagesHTML(cur);
+  h += warningsHTML(today) + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
   if (!blk) {
     return h + `<div class="card pad empty spaced">${dayIndex(today) < 0 ? "Fellowship starts July 2, 2026." :
-      "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>`;
+      "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
+      (cs.cur ? "" : callCardHTML(cs, now));
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
   h += thisWeekHTML(rows, cp.active);
@@ -322,6 +325,7 @@ function viewWeek() {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
   }
+  if (!cs.cur) h += callCardHTML(cs, now);
   const look = lookFor(rows, id => Store.lineVal(id));
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
@@ -641,8 +645,8 @@ function render() {
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "biopsy" ? viewBiopsy() : viewEpa(route.code);
-    html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" ? route.from : p) +
+      p === "biopsy" ? viewBiopsy() : p === "call" ? viewCall() : viewEpa(route.code);
+    html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
       (sheet ? sheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
@@ -656,6 +660,7 @@ function render() {
   else if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
   if (countUp) countUpDial();
+  callAfterRender();
 }
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
@@ -675,7 +680,7 @@ function countUpDial() {
 // Navigate. Tabs and Back return to where that page was last scrolled.
 function go(next, restore) {
   if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
-  route = next;
+  route = next; callError = null;
   if (restore && scrollMemo[next.page]) route.restoreY = scrollMemo[next.page];
   enterNext = true;
   render();
@@ -712,6 +717,16 @@ function dispatch(act, d) {
   else if (act === "export") { exportBackup(); }
   else if (act === "importpick") { document.getElementById("importfile").click(); }
   else if (act === "reload") { location.reload(); }
+  else if (act === "callopen" || act === "callsetup") {
+    const from = route.page === "epa" || route.page === "call" ? route.from : route.page;
+    if (route.page === "call") { route.focus = d.site; route.keepScroll = true; render(); }
+    else go({page: "call", from, focus: act === "callsetup" ? d.site : undefined}); }
+  else if (act === "callimport") { document.getElementById("callfile").click(); }
+  else if (act === "callclear") {
+    const before = CallStore.snapshot();
+    CallStore.clear(); callError = null;
+    showToast("Call data cleared", () => CallStore.restore(before));
+    route.keepScroll = true; render(); }
   else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
   else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();
     const q = document.getElementById("biopsyq"); if (q) q.focus(); }
@@ -721,7 +736,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target)) return;
+  if (sheetField(ev.target) || callField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -733,6 +748,8 @@ document.getElementById("app").addEventListener("input", ev => {
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
   if (sheetField(t)) return;
+  if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
+  if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {
     const f = t.files && t.files[0];
     if (!f) return;
@@ -750,6 +767,12 @@ document.getElementById("app").addEventListener("change", ev => {
   }
   if (d.field && d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
+// Coming back to the app redraws it, so the call card and the week are current.
+if (document.addEventListener) document.addEventListener("visibilitychange", () => {
+  const a = document.activeElement;
+  if (document.visibilityState === "visible" && !sheet && !(a && a.tagName === "INPUT")) { route.keepScroll = true; render(); }
+});
 Store.load();
+CallStore.load();
 render();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");

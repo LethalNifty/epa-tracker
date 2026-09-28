@@ -43,7 +43,7 @@ function load(opts = {}) {
     },
   };
   const ctx = {
-    console, clearTimeout,
+    console, clearTimeout, TextDecoder,
     // Unref'd so a pending toast timer never holds the test process open.
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t.unref) t.unref(); return t; },
     localStorage: {
@@ -73,6 +73,9 @@ function load(opts = {}) {
     val: expr => { const s = run(`JSON.stringify(${expr})`); return s === undefined ? undefined : JSON.parse(s); },
     html: () => els.app.innerHTML,
     setToday: iso => run(`window.__today = ${dateExpr(iso)};`),
+    // Local wall-clock time, "2026-10-31T20:00", for the call card.
+    setNow: local => { const [d, t] = local.split("T"), [y, m, dd] = d.split("-").map(Number), [hh, mm] = t.split(":").map(Number);
+      run(`window.__now = new Date(${y}, ${m - 1}, ${dd}, ${hh}, ${mm});`); },
     saved: () => JSON.parse(store.get(KEY)),
     click: (action, data = {}) => run(`dispatch(${JSON.stringify(action)}, ${JSON.stringify(data)})`),
   };

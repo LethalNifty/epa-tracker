@@ -1,5 +1,5 @@
-const CACHE = "epa-v7";
-const ASSETS = ["./", "index.html", "app.css", "coach.js", "app.js", "manifest.webmanifest", "icon.svg",
+const CACHE = "epa-v8";
+const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "app.js", "manifest.webmanifest", "icon.svg",
   "icon-180.png", "icon-192.png", "icon-512.png",
   "fonts/plex-sans-var.woff2", "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"];
 self.addEventListener("install", e => {

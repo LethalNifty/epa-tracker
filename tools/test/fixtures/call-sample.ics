@@ -1,0 +1,122 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GI Hub tests//sample call block//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:GI Call
+BEGIN:VTIMEZONE
+TZID:America/Winnipeg
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0600
+TZOFFSETTO:-0500
+TZNAME:CDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0600
+TZNAME:CST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:gi-call-20261028@gi-hub-tests
+DTSTAMP:20260927T160000Z
+DTSTART;TZID=America/Winnipeg:20261028T170000
+DTEND;TZID=America/Winnipeg:20261029T080000
+SUMMARY:GI call: HSC Attending A / StB Attending B
+LOCATION:HSC + St. Boniface (home call)
+DESCRIPTION:GI call\, HSC Attending A and St. Boniface Attending B\; overni
+ ght from 17:00.\nHSC\nAttending: Attending A\nResident: none\n\nSt. B\nAtt
+ ending: Attending B\nResident: none\n\nCafé note: page the fellow first\,
+  then the attending.
+X-GI-CALL-HSC-ATTENDING:Attending A
+X-GI-CALL-HSC-RESIDENT:none
+X-GI-CALL-STB-ATTENDING:Attending B
+X-GI-CALL-STB-RESIDENT:none
+X-GI-CALL-SIGNOUT:Fellow E (HSC) + Fellow F (St B)
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GI call tonight\, HSC and St. Boniface\; check sign-out
+TRIGGER:-PT21H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:gi-call-20261030@gi-hub-tests
+DTSTAMP:20260927T160000Z
+DTSTART;TZID=America/Winnipeg:20261030T170000
+DTEND;TZID=America/Winnipeg:20261031T080000
+SUMMARY:GI call: HSC Attending C / StB Attending D
+LOCATION:HSC + St. Boniface (home call)
+DESCRIPTION:GI call\, HSC Attending C and St. Boniface Attending D\; overni
+ ght from 17:00.\nHSC\nAttending: Attending C\nResident: none\n\nSt. B\nAtt
+ ending: Attending D\nResident: Resident G\n\nCafé note: page the fellow f
+ irst\, then the attending.
+X-GI-CALL-HSC-ATTENDING:Attending C
+X-GI-CALL-HSC-RESIDENT:none
+X-GI-CALL-STB-ATTENDING:Attending D
+X-GI-CALL-STB-RESIDENT:Resident G
+X-GI-CALL-SIGNOUT:Fellow E (HSC) + Fellow F (St B)
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GI call tonight\, HSC and St. Boniface\; check sign-out
+TRIGGER:-PT21H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:gi-call-20261031@gi-hub-tests
+DTSTAMP:20260927T160000Z
+DTSTART;TZID=America/Winnipeg:20261031T080000
+DTEND;TZID=America/Winnipeg:20261101T080000
+SUMMARY:GI call: HSC Attending C / StB Attending D
+LOCATION:HSC + St. Boniface (home call)
+DESCRIPTION:GI call\, HSC Attending C and St. Boniface Attending D\; overni
+ ght from 17:00.\nHSC\nAttending: Attending C\nResident: none\n\nSt. B\nAtt
+ ending: Attending D\nResident: Resident G\n\nCafé note: page the fellow f
+ irst\, then the attending.
+X-GI-CALL-HSC-ATTENDING:Attending C
+X-GI-CALL-HSC-RESIDENT:none
+X-GI-CALL-STB-ATTENDING:Attending D
+X-GI-CALL-STB-RESIDENT:Resident G
+END:VEVENT
+BEGIN:VEVENT
+UID:gi-call-20261101@gi-hub-tests
+DTSTAMP:20260927T160000Z
+DTSTART;TZID=America/Winnipeg:20261101T080000
+DTEND;TZID=America/Winnipeg:20261102T080000
+SUMMARY:GI call: HSC Attending A / StB Attending B
+LOCATION:HSC + St. Boniface (home call)
+DESCRIPTION:GI call\, HSC Attending A and St. Boniface Attending B\; overni
+ ght from 17:00.\nHSC\nAttending: Attending A\nResident: none\n\nSt. B\nAtt
+ ending: Attending B\nResident: none\n\nCafé note: page the fellow first\,
+  then the attending.
+X-GI-CALL-HSC-ATTENDING:Attending A
+X-GI-CALL-HSC-RESIDENT:none
+X-GI-CALL-STB-ATTENDING:Attending B
+X-GI-CALL-STB-RESIDENT:none
+END:VEVENT
+BEGIN:VEVENT
+UID:gi-call-20261103@gi-hub-tests
+DTSTAMP:20260927T160000Z
+DTSTART;TZID=America/Winnipeg:20261103T170000
+DTEND;TZID=America/Winnipeg:20261104T080000
+SUMMARY:GI call: HSC Attending B / StB Attending A
+LOCATION:HSC + St. Boniface (home call)
+DESCRIPTION:GI call\, HSC Attending B and St. Boniface Attending A\; overni
+ ght from 17:00.\nHSC\nAttending: Attending B\nResident: Resident H\n\nSt. 
+ B\nAttending: Attending A\nResident: none\n\nCafé note: page the fellow f
+ irst\, then the attending.
+X-GI-CALL-HSC-ATTENDING:Attending B
+X-GI-CALL-HSC-RESIDENT:Resident H
+X-GI-CALL-STB-ATTENDING:Attending A
+X-GI-CALL-STB-RESIDENT:none
+X-GI-CALL-SIGNOUT:Fellow E (HSC) + Fellow F (St B)
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GI call tonight\, HSC and St. Boniface\; check sign-out
+TRIGGER:-PT21H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
