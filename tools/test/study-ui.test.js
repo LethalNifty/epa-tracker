@@ -113,3 +113,10 @@ test("study rides in the backup, and old backups load with an empty study", () =
   h.val(`Store.importJSON(${JSON.stringify(withIt)}).ok`);
   assert.deepEqual(h.saved().study.log, {"2026-10-02": 9});
 });
+
+test("a night across two chapters is named for the main one, with a note for the other", () => {
+  // 22 read on 14 Oct: tonight is p. 95 (the end of Ch 7) and pp. 237-240 of Ch 21.
+  const html = study("2026-10-14", withStudy({"2026-10-13": 22})).html();
+  assert.match(html, /<div class="sm-ch mono">Ch 7 → Ch 21<\/div><div class="sm-title">Constipation and Fecal Incontinence<\/div>/);
+  assert.match(html, /Starts with the last page of Ch 7\. \d pages/);
+});
