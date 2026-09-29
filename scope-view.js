@@ -652,6 +652,15 @@ function scopeReadImport(f) {
   rd.onload = () => { scopeImportText(String(rd.result || "")); route.keepScroll = true; render(); };
   rd.readAsText(f);
 }
+// Redrawing replaces the sheets, so their scroll position is carried across:
+// tapping a landmark at the bottom of a card never jumps back to the top.
+let scopeScrollKeep = null;
+function scopeBeforeRender() {
+  scopeScrollKeep = null;
+  if (typeof document.querySelector !== "function") return;
+  const sh = document.querySelector(".scopesheet"), pk = document.querySelector(".picklist");
+  if (sh || pk) scopeScrollKeep = {sheet: sh ? sh.scrollTop : 0, pick: pk ? pk.scrollTop : 0};
+}
 // The box grows with what's said, so a whole day stays readable.
 function scopeGrow(el) {
   if (!el || !el.style) return;
@@ -659,6 +668,7 @@ function scopeGrow(el) {
   el.style.height = Math.min(Math.max(el.scrollHeight, 88), 360) + "px";
 }
 function scopeAfterRender() {
+  const freshSheet = scopeSheetFresh, freshPick = scopePickFresh;
   // The + sheet opens with the keyboard up, one tap from the mic.
   if (scopeSheetFresh && scopeSheet && scopeSheet.kind === "capture" && document.getElementById) {
     const box = document.getElementById("scopebox-sheet");
@@ -669,14 +679,21 @@ function scopeAfterRender() {
   if (route.page === "endo" && scopeTab === "progress") scopeIntroDone = true;
   if (scopeCardsFresh) setTimeout(() => { scopeCardsFresh = false; }, 50);
   if (scopeLit) { const id = scopeLit; setTimeout(() => { if (scopeLit === id) scopeLit = null; }, 1600); }
+  if (scopePick && scopePickFresh === false && typeof document.getElementById === "function") {
+    const q = document.getElementById("scopepickq");
+    if (q && document.activeElement !== q && q.focus && !scopePick.focused) { scopePick.focused = true; try { q.focus({preventScroll: true}); } catch (e) {} }
+  }
+  // Last, after the box has grown, so the height is final.
+  if (scopeScrollKeep && typeof document.querySelector === "function") {
+    const sh = document.querySelector(".scopesheet"), pk = document.querySelector(".picklist");
+    if (sh && !freshSheet) sh.scrollTop = scopeScrollKeep.sheet;
+    if (pk && !freshPick) pk.scrollTop = scopeScrollKeep.pick;
+  }
+  // A card that can't be saved yet is brought into view.
   if (scopeFocus && typeof document.getElementById === "function") {
     const el = document.getElementById("card-" + scopeFocus);
     if (el && el.scrollIntoView) el.scrollIntoView({block: "center", behavior: scopeReduced() ? "auto" : "smooth"});
     scopeFocus = null;
-  }
-  if (scopePick && scopePickFresh === false && typeof document.getElementById === "function") {
-    const q = document.getElementById("scopepickq");
-    if (q && document.activeElement !== q && q.focus && !scopePick.focused) { scopePick.focused = true; try { q.focus({preventScroll: true}); } catch (e) {} }
   }
 }
 
