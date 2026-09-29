@@ -24,7 +24,7 @@ test("the app never says Elentra", () => {
 
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v14";/);
+  assert.match(sw, /const CACHE = "epa-v15";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
     "scope-view.js", "scope-report.js", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
     "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"]) {

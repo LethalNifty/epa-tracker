@@ -709,6 +709,7 @@ function render() {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
   }
+  scopeBeforeRender();
   document.getElementById("app").innerHTML = html;
   const countUp = p === "week" && !introDone;
   if (p === "week") introDone = true;
