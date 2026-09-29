@@ -18,7 +18,9 @@ const Store = {
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved";
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
-      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null}; },
+      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled)};
+    // Once: cases imported before sites were filled on import take their block's hospital.
+    if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; } },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },

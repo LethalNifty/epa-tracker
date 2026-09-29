@@ -314,3 +314,20 @@ test("import merges by id and staff by name", () => {
   assert.equal(again.added, 0);
   assert.equal(h.val(`scopeImport(${JSON.stringify(empty)}, {kind: "other"})`).ok, false);
 });
+
+test("imported cases take their consult block's hospital", () => {
+  const site = iso => h.val(`scopeBlockSite(${JSON.stringify(iso)})`);
+  assert.equal(site("2026-07-01"), "hsc");
+  assert.equal(site("2026-07-29"), "hsc");
+  assert.equal(site("2026-07-30"), "stb");
+  assert.equal(site("2026-08-26"), "stb");
+  assert.equal(site("2026-08-27"), null);   // Hepatology names no hospital
+  assert.equal(site("2027-04-08"), "grace");
+  assert.equal(site("2026-06-01"), null);
+  assert.equal(site("soon"), null);
+  const file = {kind: "gi-scopes", v: 1, staff: [], cases: [{id: "t1", d: "2026-07-20", procs: ["egd.dx"]},
+    {id: "t2", d: "2026-08-17", procs: ["egd.dx"]}, {id: "t3", d: "2026-08-17", site: "grace", procs: ["egd.dx"]},
+    {id: "t4", d: "2026-09-10", procs: ["egd.dx"]}]};
+  const r = h.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify(file)})`);
+  assert.deepEqual(r.next.cases.map(c => c.site), ["hsc", "stb", "grace", null]);
+});

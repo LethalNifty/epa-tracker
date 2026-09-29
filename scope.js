@@ -890,14 +890,29 @@ function scopeImport(scopes, file) {
     next.staff.push({id, name: p.name, aliases: (p.aliases || []).slice(), hidden: !!p.hidden});
     idMap[p.id] = id; staffAdded++;
   }
-  const have = new Set(next.cases.map(c => c.id));
+  const have = new Set(next.cases.map(c => c.id)), fresh = [];
   for (const c of file.cases) {
     if (!c || !c.id || !/^\d{4}-\d{2}-\d{2}$/.test(c.d || "")) { skipped++; continue; }
     if (have.has(c.id)) { skipped++; continue; }
     next.cases.push({id: c.id, d: c.d, staff: c.staff ? idMap[c.staff] || null : null, site: c.site || null, loc: c.loc || null,
       urg: c.urg || null, procs: (c.procs || []).filter(p => SCOPE_PROC[p]), reach: c.reach || null, why: (c.why || []).slice(),
       found: (c.found || []).slice(), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z"});
-    have.add(c.id); added++;
+    fresh.push(next.cases[next.cases.length - 1]); have.add(c.id); added++;
   }
+  scopeFillSites(fresh);
   return {ok: true, added, skipped, staffAdded, next};
+}
+// The site a consult block is at ("Consults SBH" is St. Boniface), or null
+// for blocks named after a service rather than a hospital.
+function scopeBlockSite(iso) {
+  const b = /^\d{4}-\d{2}-\d{2}$/.test(iso || "") ? blockFor(new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8), 12)) : null;
+  if (!b) return null;
+  return /\bHSC\b/.test(b.name) ? "hsc" : /\bSBH\b/.test(b.name) ? "stb" : /\bGrace\b/.test(b.name) ? "grace" : null;
+}
+// T-Res had no site, so imported cases take their block's hospital. Only an
+// empty site is filled; returns how many cases changed.
+function scopeFillSites(cases) {
+  let n = 0;
+  for (const c of cases) if (c.src === "import" && !c.site) { const s = scopeBlockSite(c.d); if (s) { c.site = s; n++; } }
+  return n;
 }
