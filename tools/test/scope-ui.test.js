@@ -56,7 +56,8 @@ test("say a case, read it, confirm, save; undo takes it back", () => {
   assert.deepEqual(c.procs, ["egd.dx", "egd.bx"]);
   const html = h.html();
   assert.match(html, /class="scard/);
-  assert.match(html, /EGD · biopsy/);
+  assert.match(html, /<b>EGD<\/b>/);
+  assert.match(html, />Biopsy</);
   assert.match(html, /Dr\. Brook/);
   assert.match(html, /Save case/);
   h.click("scopesave");
@@ -91,7 +92,7 @@ test("a colonoscopy needs its reach: tap a landmark, or choose therapy only", ()
   assert.match(h.html(), /Tap how far you got/);
   h.click("scopereach", {key, r: "tverse"});
   assert.equal(h.card().reach, "tverse");
-  assert.match(h.html(), /Colonoscopy to T-verse/);
+  assert.match(h.html(), /Colonoscopy to transverse/);
   h.click("scopereach", {key, r: "none"});
   assert.equal(h.card().reach, null);
   assert.ok(!h.card().procs.includes("colo.dx"));
@@ -245,15 +246,15 @@ test("before the next case: ask while Foundations EPAs need these; dismiss for t
 
 test("Progress: colon depth, totals, the cecum share, therapeutics, firsts, breadth, report", () => {
   const mk = (id, d, reach, extra = {}) => ({id, d, staff: "sb", site: "hsc", loc: "suite", urg: "elective", procs: ["colo.dx"], reach, why: [], found: [], ts: id, ...extra});
-  const cases = [mk("1", "2026-07-22", "hf"), mk("2", "2026-08-21", "sig"), mk("3", "2026-08-26", "cecum"), mk("4", "2026-09-10", "ti"),
+  const cases = [mk("1", "2026-07-22", "hf"), mk("2", "2026-08-21", "sig"), mk("3", "2026-08-26", "cecum"), mk("4", "2026-09-10", "ti"), mk("6", "2026-09-12", "cecum"),
     {id: "5", d: "2026-09-11", staff: "sa", procs: ["egd.dx", "egd.nv.clip"], found: ["du", "active"], why: [], urg: "urgent", ts: "5"}];
   const h = endo("2026-09-28", withScopes(cases));
   h.click("scopetab", {tab: "progress"});
   const html = h.html();
   assert.match(html, /Colon depth/);
   const depth = html.slice(html.indexOf('class="chart depth'), html.indexOf("</svg>", html.indexOf('class="chart depth')));
-  assert.equal((depth.match(/class="ch-dot(hi)?[" ]/g) || []).length, 4);
-  assert.match(html, /2\/4 last 4/);
+  assert.equal((depth.match(/class="ch-dot(hi)?[" ]/g) || []).length, 5);
+  assert.match(html, /3\/5 last 5/);
   assert.match(html, /<h2>Totals<\/h2>/);
   assert.match(html, /<h2>Reached the cecum<\/h2>/);
   assert.match(html, /Non-variceal hemostasis/);

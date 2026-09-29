@@ -750,6 +750,7 @@ function go(next, restore) {
 function dispatch(act, d) {
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("scope")) {
+    d = d || {};
     if (act === "scopetab") { scopeDispatch(act, d); render(); return; }
     if (scopeDispatch(act, d) !== false) { route.keepScroll = true; render(); }
     return;

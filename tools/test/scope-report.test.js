@@ -56,8 +56,8 @@ test("the report: three pages, the name, the period, the numbers and every case"
   for (const s of ["(Endoscopy logbook) Tj", "(Test Fellow) Tj", "(Colon depth) Tj", "(Totals) Tj", "(Reached the cecum) Tj", "(Therapeutics) Tj",
     "(Firsts) Tj", "(Breadth) Tj", "(Cases) Tj", "(Dr. Brook \\267 HSC) Tj", "(Page 3 of 3) Tj", "(Non-variceal hemostasis) Tj"])
     assert.ok(pdf.includes(s), s);
-  assert.ok(pdf.includes("(4 procedures in this period, 3 of them colonoscopies. You reached the cecum yourself in 2 of your last 3) Tj"));
-  assert.ok(pdf.includes("(colonoscopies \\(67%\\).) Tj"));
+  assert.ok(pdf.includes("(4 procedures in this period, 3 of them colonoscopies. You reached the cecum yourself in 2 of the last 3) Tj"));
+  assert.ok(pdf.includes("(colonoscopies you drove \\(67%\\).) Tj"));
   assert.doesNotMatch(pdf, /—/);
 });
 

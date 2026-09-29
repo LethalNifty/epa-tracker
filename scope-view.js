@@ -151,7 +151,7 @@ function scopeCardHTML(card, i, o = {}) {
   const dateVal = esc(card.d || fmtDate(getToday()));
   return `<article class="scard${miss.length ? " need" : ""}${scopeCardsFresh && !o.still ? " fresh" : ""}" style="--i:${i}" id="card-${card.key}">` +
     `<div class="sc-top">${scopeGlyph(card, {cls: "big", anim: scopeCardsFresh && !o.still})}<div class="sc-title">` +
-    `<b>${esc(scopeSummary(card))}</b><span class="sc-sub">${card.n > 1 ? `<span class="tag">×${card.n}</span>` : ""}` +
+    `<b>${esc(scopeSummary(card, {heads: true}))}</b><span class="scd-sub">${card.n > 1 ? `<span class="tag">×${card.n}</span>` : ""}` +
     `<label class="datechip mono">${esc(scopeDayLabel(card.d || fmtDate(getToday())))}${ic("chev", "sm")}<input type="date" value="${dateVal}" max="${fmtDate(getToday())}" data-scopedate="${card.key}" aria-label="Date"></label></span></div>` +
     (o.noClose ? "" : `<button class="iconbtn" data-action="scopecardx" data-key="${card.key}" aria-label="Remove this case">${ic("x")}</button>`) + `</div>` +
     `<div class="sc-who">${staff}${scopeChip(card.urg === "urgent" ? "Urgent" : "Elective", "scopeurg", {key: card.key}, card.urg === "urgent" ? "urg on" : "ghost")}</div>` +
@@ -174,7 +174,7 @@ function scopeCtxLine() {
 function scopeBoxHTML(where) {
   const today = getToday(), n = scopeCap.cards.length;
   return `<section class="monitor capmon" aria-label="Say the case"><div class="monitor-in">` +
-    `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="ctx">${esc(scopeCtxLine())}</span></div>` +
+    `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="capctx">${esc(scopeCtxLine())}</span></div>` +
     `<textarea id="scopebox-${where}" class="capbox" rows="3" data-scopefield="text" placeholder="EGD with Dr. Surname, biopsies for dysphagia, EoE" ` +
     `autocapitalize="sentences" enterkeyhint="done" aria-label="Say or type the case">${esc(scopeCap.text)}</textarea>` +
     `<div class="cap-f"><span class="cap-hint">${ic("mic", "sm")}<span>Tap the mic on your keyboard and say the case. A whole day works too.</span></span>` +
@@ -210,7 +210,7 @@ function scopeHintHTML() {
     .map(P => ({P, left: P.required - (Store.state.obs[P.id] || []).length})).filter(x => x.left > 0);
   if (!needs.length) return "";
   const list = needs.map(x => `${x.P.label} (${PART_SHORT[x.P.id]}) needs ${x.left}`).join(", ");
-  return `<div class="card hint">${ic("target")}<div><b>Before your next case</b><span>If ${esc(scopeDr(today.staff))} is open to it, ask now: ${esc(list)}.</span></div>` +
+  return `<div class="card shint">${ic("target")}<div><b>Before your next case</b><span>If ${esc(scopeDr(today.staff))} is open to it, ask now: ${esc(list)}.</span></div>` +
     `<button class="iconbtn" data-action="scopehintoff" aria-label="Dismiss for today">${ic("x")}</button></div>`;
 }
 function scopeRecentHTML() {
@@ -289,7 +289,7 @@ function scopeDepthHTML() {
     `<div class="ov mono"><span>Colon depth</span><span>${n} colonoscop${n === 1 ? "y" : "ies"}</span></div>` +
     `<div class="depth-wrap">${scopeSceneSVG(sc, {cls: "depth" + (scopeIntroDone ? "" : " intro"), tap: true, sel: scopeDot, intro: !scopeIntroDone, label: desc})}` +
     (n ? "" : `<div class="depth-empty"><b>Every colonoscopy you drive lands here</b><span>placed at how far you got, so you can watch the dots climb toward the cecum.</span></div>`) + `</div>` +
-    (n ? read + `<div class="ov mono legend"><span><i class="lg hi"></i>Cecum or TI</span><span><i class="lg lo"></i>Before the cecum</span>` +
+    (n ? read + `<div class="ov mono legend"><span><i class="lgd hi"></i>Cecum or TI</span><span><i class="lgd lo"></i>Before the cecum</span>` +
       `<span class="ok">${cec}/${last20.length} last ${last20.length}</span></div>` : "") + `</div></section>`;
 }
 function scopeTotalsHTML() {
@@ -304,12 +304,12 @@ function scopeTotalsHTML() {
 }
 function scopeShareHTML() {
   const series = scopeReachSeries(scopeData().cases);
-  if (series.length < 3) return "";
+  if (series.length < 5) return "";
   const sh = scopeCecumShare(series, 20), sc = scopeShareScene(sh, {w: 330, h: 128});
   const last = sh[sh.length - 1];
   return `<section class="sec"><div class="sec-head"><h2>Reached the cecum</h2><span class="mono">Last ${Math.min(20, series.length)} colonoscopies</span></div>` +
     `<div class="card pad chartcard">${scopeSceneSVG(sc, {cls: "share", label: `Share of recent colonoscopies reaching the cecum, now ${last.share}%`})}` +
-    `<p class="cnote">Each point is the share of your previous 20 colonoscopies (fewer at the start) where you reached the cecum or terminal ileum yourself.</p></div></section>`;
+    `<p class="chnote">Each point is the share of your previous 20 colonoscopies (fewer at the start) where you reached the cecum or terminal ileum yourself.</p></div></section>`;
 }
 function scopeTherapyHTML() {
   const rows = scopeTherapy(scopeData().cases, PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], id => Store.lineVal(id));
@@ -317,7 +317,7 @@ function scopeTherapyHTML() {
     rows.map(r => {
       let segs = "";
       const cells = Math.max(r.min, Math.min(r.done, r.min + 6));
-      for (let k = 0; k < cells; k++) segs += `<i class="${k < r.observed ? "obs" : k < r.done ? "done" : ""}${k >= r.min ? " extra" : ""}"></i>`;
+      for (let k = 0; k < cells; k++) segs += `<i class="${k < r.observed ? "seen" : k < r.done ? "done" : ""}${k >= r.min ? " extra" : ""}"></i>`;
       return `<div class="trow"><div class="trow-h"><span class="tl">${esc(r.label)}</span><span class="mono tv"><b>${r.done}</b> done · ${r.observed}/${r.min} observed</span></div>` +
         `<div class="tsegs" aria-hidden="true">${segs}</div></div>`;
     }).join("") + `</div><p class="goal">Done counts your logged cases. Observed counts the C8 checklist lines you've ticked for Entrada.</p></section>`;
@@ -330,7 +330,7 @@ function scopeFirstsHTML() {
 }
 function scopeBarsHTML(rows, total) {
   const max = Math.max(1, ...rows.map(r => r.n));
-  return rows.map(r => `<div class="brw"><span class="bl">${esc(r.label)}</span><span class="bb"><i style="width:${pct(r.n, max)}%"></i></span><span class="mono bn">${r.n}</span></div>`).join("");
+  return rows.map(r => `<div class="bw-row"><span class="bw-l">${esc(r.label)}</span><span class="bw-b"><i style="width:${pct(r.n, max)}%"></i></span><span class="mono bw-n">${r.n}</span></div>`).join("");
 }
 function scopeBreadthHTML() {
   const s = scopeData(), b = scopeBreadth(s.cases, null, null, s.staff);
@@ -440,10 +440,10 @@ function scopePickListHTML() {
   let h = "", last = "";
   for (const o of opts.slice(0, 60)) {
     if (p.kind === "teach" && o.kind !== last) { h += `<div class="pgh mono">${grp[o.kind]}</div>`; last = o.kind; }
-    h += `<button class="prow" data-action="scopepicked" data-kind="${o.kind}" data-code="${esc(o.code)}"><span>${esc(o.label)}</span>` +
+    h += `<button class="pkrow" data-action="scopepicked" data-kind="${o.kind}" data-code="${esc(o.code)}"><span>${esc(o.label)}</span>` +
       (o.n ? `<span class="mono">${o.n}</span>` : "") + `</button>`;
   }
-  if (p.kind === "staff" && q.length > 1) h += `<button class="prow addnew" data-action="scopeaddpicked">${ic("plus")}<span>Add “${esc(q)}” as new staff</span></button>`;
+  if (p.kind === "staff" && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddpicked">${ic("plus")}<span>Add “${esc(q)}” as new staff</span></button>`;
   if (!h) h = `<div class="empty">No match. Try another word.</div>`;
   return h;
 }
@@ -529,7 +529,7 @@ function scopeApplyPick(kind, code) {
   }
   scopePick = null;
 }
-function scopeDispatch(act, d) {
+function scopeDispatch(act, d = {}) {
   const card = d.key ? scopeCardByKey(d.key) : null;
   if (act === "scopetab") { scopeTab = d.tab; scopeErr = null; scopeDot = null; route.keepScroll = false; enterNext = true; }
   else if (act === "scopeopen") scopeOpenCapture();
@@ -618,7 +618,7 @@ function scopeDispatch(act, d) {
 function scopeField(t) {
   const d = t.dataset || {};
   if (d.scopefield === "text") { scopeCap.text = t.value; const other = document.querySelectorAll ? document.querySelectorAll(".capbox") : [];
-    for (const el of other) if (el !== t) el.value = t.value; return true; }
+    for (const el of other) if (el !== t) el.value = t.value; scopeGrow(t); return true; }
   if (d.scopefield === "pick" && scopePick) { scopePick.q = t.value; const box = document.getElementById("scopepicklist"); if (box) box.innerHTML = scopePickListHTML(); return true; }
   if (d.scopefield === "search") { scopeSearch = t.value; const box = document.getElementById("scoperecent"); if (box) box.innerHTML = scopeRecentHTML(); return true; }
   if (d.scopefield === "name") { scopeData().reportName = t.value.slice(0, 80); Store.save(); return true; }
@@ -652,8 +652,20 @@ function scopeReadImport(f) {
   rd.onload = () => { scopeImportText(String(rd.result || "")); route.keepScroll = true; render(); };
   rd.readAsText(f);
 }
+// The box grows with what's said, so a whole day stays readable.
+function scopeGrow(el) {
+  if (!el || !el.style) return;
+  el.style.height = "auto";
+  el.style.height = Math.min(Math.max(el.scrollHeight, 88), 360) + "px";
+}
 function scopeAfterRender() {
+  // The + sheet opens with the keyboard up, one tap from the mic.
+  if (scopeSheetFresh && scopeSheet && scopeSheet.kind === "capture" && document.getElementById) {
+    const box = document.getElementById("scopebox-sheet");
+    if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {}
+  }
   scopeSheetFresh = false; scopePickFresh = false;
+  if (document.querySelectorAll) for (const el of document.querySelectorAll(".capbox")) scopeGrow(el);
   if (route.page === "endo" && scopeTab === "progress") scopeIntroDone = true;
   if (scopeCardsFresh) setTimeout(() => { scopeCardsFresh = false; }, 50);
   if (scopeLit) { const id = scopeLit; setTimeout(() => { if (scopeLit === id) scopeLit = null; }, 1600); }

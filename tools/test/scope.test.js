@@ -285,7 +285,7 @@ test("summaries read like the fellow says them", () => {
   const s = c => h.val(`scopeSummary(${JSON.stringify(c)})`);
   assert.equal(s({procs: ["egd.dx", "egd.bx", "egd.nv.clip"]}), "EGD · biopsy, clip");
   assert.equal(s({procs: ["colo.dx", "colo.poly"], reach: "hf"}), "Colonoscopy to HF · polypectomy");
-  assert.equal(s({procs: ["egd.dx", "colo.screen"], reach: "sig"}), "EGD + Screening colonoscopy to Sig");
+  assert.equal(s({procs: ["egd.dx", "colo.screen"], reach: "sig"}), "EGD + Screening colonoscopy to sigmoid");
   assert.equal(s({procs: ["colo.hem.apc"]}), "Colonoscopy · APC");
   assert.equal(s({procs: ["egd.entero"]}), "Push enteroscopy");
 });

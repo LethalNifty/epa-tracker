@@ -1,3 +1,4 @@
 __pycache__/
 # Real call files carry names; only the placeholder fixture belongs here.
 GI-Call*.ics
+GI-Scopes*.json

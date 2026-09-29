@@ -24,8 +24,9 @@ test("the app never says Elentra", () => {
 
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v13";/);
-  for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "notify.js", "remind.js", "study-view.js", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
+  assert.match(sw, /const CACHE = "epa-v14";/);
+  for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
+    "scope-view.js", "scope-report.js", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
     "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), "missing file " + f);
@@ -42,6 +43,11 @@ test("the page loads the stylesheet, the coach, the call card and the app, in or
   assert.ok(html.indexOf('src="study.js"') < html.indexOf('src="notify.js"'));
   assert.ok(html.indexOf('src="remind.js"') < html.indexOf('src="study-view.js"'));
   assert.ok(html.indexOf('src="study-view.js"') < html.indexOf('src="app.js"'));
+  assert.ok(html.indexOf('src="study.js"') < html.indexOf('src="scope.js"'));
+  assert.ok(html.indexOf('src="scope.js"') < html.indexOf('src="scope-chart.js"'));
+  assert.ok(html.indexOf('src="scope-chart.js"') < html.indexOf('src="scope-view.js"'));
+  assert.ok(html.indexOf('src="scope-view.js"') < html.indexOf('src="scope-report.js"'));
+  assert.ok(html.indexOf('src="scope-report.js"') < html.indexOf('src="app.js"'));
   assert.doesNotMatch(html, /<style>/);
 });
 
@@ -55,4 +61,16 @@ test("real call files can't be committed: only the placeholder fixture", () => {
   } };
   walk(".");
   assert.deepEqual(ics, ["tools/test/fixtures/call-sample.ics"]);
+});
+
+test("real case files with staff names can't be committed", () => {
+  assert.match(read(".gitignore"), /^GI-Scopes\*\.json$/m);
+  const found = [];
+  const walk = d => { for (const f of fs.readdirSync(path.join(ROOT, d), {withFileTypes: true})) {
+    if (f.name === ".git" || f.name === "node_modules") continue;
+    const p = path.join(d, f.name);
+    if (f.isDirectory()) walk(p); else if (/^GI-Scopes/i.test(f.name)) found.push(p);
+  } };
+  walk(".");
+  assert.deepEqual(found, []);
 });

@@ -1,8 +1,8 @@
 importScripts("notify.js");
-const CACHE = "epa-v13";
+const CACHE = "epa-v14";
 // Kept across updates: the brief remind.js saves for writing notifications.
 const BRIEF = "gi-brief";
-const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "notify.js", "remind.js", "study-view.js", "app.js", "manifest.webmanifest", "icon.svg",
+const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js", "scope-view.js", "scope-report.js", "app.js", "manifest.webmanifest", "icon.svg",
   "icon-180.png", "icon-192.png", "icon-512.png",
   "fonts/plex-sans-var.woff2", "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"];
 self.addEventListener("install", e => {

@@ -24,11 +24,11 @@ const SCOPE_COLON_TIP = {sig: [21.6, 18.6], desc: [21.6, 9.4], sf: [18.6, 6], tv
   cecum: [11.2, 20.2], ti: [13.8, 18.2]};
 // Upper tract in the same box: esophagus, stomach, duodenal sweep.
 const SCOPE_UPPER_SEGS = [
-  ["esoph", "M12.6 2V10.4"],
-  ["stomach", "M12.6 10.4C12.6 8.6 15.4 7.8 18 8.8C21.4 10.2 21.8 15 19.6 18.2C17.8 20.8 13.8 21.2 11.8 19.4C10.6 18.4 10.6 16.8 12 16.2"],
-  ["duod", "M12 16.2C10.2 16.6 8.6 17.6 7.8 19.4C7 21.4 7.8 24 10.4 24.6C12.6 25.2 14.8 24.4 16 23.2"],
+  ["esoph", "M11 2V9"],
+  ["stomach", "M11 9C11 7.2 13.5 6.4 16 7.2C19.6 8.4 20.6 12.6 19.2 16C17.8 19.2 13.6 20.2 11 18.4C10.2 17.8 9.8 17.4 9.4 17"],
+  ["duod", "M9.4 17C7.4 17.4 6.4 19 6.6 20.8C6.8 22.8 8.6 24 10.8 23.8C12.6 23.6 13.8 22.8 14.6 21.8"],
 ];
-const SCOPE_BILIARY = "M9.6 21.8C10.4 18.6 11.4 15.4 13.6 12.6M13.6 12.6L11.8 9.4M13.6 12.6L16.2 10";
+const SCOPE_BILIARY = "M6.8 20.4C8.4 19.4 9.6 17.6 10.4 14.4M10.4 14.4L8.6 11.4M10.4 14.4L13.2 12";
 
 // Rolling median of the last k values (smooths the reach trend without
 // inventing points).

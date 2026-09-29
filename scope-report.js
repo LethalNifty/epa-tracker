@@ -244,7 +244,7 @@ function scopeReportPDF(o) {
   // The change since the last report, in one sentence.
   const ch = scopeChange(upTo, o.from);
   let sentence = `${tP.procs} procedure${tP.procs === 1 ? "" : "s"} in this period, ${tP.colo} of them colonoscop${tP.colo === 1 ? "y" : "ies"}.`;
-  if (ch.shareNow !== null) sentence += ` You reached the cecum yourself in ${cec} of your last ${last20.length} colonoscop${last20.length === 1 ? "y" : "ies"} (${ch.shareNow}%)` +
+  if (ch.shareNow !== null) sentence += ` You reached the cecum yourself in ${cec} of the last ${last20.length} colonoscop${last20.length === 1 ? "y" : "ies"} you drove (${ch.shareNow}%)` +
     (ch.shareThen !== null && ch.shareThen !== ch.shareNow ? `, ${ch.shareNow > ch.shareThen ? "up" : "down"} from ${ch.shareThen}% at the start of the period.` : ".");
   const lines = pdfWrap(sentence, 10.5, false, CW - 28);
   doc.rect(M, y, CW, 16 + lines.length * 15, {fill: RP.wash, r: 6});
@@ -254,7 +254,7 @@ function scopeReportPDF(o) {
   // Headline tiles.
   const nTx = inP.filter(c => scopeC8(c).size).length;
   const tiles = [[String(tP.procs), "Procedures", "this period"], [String(tP.colo), "Colonoscopies", "this period"],
-    [last20.length ? `${Math.round(cec / last20.length * 100)}%` : "–", "Reached the cecum", last20.length ? `last ${last20.length}, yourself` : "no colonoscopies yet"],
+    [last20.length ? `${Math.round(cec / last20.length * 100)}%` : "–", "Reached the cecum", last20.length ? `last ${last20.length} you drove` : "none driven yet"],
     [String(nTx), "Therapeutic cases", "this period"]];
   const tw = (CW - 3 * 10) / 4;
   tiles.forEach(([v, l, s], i) => {
@@ -279,7 +279,7 @@ function scopeReportPDF(o) {
   if (series.length) {
     doc.circle(M + 62, y - 2, 3, {fill: RP.teal}); doc.text(M + 69, y + 1, "Cecum or terminal ileum", {size: 8, color: RP.ink2});
     doc.circle(M + 180, y - 2, 3, {fill: RP.dotLo}); doc.text(M + 187, y + 1, "Before the cecum", {size: 8, color: RP.ink2});
-    doc.line(M + 272, y - 2, M + 286, y - 2, {stroke: "#8fcfc4", lw: 2.4, cap: true}); doc.text(M + 290, y + 1, "Trend (median of 5)", {size: 8, color: RP.ink2});
+    if (series.length >= 4) { doc.line(M + 272, y - 2, M + 286, y - 2, {stroke: "#8fcfc4", lw: 2.4, cap: true}); doc.text(M + 290, y + 1, "Trend (median of 5)", {size: 8, color: RP.ink2}); }
     y += 20;
   }
   y = section(y, "Totals", "Procedures by type");
@@ -302,10 +302,10 @@ function scopeReportPDF(o) {
   header("Progress");
   y = 100;
   y = section(y, "Reached the cecum", "Share of your previous 20 colonoscopies, case by case");
-  if (series.length >= 3) { pdfScene(doc, scopeShareScene(scopeCecumShare(series, 20), {w: CW, h: 130, left: 40, right: 46}), M, y); y += 142; }
-  else { doc.text(M, y + 4, "Shown once three colonoscopies are logged.", {size: 9.5, color: RP.faint}); y += 24; }
+  if (series.length >= 5) { pdfScene(doc, scopeShareScene(scopeCecumShare(series, 20), {w: CW, h: 130, left: 40, right: 46}), M, y); y += 158; }
+  else { doc.text(M, y + 4, "Shown once five colonoscopies you drove are logged.", {size: 9.5, color: RP.faint}); y += 30; }
   y = section(y, "Volume", "Running totals since logging began");
-  if (upTo.length) { pdfScene(doc, scopeVolumeScene(upTo, {w: CW, h: 150, left: 34, right: 110}), M, y); y += 162; }
+  if (upTo.length) { pdfScene(doc, scopeVolumeScene(upTo, {w: CW, h: 150, left: 34, right: 110}), M, y); y += 178; }
   y = section(y, "Therapeutics", "Against the C8 case-mix minimums");
   doc.text(M + 218, y, "Period", {size: 8, bold: true, color: RP.faint, align: "right"});
   doc.text(M + 272, y, "All", {size: 8, bold: true, color: RP.faint, align: "right"});
@@ -317,7 +317,7 @@ function scopeReportPDF(o) {
     doc.text(M + 218, y, String(therapyP[k].done), {size: 9.5, align: "right"});
     doc.text(M + 272, y, String(r.done), {size: 9.5, bold: true, align: "right"});
     const bw = 150, cell = bw / r.min;
-    for (let j = 0; j < r.min; j++) doc.rect(M + 300 + j * cell, y - 7, cell - 1.6, 7, {fill: j < r.observed ? RP.teal : j < r.done ? RP.tealWash : "#eef2f1"});
+    for (let j = 0; j < r.min; j++) doc.rect(M + 300 + j * cell, y - 7, cell - 1.6, 7, {fill: j < r.observed ? RP.teal : j < r.done ? "#a9d9cf" : "#edf1f0"});
     doc.text(M + 300 + bw + 10, y, `${r.observed}/${r.min}`, {size: 8.5, color: RP.ink2});
     y += 16;
   });

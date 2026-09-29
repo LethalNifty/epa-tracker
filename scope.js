@@ -15,6 +15,8 @@ const SCOPE_TRES_REACH = {sig: "Sig", desc: "Desc", sf: "SF", tverse: "Tverse", 
 const scopeRank = r => SCOPE_REACH.findIndex(x => x[0] === r);
 const scopeReachLabel = r => (SCOPE_REACH.find(x => x[0] === r) || [, ""])[1];
 const scopeReachShort = r => (SCOPE_REACH.find(x => x[0] === r) || [, , ""])[2];
+// How a reach reads in a sentence: "Colonoscopy to cecum", "to HF".
+const SCOPE_REACH_SAY = {sig: "sigmoid", desc: "descending", sf: "SF", tverse: "transverse", hf: "HF", cecum: "cecum", ti: "TI"};
 
 const SCOPE_FAMS = [["egd", "Gastroscopy", "EGD"], ["colo", "Colonoscopy", "Colonoscopy"], ["fs", "Flex sig", "Flex sig"],
   ["ercp", "ERCP", "ERCP"], ["para", "Paracentesis", "Paracentesis"], ["other", "Other", "Other"]];
@@ -691,12 +693,15 @@ function scopeCarry(drafts, saved, today) {
   }
   return out;
 }
+const SCOPE_URGENT_WHY = ["hematemesis", "melena", "hematochezia", "ugib", "lgib", "fb"];
 function scopeIsStat(date) { return SCOPE_STAT_DAYS.includes(fmtDate(date)); }
 // Urgency and, for a call case, the site. env: {now (ms), stretches, staff}.
 function scopeInfer(draft, env = {}) {
   const d = {...draft};
+  // Said wins; then the ED, the ICU, a bleed or a food bolus make it urgent.
+  const bleedy = (d.why || []).some(w => SCOPE_URGENT_WHY.includes(w)) || (d.found || []).includes("active");
   if (d.urg === "elective" || d.urg === "urgent") { /* said */ }
-  else if (d.loc === "ed" || d.loc === "icu") d.urg = "urgent";
+  else if (d.loc === "ed" || d.loc === "icu" || bleedy) d.urg = "urgent";
   else d.urg = "elective";
   const now = env.now ? new Date(env.now) : null;
   if (!now || draft.urg === "elective") return d;
@@ -720,18 +725,18 @@ const scopeFams = c => { const f = []; for (const p of c.procs || []) { const x 
   return f.sort((a, b) => SCOPE_FAMS.findIndex(x => x[0] === a) - SCOPE_FAMS.findIndex(x => x[0] === b)); };
 const scopeHasBase = c => (c.procs || []).some(p => p === "colo.dx" || p === "colo.screen");
 // "Colonoscopy to HF · polypectomy" / "EGD · biopsy, clip, injection"
-function scopeSummary(c) {
+function scopeSummary(c, o = {}) {
   const parts = [];
   for (const f of scopeFams(c)) {
     let head = scopeFamShort(f);
     if (f === "colo" && (c.procs || []).includes("colo.screen")) head = "Screening colonoscopy";
-    if (f === "colo" && c.reach && scopeHasBase(c)) head += " to " + scopeReachShort(c.reach);
+    if (f === "colo" && c.reach && scopeHasBase(c)) head += " to " + SCOPE_REACH_SAY[c.reach];
     if (f === "egd" && c.procs.includes("egd.entero") && !c.procs.includes("egd.dx")) head = "Push enteroscopy";
     if (f === "other") head = c.procs.includes("other.ileo") ? "Ileoscopy" : (c.otherLabel || "Other");
     if (f === "para") head = c.procs.includes("para.ther") ? "Paracentesis, therapeutic" : "Paracentesis";
     const tx = (c.procs || []).filter(p => scopeFam(p) === f && SCOPE_PROC[p] && !SCOPE_PROC[p].base && p !== "egd.entero")
       .map(p => SCOPE_PROC[p].label.toLowerCase().replace("apc", "APC").replace("peg", "PEG").replace("nj tube", "NJ tube").replace("barrett's", "Barrett's"));
-    parts.push(head + (tx.length ? " · " + tx.join(", ") : ""));
+    parts.push(head + (tx.length && !o.heads ? " · " + tx.join(", ") : ""));
   }
   return parts.join(" + ") || "No procedure yet";
 }
