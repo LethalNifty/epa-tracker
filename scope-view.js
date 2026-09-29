@@ -340,7 +340,7 @@ function scopeBreadthHTML() {
   return `<section class="sec"><div class="sec-head"><h2>Breadth</h2><span class="mono">All ${b.n} cases</span></div><div class="card pad breadth">` +
     `<div class="bgrp2"><span class="mono">Staff</span>${scopeBarsHTML(staff)}</div>` +
     `<div class="bgrp2"><span class="mono">Site</span>${scopeBarsHTML(map(b.site, SCOPE_SITES.map(x => [x[0], x[1]])))}</div>` +
-    `<div class="bgrp2"><span class="mono">Setting</span>${scopeBarsHTML(map(b.loc, SCOPE_LOCS.map(x => [x[0], x[1]])).concat(map(b.urg, [["urgent", "Urgent"], ["elective", "Elective"]])))}</div>` +
+    `<div class="bgrp2"><span class="mono">Setting</span>${scopeBarsHTML(map(b.loc, SCOPE_LOCS.map(x => [x[0], x[1]])).concat(map(b.urg, [["urgent", "Urgent"], ["elective", "Elective"]]).filter(r => r.label !== "Not recorded")))}</div>` +
     `</div></section>`;
 }
 function scopeReportCardHTML() {

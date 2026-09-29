@@ -321,3 +321,23 @@ test("the backup keeps the scope log; an older backup loads with an empty one", 
   assert.deepEqual(old.val("Store.state.scopes.cases"), []);
   assert.equal(old.val("Store.hasData()"), false);
 });
+
+test("cases imported before sites were filled take their block's hospital, once", () => {
+  const c = (id, d, extra = {}) => ({id, d, staff: "sb", procs: ["egd.dx"], why: [], found: [], ts: d, ...extra});
+  const cases = [c("i1", "2026-07-20", {src: "import"}), c("i2", "2026-08-17", {src: "import"}),
+    c("i3", "2026-08-18", {src: "import", site: "grace"}), c("d1", "2026-08-19")];
+  const h = endo("2026-09-28", withScopes(cases));
+  assert.deepEqual(h.val("Store.state.scopes.cases.map(c => c.site || null)"), ["hsc", "stb", "grace", null]);
+  assert.equal(h.val("Store.state.scopes.sitesFilled"), true);
+  // After the one-time fill, a site cleared by hand stays cleared.
+  const g = load({today: "2026-09-28", state: withScopes([c("i1", "2026-07-20", {src: "import"})], {sitesFilled: true})});
+  assert.equal(g.val("Store.state.scopes.cases[0].site || null"), null);
+});
+
+test("breadth lists Not recorded once per group", () => {
+  const cases = [{id: "a", d: "2026-09-20", staff: "sb", procs: ["egd.dx"], why: [], found: [], ts: "1"}];
+  const h = endo("2026-09-28", withScopes(cases));
+  h.click("scopetab", {tab: "progress"});
+  const setting = /<span class="mono">Setting<\/span>(.*?)<\/div><\/div>/.exec(h.html())[1];
+  assert.equal((setting.match(/Not recorded/g) || []).length, 1);
+});
