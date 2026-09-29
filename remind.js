@@ -108,7 +108,11 @@ function remindBrief(now) {
   const call = callStretches(CallStore.list()).filter(st => st.e > now).slice(0, 16)
     .map(st => ({s: st.s, e: st.e, segs: st.segs.map(x => ({s: x.s, e: x.e, hsc: x.hsc, stb: x.stb, so: x.so}))}));
   const str = callStretches(CallStore.list()), day = new Date(now);
-  const study = {nights: studyBriefNights(day, Store.state.study, str), week: studyLastWeek(day, Store.state.study, str)};
+  const nights = studyBriefNights(day, Store.state.study, str).map(n => {
+    const qn = n.to > n.from && typeof studyqFor === "function" ? studyqFor(n.from, n.to).length : 0;
+    return qn ? {...n, qn} : n;
+  });
+  const study = {nights, week: studyLastWeek(day, Store.state.study, str)};
   return {v: 1, at: now, weeks, call, study};
 }
 function remindAfterRender() {

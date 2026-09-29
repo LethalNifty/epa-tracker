@@ -108,7 +108,7 @@ test("study rides in the backup, and old backups load with an empty study", () =
   assert.deepEqual(JSON.parse(h.val("Store.exportJSON()")).study.log, {"2026-09-30": 3});
   const old = JSON.stringify({v: 1, obs: {}, lines: {}, lastBackup: null});
   assert.equal(h.val(`Store.importJSON(${JSON.stringify(old)}).ok`), true);
-  assert.deepEqual(h.saved().study, {log: {}, q: {}, pauses: []});
+  assert.deepEqual(h.saved().study, {log: {}, q: {}, pauses: [], qa: {}});
   const withIt = JSON.stringify({v: 1, obs: {}, lines: {}, study: {log: {"2026-10-02": 9}, q: {}, pauses: []}});
   h.val(`Store.importJSON(${JSON.stringify(withIt)}).ok`);
   assert.deepEqual(h.saved().study.log, {"2026-10-02": 9});

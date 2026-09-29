@@ -8,7 +8,7 @@ const {ROOT} = require("./harness");
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8");
 // Everything we wrote: the page minus the verbatim Royal College EPA_DATA, plus the scripts and styles.
 const ownText = () => read("index.html").replace(/\/\*EPA_DATA_START\*\/[\s\S]*?\/\*EPA_DATA_END\*\//, "") +
-  ["coach.js", "call.js", "study.js", "notify.js", "remind.js", "study-view.js", "app.js", "app.css", "sw.js"].map(f => "\n" + read(f)).join("");
+  ["coach.js", "call.js", "study.js", "studyq.js", "notify.js", "remind.js", "study-view.js", "app.js", "app.css", "sw.js"].map(f => "\n" + read(f)).join("");
 
 test("no em-dashes in anything we wrote", () => {
   assert.deepEqual(ownText().split("\n").filter(l => l.includes("\u2014")).map(l => l.trim().slice(0, 80)), []);

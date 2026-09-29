@@ -173,16 +173,19 @@ function studyCallNight(day, stretches) {
   const t = studyEveningMs(day);
   return (stretches || []).some(st => st.s <= t && t < st.e);
 }
+// The pause covering a day, or null. A one-night "Not tonight" is a pause
+// with skip set.
 function studyPaused(day, pauses) {
   const k = fmtDate(day);
-  return (pauses || []).some(p => p.a <= k && k <= p.b);
+  return (pauses || []).find(p => p.a <= k && k <= p.b) || null;
 }
 // What kind of night a day is: "read", or why it isn't.
 function studyNightKind(day, stretches, pauses) {
   const k = fmtDate(day);
   if (k < fmtDate(STUDY_START)) return "before";
   if (k > fmtDate(STUDY_LAST)) return "after";
-  if (studyPaused(day, pauses)) return "pause";
+  const p = studyPaused(day, pauses);
+  if (p) return p.skip ? "skip" : "pause";
   if (studyCallNight(day, stretches)) return "call";
   const wd = day.getDay();
   if (wd === 4) return "thu";
@@ -256,7 +259,7 @@ function studyNextNight(day, stretches, pauses) {
 }
 const studyKeepGoing = cursor => { const S = studySeq(); return cursor >= S.total ? null : studySnap(cursor, Math.min(STUDY_KEEP, S.total - cursor)); };
 // Everything the Study tab and the Week card say about tonight.
-// kind: "read" | "before" | "after" | "pause" | "call" | "thu" | "weekend" | "complete"
+// kind: "read" | "before" | "after" | "pause" | "skip" | "call" | "thu" | "weekend" | "complete"
 function studyTonight(day, st, stretches) {
   const S = studySeq(), s = st || studyBlank(), pauses = s.pauses;
   const now = studyCursorNow(s.log), c0 = Math.min(studyCursorBefore(s.log, day), now);
@@ -376,7 +379,7 @@ function studyBriefNights(day, st, stretches) {
       if (sh) { from = sh.from; to = sh.to; } else kind = now >= studySeq().total ? "complete" : "ahead";
     }
     if (now >= studySeq().total) kind = "complete";
-    const e = {d: d.getTime(), kind, done};
+    const e = {d: d.getTime(), kind, done, from, to};
     if (to > from) {
       const pc = studyPieces(from, to);
       e.pp = studyPP(from, to); e.n = to - from;

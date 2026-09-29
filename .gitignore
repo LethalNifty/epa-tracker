@@ -2,3 +2,7 @@ __pycache__/
 # Real call files carry names; only the placeholder fixture belongs here.
 GI-Call*.ics
 GI-Scopes*.json
+# Study questions stay private: only the encrypted studyq.json is committed.
+study-password*.txt
+questions/
+b[0-9]*.json

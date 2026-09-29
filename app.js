@@ -13,7 +13,8 @@ const Store = {
     if (this.state.recapSeen === undefined) this.state.recapSeen = null;
     const sd = this.state.study;
     this.state.study = {log: sd && typeof sd.log === "object" && sd.log ? sd.log : {},
-      q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : []};
+      q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : [],
+      qa: sd && typeof sd.qa === "object" && sd.qa ? sd.qa : {}};
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved";
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
@@ -64,11 +65,16 @@ const Store = {
   setStudyCursor(c, day) {
     this.state.study.log[fmtDate(day)] = Math.max(0, Math.min(studySeq().total, Math.round(c))); this.save(); },
   setStudyScore(id, r, of) { this.state.study.q[id] = {r, of, d: fmtDate(getToday())}; this.save(); },
-  addPause(a, b) {
+  addPause(a, b, skip) {
     if (b < a) [a, b] = [b, a];
-    this.state.study.pauses.push({a, b});
+    this.state.study.pauses.push(skip ? {a, b, skip: true} : {a, b});
     this.state.study.pauses.sort((x, y) => x.a < y.a ? -1 : x.a > y.a ? 1 : 0); this.save(); },
   removePause(i) { this.state.study.pauses.splice(i, 1); this.save(); },
+  // A question marked right (true) or missed (false); null clears the mark.
+  setQMark(id, ok) {
+    if (ok === null) delete this.state.study.qa[id];
+    else this.state.study.qa[id] = {ok: !!ok, d: fmtDate(getToday())};
+    this.save(); },
   studySnapshot() { return JSON.parse(JSON.stringify(this.state.study)); },
   restoreStudy(snap) { this.state.study = snap; this.save(); },
   // Scope log: cases, the staff roster (names live only here and in backups), learned words.
@@ -847,7 +853,7 @@ document.getElementById("app").addEventListener("change", ev => {
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   const a = document.activeElement;
   if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
-      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); }
+      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); studyqInit(); }
 });
 // A tapped call reminder opens the Call screen: by link when the app was
 // closed, by message from the service worker when it was open.
@@ -864,4 +870,5 @@ Store.load();
 CallStore.load();
 render();
 remindInit();
+studyqInit();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");

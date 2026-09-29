@@ -8,7 +8,8 @@
 
 let studySheet = null, studySheetFresh = false, studyStain = null, studyIntroDone = false;
 const STUDY_WHY = {thu: "Thursday: soccer night.", weekend: "The weekend.", call: "You're on call tonight.",
-  pause: "Reading is paused.", after: "Year 1 is over.", before: "The plan starts Wednesday."};
+  pause: "Reading is paused.", skip: "Skipped tonight.", after: "Year 1 is over.", before: "The plan starts Wednesday."};
+let studyRevealed = new Set();
 
 const studyDay = d => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 const studyStretchList = () => callStretches(CallStore.list());
@@ -79,6 +80,10 @@ function studyHeroHTML(st) {
     if (t.keep) { strip = studyWhat(t.keep.from, t.keep.to).items; tn = t.keep; }
   } else {
     const why = t.kind === "pause" ? studyPauseWhy(s, today) : STUDY_WHY[t.kind] || "";
+    if (t.kind === "skip") body = `<div class="sm-ch mono">${ic("moon", "sm")}Not tonight</div><div class="sm-title">Skipped tonight.</div>` +
+      `<div class="sm-sub">Tonight's pages and questions move to the next reading night.</div>` +
+      (t.next ? `<div class="sm-next mono">Next reading night · ${studyDay(t.next.day)} · pp. ${studyPP(t.next.from, t.next.to)}</div>` : "");
+    else
     body = t.kind === "before"
       ? `<div class="sm-ch mono">First night · ${studyDay(STUDY_START)}</div><div class="sm-title">${esc(studyWhat(t.keep.from, t.keep.to).title)}</div>` +
         range(t.keep.from, t.keep.to) + `<div class="sm-sub">${studyPages(t.keep.to - t.keep.from)} · PDF ${studyPdfPP(t.keep.from, t.keep.to)}</div>`
@@ -105,12 +110,70 @@ function studyActionsHTML(t) {
   if (t.kind === "complete" || t.kind === "after") return "";
   const stop = `<button class="btn" data-action="studystop">${ic("more")}Stopped somewhere else</button>`;
   if (t.kind === "read" && !t.ahead && !t.done)
-    return `<div class="sm-acts"><button class="btn flu" data-action="studydone">${ic("check")}Done · through p. ${studyAt(t.to - 1).page}</button>${stop}</div>`;
+    return `<div class="sm-acts"><button class="btn flu" data-action="studydone">${ic("check")}Done · through p. ${studyAt(t.to - 1).page}</button>${stop}` +
+      `<button class="textbtn sm-skip" data-action="studyskip">${ic("moon", "sm")}Not tonight</button></div>`;
+  if (t.kind === "skip")
+    return `<div class="sm-acts"><button class="btn fluline" data-action="studyunskip">${ic("undo")}Read tonight after all</button></div>`;
   if (t.kind === "read" && t.done)
     return `<div class="sm-acts"><button class="btn" data-action="studystop">${ic("plus")}I read more</button></div>`;
   if (t.keep)
     return `<div class="sm-acts"><button class="btn fluline" data-action="studyread" data-to="${t.keep.to}">${ic("check")}I read pp. ${studyPP(t.keep.from, t.keep.to)}</button>${stop}</div>`;
   return `<div class="sm-acts">${stop}</div>`;
+}
+
+// ---- Questions: before you read, and the bank --------------------------------------------
+// One question: its text and marks; Show answer; then Got it or Missed.
+function studyQiHTML(x, n, s) {
+  const mk = s.qa && s.qa[x.id], open = studyRevealed.has(x.id) || !!mk;
+  const marks = x.marks ? `<span class="qi-m mono">${x.marks} mark${x.marks === 1 ? "" : "s"}</span>` : "";
+  let h = `<li class="qi${mk ? (mk.ok ? " ok" : " miss") : ""}"><div class="qi-q"><span class="qi-n mono">${n}</span>` +
+    `<p>${esc(x.q)}</p></div><div class="qi-meta">${marks}<span class="qi-p mono">p. ${x.page}</span></div>`;
+  if (!open) return h + `<button class="textbtn qi-show" data-action="studyreveal" data-id="${esc(x.id)}">Show answer</button></li>`;
+  h += `<ul class="qi-a">${x.a.map(a => `<li>${esc(a)}</li>`).join("")}</ul>`;
+  const b = (ok, label, icn) => `<button class="pillbtn qm${mk && mk.ok === ok ? " on" : ""}${ok ? " got" : " missed"}" data-action="studymark" data-id="${esc(x.id)}" data-ok="${ok ? 1 : 0}">${ic(icn)}${label}</button>`;
+  return h + `<div class="qi-mark">${b(true, "Got it", "check")}${b(false, "Missed", "x")}</div></li>`;
+}
+// The range tonight's questions come from, and what to call them.
+function studyQRange(t) {
+  if (t.kind === "complete" || t.kind === "after") return null;
+  if (t.kind === "read" && !t.ahead) return {from: t.from, to: t.to, head: t.done ? "Tonight's questions" : "Before you read"};
+  const r = t.keep || t.next;
+  if (!r) return null;
+  return {from: r.from, to: r.to, head: t.kind === "before" ? "First night's questions" : "If you read tonight"};
+}
+function studyQCardHTML(st) {
+  const {s, t} = st, r = studyQRange(t);
+  if (!r || StudyQ.status === "none" || StudyQ.status === "idle") return "";
+  if (StudyQ.status !== "ready") {
+    return `<section class="card qcard lock"><div class="qc-head"><span class="mono">${esc(r.head)}</span>${ic("lock", "sm")}</div>` +
+      `<p class="qc-note">Tonight's questions are locked. Type the study password once; this phone remembers it.</p>` +
+      `<div class="qc-pw"><input id="studyqpw" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Study password" aria-label="Study password">` +
+      `<button class="btn flu" data-action="studyunlock">Unlock</button></div>` +
+      (StudyQ.err ? `<div class="err" role="alert">${esc(StudyQ.err)}</div>` : "") + `</section>`;
+  }
+  const qs = studyqFor(r.from, r.to);
+  if (!qs.length) return "";
+  const marks = qs.reduce((a, x) => a + (x.marks || 0), 0);
+  return `<section class="card qcard"><div class="qc-head"><span class="mono">${esc(r.head)}</span>` +
+    `<span class="mono">${qs.length} question${qs.length === 1 ? "" : "s"}${marks ? " · " + marks + " marks" : ""}</span></div>` +
+    `<ol class="qc-list">${qs.map((x, k) => studyQiHTML(x, k + 1, s)).join("")}</ol>` +
+    (r.head === "Before you read" ? `<p class="qc-foot">Answer in your head first, even a guess, then read pp. ${studyPP(r.from, r.to)} to check.</p>` : "") +
+    `</section>`;
+}
+function studyBankHTML(st) {
+  const {s, t} = st;
+  if (StudyQ.status !== "ready") return "";
+  const bank = studyqBank(t.now);
+  if (!bank.length) return "";
+  const qa = s.qa || {}, all = bank.flatMap(b => b.qs);
+  const done = all.filter(x => qa[x.id]).length, miss = all.filter(x => qa[x.id] && !qa[x.id].ok).length;
+  const rows = bank.map(({item, qs}) => {
+    const m = qs.filter(x => qa[x.id] && !qa[x.id].ok).length;
+    return `<button class="bankrow" data-action="studybank" data-id="${item.id}"><span class="chl mono">${studyItemLabel(item)}</span>` +
+      `<span class="bk-t">${esc(item.title)}</span><span class="mono bk-n">${qs.length}${m ? ` · <b>${m} missed</b>` : ""}</span>${ic("chev", "chev")}</button>`;
+  }).join("");
+  return `<section class="sec"><div class="sec-head"><h2>Question bank</h2><span class="mono"><b>${done}</b>/${all.length} answered · ${miss} missed</span></div>` +
+    `<div class="card list banklist">${rows}</div><p class="goal">Every question on pages you've read, for practice now and in Year 2.</p></section>`;
 }
 
 // ---- A finished question set asks for its score ----------------------------------------
@@ -247,7 +310,7 @@ function studyQuestionsHTML(st) {
 function studyPauseHTML(st) {
   const {today, s, str} = st, k = fmtDate(today);
   const md = iso => { const [y, m, d] = iso.split("-").map(Number); return `${DAYS[new Date(y, m - 1, d).getDay()]} ${d} ${MONTHS[m - 1]}`; };
-  const list = s.pauses.map((p, i) => ({p, i})).filter(x => x.p.b >= k);
+  const list = s.pauses.map((p, i) => ({p, i})).filter(x => x.p.b >= k && !x.p.skip);
   const rows = list.map(({p, i}) => {
     const [y1, m1, d1] = p.a.split("-").map(Number), [y2, m2, d2] = p.b.split("-").map(Number);
     const n = studyCountNights(new Date(y1, m1 - 1, d1), new Date(y2, m2 - 1, d2), str, []);
@@ -265,10 +328,10 @@ function viewStudy() {
   const st = studyState(), {today, t} = st, S = studySeq(), blk = blockFor(today);
   let h = `<header class="ph"><p class="eyebrow mono">Mayo Board Review · Pass 1</p><h1 class="title">Study</h1>` +
     `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>`;
-  h += warningsHTML(today) + studyHeroHTML(st) + studyScoreAskHTML(st.s);
+  h += warningsHTML(today) + studyHeroHTML(st) + studyQCardHTML(st) + studyScoreAskHTML(st.s);
   if (t.kind !== "after" && t.kind !== "complete") h += studyNightsHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyBlockHTML(st);
-  h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st);
+  h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st) + studyBankHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyPauseHTML(st);
   return h + `<p class="bfoot">Printed page numbers. Edge's page box counts PDF pages: printed + 15. ` +
     `Reading nights are Monday, Tuesday, Wednesday and Friday; call nights are skipped, and reading on any night counts.</p>`;
@@ -282,14 +345,15 @@ function studyCardHTML() {
   if (t.kind === "complete") { lbl = "Study"; main = "Mayo pass 1 read"; sub = "Questions next"; cls = " done"; }
   else if (t.kind === "read" && !t.ahead && !t.done) {
     const w = studyWhat(t.from, t.to);
-    lbl = "Tonight"; main = "pp. " + studyPP(t.from, t.to); sub = w.lbl + " · " + w.title;
+    const nq = studyqFor(t.from, t.to).length;
+    lbl = "Tonight"; main = "pp. " + studyPP(t.from, t.to); sub = (nq ? `${nq} questions first · ` : "") + w.lbl + " · " + w.title;
   } else if (t.kind === "read" && t.done) {
     lbl = "Tonight"; main = "Reading done"; cls = " done";
     sub = t.next ? `Next ${studyDay(t.next.day)} · pp. ${studyPP(t.next.from, t.next.to)}` : "Nothing more tonight";
   } else if (t.ahead) { lbl = "Tonight"; main = "Ahead of plan"; sub = "Night off, or keep going"; cls = " done"; }
   else {
     lbl = t.kind === "before" ? "Study starts" : "Tonight";
-    main = t.kind === "before" ? studyDay(STUDY_START) : "Night off";
+    main = t.kind === "before" ? studyDay(STUDY_START) : t.kind === "skip" ? "Skipped tonight" : "Night off";
     const n = t.keep || t.next;
     sub = n ? `${t.kind === "before" ? "First" : "Next"}: pp. ${studyPP(n.from, n.to)} · ${studyWhat(n.from, n.to).lbl}` : "";
     cls = " off";
@@ -342,6 +406,15 @@ function studySheetHTML() {
       `<div class="pggrid">${grid}</div>` +
       `<div class="pg-sum"><span class="mono">${summary}</span>${sh.sel !== a ? `<button class="textbtn" data-action="studypick" data-i="${a}">Start of ${studyItemLabel(it)}</button>` : ""}</div>` +
       `<div class="sactions"><button class="btn flu" data-action="studysave">Save</button></div></div>`;
+  }
+  if (sh.kind === "bank") {
+    const it = STUDY_BY_ID[sh.id], qa = Store.state.study.qa || {};
+    const bank = studyqBank(studyCursorNow(Store.state.study.log)).find(b => b.item.id === sh.id);
+    const qs = (bank ? bank.qs : []).filter(x => sh.filter !== "missed" || (qa[x.id] && !qa[x.id].ok));
+    const chip = (f, label) => `<button class="pick ghost${sh.filter === f ? " on" : ""}" data-action="studybankfilter" data-f="${f}">${label}</button>`;
+    return head(`${studyItemLabel(it)} · ${it.title}`, "") + `<div class="datechips">${chip("all", "All")}${chip("missed", "Missed")}</div>` +
+      (qs.length ? `<ol class="qc-list sheetq">${qs.map((x, k) => studyQiHTML(x, k + 1, Store.state.study)).join("")}</ol>` :
+        `<p class="ssub">Nothing missed here.</p>`) + `</div>`;
   }
   if (sh.kind === "score") {
     const it = STUDY_BY_ID[sh.id], p = pct(sh.r, sh.of);
@@ -400,6 +473,26 @@ function studyDispatch(act, d) {
     Store.removePause(+d.i); showToast("Pause removed", () => Store.restoreStudy(before));
   }
   else if (act === "studyclose") studySheet = null;
+  else if (act === "studyskip") {
+    const before = Store.studySnapshot(), k = fmtDate(getToday());
+    Store.addPause(k, k, true); showToast("Skipped tonight. The pages move to the next night.", () => Store.restoreStudy(before));
+  }
+  else if (act === "studyunskip") {
+    const k = fmtDate(getToday()), i = Store.state.study.pauses.findIndex(p => p.skip && p.a <= k && k <= p.b);
+    if (i >= 0) Store.removePause(i);
+  }
+  else if (act === "studyreveal") studyRevealed.add(d.id);
+  else if (act === "studymark") {
+    const cur = (Store.state.study.qa || {})[d.id], ok = d.ok === "1";
+    Store.setQMark(d.id, cur && cur.ok === ok ? null : ok);
+  }
+  else if (act === "studybank") { studySheet = {kind: "bank", id: d.id, filter: "all"}; studySheetFresh = true; }
+  else if (act === "studybankfilter") { studySheet.filter = d.f; }
+  else if (act === "studyunlock") {
+    const el = typeof document !== "undefined" && document.getElementById && document.getElementById("studyqpw");
+    studyqUnlock(el ? el.value : d.pw).then(() => { route.keepScroll = true; render(); });
+    return false;
+  }
   else if (act === "studysave") {
     const sh = studySheet;
     if (sh.kind === "stop") { studySheet = null; studySet(sh.sel); }

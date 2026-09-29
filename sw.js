@@ -2,7 +2,7 @@ importScripts("notify.js");
 const CACHE = "epa-v15";
 // Kept across updates: the brief remind.js saves for writing notifications.
 const BRIEF = "gi-brief";
-const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js", "scope-view.js", "scope-report.js", "app.js", "manifest.webmanifest", "icon.svg",
+const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "studyq.js", "studyq.json", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js", "scope-view.js", "scope-report.js", "app.js", "manifest.webmanifest", "icon.svg",
   "icon-180.png", "icon-192.png", "icon-512.png",
   "fonts/plex-sans-var.woff2", "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"];
 self.addEventListener("install", e => {
@@ -12,7 +12,15 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k !== CACHE && k !== BRIEF).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
+// The study questions change without an app update, so they come from the
+// network first; the cached copy covers the phone when it's offline.
 self.addEventListener("fetch", e => {
+  if (new URL(e.request.url).pathname.endsWith("/studyq.json")) {
+    e.respondWith(fetch(e.request).then(res => { if (res.ok) { const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; })
+      .catch(() => caches.match(e.request, {ignoreSearch: true})));
+    return;
+  }
   e.respondWith(caches.match(e.request, {ignoreSearch: true}).then(hit => hit ||
     fetch(e.request).then(res => { const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)); return res; })));
