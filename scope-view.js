@@ -84,6 +84,9 @@ function scopeCardFromCase(c, copy) {
     editId: copy ? null : c.id, otherLabel: c.otherLabel || ""};
 }
 // EPA parts this card could count toward: active stage, still needing observations.
+// What each saved case has already added as an EPA observation, read once per draw.
+let scopeSentMemo = null;
+const scopeSentFor = id => (id && (scopeSentMemo ||= scopeSentMap(Store.state.obs))[id]) || [];
 function scopeOffers(card) {
   const cur = currentStage();
   if (!cur || !card.staff) return [];
@@ -137,8 +140,14 @@ function scopeCardHTML(card, i, o = {}) {
     scopeChip("Someone else", "scopechip", {key: card.key, kind: "staff"}, "ghost");
   else if (card.staffAlt && card.staffAlt.length) staff = card.staffAlt.map(id => scopeChip(esc(scopeDr(id)) + "?", "scopestaff1", {key: card.key, id}, "ghost")).join("");
   else staff = scopeChip(`${ic("user")}Staff`, "scopechip", {key: card.key, kind: "staff"}, "ghost");
-  const offers = scopeOffers(card);
-  const epa = offers.length ? `<div class="offers">` + offers.map(pid => {
+  const sent = scopeSentFor(card.editId).filter(x => PART_BY_ID[x.pid]);
+  const offers = scopeOffers(card).filter(pid => !sent.some(x => x.pid === pid));
+  const epa = sent.length || offers.length ? `<div class="offers">` + sent.map(x => {
+    const P = PART_BY_ID[x.pid];
+    return `<div class="offer sent"><span class="obox">${ic("check")}</span><span><b>${P.label}</b> added, ` +
+      `${x.status === "approved" ? "approved" : "pending"}${x.a ? " with " + esc(x.a) : ""}</span>` +
+      `<span class="cc sm st-${P.stage}">${esc(PART_SHORT[x.pid] || "")}</span></div>`;
+  }).join("") + offers.map(pid => {
     const on = !!card.epa[pid], P = PART_BY_ID[pid];
     return `<button class="offer${on ? " on" : ""}" data-action="scopeepa" data-key="${card.key}" data-pid="${pid}" aria-pressed="${on}">` +
       `<span class="obox">${on ? ic("check") : ""}</span><span>${on ? "Adding" : "Add"} <b>${P.label}</b> as pending with ${esc(scopeDr(card.staff))}</span>` +
@@ -197,7 +206,9 @@ function scopeRowHTML(c) {
   return `<div class="srow${c.urg === "urgent" ? " urgent" : ""}${scopeLit === c.id ? " lit" : ""}"><button class="srow-b" data-action="scopeedit" data-id="${esc(c.id)}">` +
     `<span class="srow-g">${scopeGlyph(c)}</span><span class="srow-m"><b>${esc(scopeSummary(c))}</b>` +
     `<span class="srow-s">${esc(sub || "No staff recorded")}${found ? ` · <span class="found">${esc(found)}</span>` : ""}</span></span>` +
-    (c.urg === "urgent" ? `<span class="urgtick" title="Urgent"><span class="sr">Urgent</span></span>` : "") + `</button>` +
+    (c.urg === "urgent" ? `<span class="urgtick" title="Urgent"><span class="sr">Urgent</span></span>` : "") +
+    scopeSentFor(c.id).filter(x => PART_BY_ID[x.pid]).map(x => `<span class="cc sm st-${PART_BY_ID[x.pid].stage} sentc${x.status === "approved" ? " ok" : ""}">` +
+      `${PART_BY_ID[x.pid].label}<span class="sr"> ${x.status === "approved" ? "approved" : "added, pending"}</span></span>`).join("") + `</button>` +
     `<button class="iconbtn again" data-action="scopeagain" data-id="${esc(c.id)}" aria-label="Log another like this">${ic("copy")}</button></div>`;
 }
 function scopeHintHTML() {
@@ -481,12 +492,12 @@ function scopeCaseOf(card, id) {
   if (card.otherLabel) c.otherLabel = card.otherLabel;
   return c;
 }
-function scopeAddEpa(card, before) {
+function scopeAddEpa(card, caseId) {
   const added = [];
   for (const pid of Object.keys(card.epa || {})) {
     if (!card.epa[pid]) continue;
     const i = Store.logObs(pid);
-    Store.setObsMeta(pid, i, {d: card.d || fmtDate(getToday()), a: scopeDr(card.staff), n: "From scope log: " + scopeSummary(card), status: "pending"});
+    Store.setObsMeta(pid, i, {d: card.d || fmtDate(getToday()), a: scopeDr(card.staff), n: SCOPE_EPA_NOTE + scopeSummary(card), status: "pending", src: caseId});
     added.push(PART_BY_ID[pid].label);
   }
   return added;
@@ -499,8 +510,9 @@ function scopeSaveAll() {
   const before = {scopes: Store.scopeSnapshot(), obs: JSON.parse(JSON.stringify(Store.state.obs))};
   const list = [], epa = [];
   for (const card of cards) {
+    const first = list.length;
     for (let k = 0; k < (card.n || 1); k++) list.push(scopeCaseOf(card));
-    epa.push(...scopeAddEpa(card));
+    epa.push(...scopeAddEpa(card, list[first].id));
   }
   Store.addCases(list);
   const n = list.reduce((a, c) => a + scopeFams(c).length, 0);
@@ -579,16 +591,15 @@ function scopeDispatch(act, d = {}) {
     const sh = scopeSheet, c = sh.card;
     if (!scopeValidate(c)) return true;
     const before = {scopes: Store.scopeSnapshot(), obs: JSON.parse(JSON.stringify(Store.state.obs))};
-    const epa = scopeAddEpa(c);
+    const next = scopeCaseOf(c, act === "scopeupdate" ? sh.id : null);
+    const epa = scopeAddEpa(c, next.id);
     if (act === "scopeupdate") {
       const old = scopeData().cases.find(x => x.id === sh.id);
-      const next = scopeCaseOf(c, sh.id);
       next.src = old ? old.src : "dictated";
       Store.updateCase(sh.id, next);
       showToast("Changes saved" + (epa.length ? " · " + epa.join(", ") + " pending" : ""), () => { Store.restoreScopes(before.scopes); Store.state.obs = before.obs; Store.save(); });
       scopeLit = sh.id;
     } else {
-      const next = scopeCaseOf(c);
       Store.addCases([next]);
       scopeLit = next.id;
       showToast("Case saved" + (epa.length ? " · " + epa.join(", ") + " pending" : ""), () => { Store.restoreScopes(before.scopes); Store.state.obs = before.obs; Store.save(); });
@@ -656,7 +667,7 @@ function scopeReadImport(f) {
 // tapping a landmark at the bottom of a card never jumps back to the top.
 let scopeScrollKeep = null;
 function scopeBeforeRender() {
-  scopeScrollKeep = null;
+  scopeScrollKeep = null; scopeSentMemo = null;
   if (typeof document.querySelector !== "function") return;
   const sh = document.querySelector(".scopesheet"), pk = document.querySelector(".picklist");
   if (sh || pk) scopeScrollKeep = {sheet: sh ? sh.scrollTop : 0, pick: pk ? pk.scrollTop : 0};

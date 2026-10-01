@@ -341,3 +341,50 @@ test("breadth lists Not recorded once per group", () => {
   const setting = /<span class="mono">Setting<\/span>(.*?)<\/div><\/div>/.exec(h.html())[1];
   assert.equal((setting.match(/Not recorded/g) || []).length, 1);
 });
+
+test("a case that added an EPA shows it as added and stops offering it", () => {
+  const h = endo("2026-09-28", withScopes());
+  h.say("EGD with Dr. Brook, biopsies");
+  const key = h.card().key;
+  assert.match(h.html(), /Add <b>F3-A<\/b> as pending with Dr\. Brook/);
+  h.click("scopeepa", {key, pid: "f3a"});
+  h.click("scopesave");
+  const s = h.saved(), id = s.scopes.cases[0].id;
+  assert.equal(s.obs.f3a[0].src, id);
+  // The row carries the tag.
+  assert.match(h.html(), /class="cc sm st-f sentc">F3-A<span class="sr"> added, pending<\/span>/);
+  // The card records it and no longer offers it.
+  h.click("scopeedit", {id});
+  assert.match(h.html(), /<div class="offer sent">.*?<b>F3-A<\/b> added, pending with Dr\. Brook/);
+  assert.doesNotMatch(h.html(), /data-action="scopeepa"/);
+  h.click("scopeupdate");
+  assert.equal(h.saved().obs.f3a.length, 1);
+  // A copy is a new case: it is offered again.
+  h.click("scopeagain", {id});
+  assert.match(h.html(), /data-action="scopeepa"[^>]*data-pid="f3a"/);
+  h.click("scopeclose");
+  // Approved in Entrada, then deleted: the card follows the observation.
+  h.run(`Store.setObsStatus("f3a", 0, "approved")`);
+  h.click("scopeedit", {id});
+  assert.match(h.html(), /<b>F3-A<\/b> added, approved with Dr\. Brook/);
+  h.click("scopeclose");
+  h.run(`Store.removeObs("f3a", 0)`);
+  h.click("scopeedit", {id});
+  assert.match(h.html(), /data-action="scopeepa"[^>]*data-pid="f3a"/);
+});
+
+test("an EPA added from a case before cases were linked is matched on load", () => {
+  const cases = [{id: "a", d: "2026-09-20", staff: "sb", procs: ["egd.dx"], why: [], found: [], ts: "1"}];
+  const st = withScopes(cases);
+  st.obs = {f3a: [{d: "2026-09-20", a: "Dr. Brook", n: "From scope log: EGD", status: "pending", ts: "2026-09-20T18:00:00.000Z"}]};
+  const h = endo("2026-09-28", st);
+  assert.equal(h.val("Store.state.obs.f3a[0].src"), "a");
+  h.click("scopeedit", {id: "a"});
+  assert.match(h.html(), /<b>F3-A<\/b> added, pending with Dr\. Brook/);
+});
+
+test("every sheet has a handle and a close button the handle can use", () => {
+  const h = endo("2026-09-28", withScopes());
+  h.click("scopeopen");
+  assert.match(h.html(), /<div class="grab"><\/div><div class="shead"><b>Log a case<\/b><button class="iconbtn" data-action="scopeclose"/);
+});

@@ -20,7 +20,8 @@ const Store = {
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
       learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled)};
     // Once: cases imported before sites were filled on import take their block's hospital.
-    if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; } },
+    if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; }
+    scopeLinkEpas(this.state.scopes.cases, this.state.obs, this.state.scopes.staff); },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
@@ -327,9 +328,18 @@ function lookHTML(items) {
 function chaseHTML(list) {
   return `<section class="sec"><details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
     `<b>${list.length} form${list.length > 1 ? "s" : ""} pending 14+ days</b><span class="mono">Entrada</span>${ic("chev", "chev")}</summary>` +
-    list.map(c => `<div class="crow"><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
-      `<span class="cmeta"><span class="num">${esc(c.date)}</span> · ${c.a ? esc(c.a) : "no assessor"}</span>` +
-      `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`).join("") +
+    list.map(c => {
+      // No assessor on the form: the scope log may know who it was with.
+      const sc = Store.state.scopes, g = c.a ? {ids: []} : scopeStaffOn(sc.cases, c.date, c.pid);
+      const names = g.ids.map(id => scopeDrName(sc.staff, id)).filter(Boolean).slice(0, 2);
+      const who = c.a ? esc(c.a) : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
+      const note = c.n.startsWith(SCOPE_EPA_NOTE) ? c.n.slice(SCOPE_EPA_NOTE.length) : c.n;
+      return `<div class="crow"><button class="cmain" data-action="sheet" data-part="${c.pid}" data-obs="${c.i}" data-chase="1"` +
+        `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
+        `<span class="cmeta"><b>${esc(PART_SHORT[c.pid] || "")}</b>` +
+        `<span class="cwho"><span class="num">${esc(scopeShortDate(c.date))}</span> · ${who}${note ? " · " + esc(note) : ""}</span></span></button>` +
+        `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`;
+    }).join("") +
     `</details></section>`;
 }
 // The finish-line chart spans Jul 2 2026 to mid Sep 2027, so a date past the
@@ -767,7 +777,12 @@ function dispatch(act, d) {
   if (act === "open") go({page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page});
   else if (act === "back") go({page: route.from || "epas"}, true);
   else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo(0, 0); }
-  else if (act === "sheet") { scopeSheet = null; openSheet(d.part, d.obs); route.keepScroll = true; render(); }
+  else if (act === "sheet") {
+    scopeSheet = null; openSheet(d.part, d.obs);
+    // From the pending list: it stays open behind the sheet, and the scope log's guess is offered.
+    if (d.chase) chaseOpen = true;
+    if (d.a && sheet.mode === "edit" && !sheet.a) sheet.a = d.a;
+    route.keepScroll = true; render(); }
   else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
@@ -850,6 +865,59 @@ document.getElementById("app").addEventListener("change", ev => {
   }
   if (d.field && d.line) Store.setLineMeta(d.line, {[d.field]: t.value});
 });
+// ---- Sheets: the handle closes them, and the keyboard never covers them ---------
+// Dragging a sheet's handle or title down closes it, the same as its X.
+let sheetDrag = null;
+function sheetDragStart(ev) {
+  const t = ev.target, zone = t && t.closest ? t.closest(".grab, .shead") : null;
+  if (!zone || t.closest("button, input, a") || sheetDrag) return;
+  const sh = zone.closest(".sheet"), prev = sh && sh.previousElementSibling;
+  if (!sh) return;
+  sheetDrag = {sh, id: ev.pointerId, y: ev.clientY, dy: 0, t: Date.now(), scrim: prev && prev.classList.contains("scrim") ? prev : null};
+  sh.style.animation = "none"; sh.style.transition = "none";
+  try { zone.setPointerCapture(ev.pointerId); } catch (e) {}
+}
+function sheetDragMove(ev) {
+  const s = sheetDrag;
+  if (!s || ev.pointerId !== s.id) return;
+  s.dy = Math.max(0, ev.clientY - s.y);
+  s.sh.style.transform = `translateY(${s.dy}px)`;
+  if (s.scrim) { s.scrim.style.animation = "none"; s.scrim.style.opacity = String(Math.max(.2, 1 - s.dy / Math.max(1, s.sh.offsetHeight))); }
+}
+function sheetDragEnd(ev) {
+  const s = sheetDrag;
+  if (!s || ev.pointerId !== s.id) return;
+  sheetDrag = null;
+  // Far enough, or a quick flick.
+  const flick = s.dy > 30 && s.dy / Math.max(1, Date.now() - s.t) > .5;
+  const close = ev.type === "pointerup" && (s.dy > Math.min(130, s.sh.offsetHeight * .3) || flick);
+  s.sh.style.transition = "transform .2s cubic-bezier(.2, .8, .2, 1)";
+  if (s.scrim) s.scrim.style.transition = "opacity .2s";
+  if (!close) { s.sh.style.transform = ""; if (s.scrim) s.scrim.style.opacity = ""; return; }
+  s.sh.style.transform = "translateY(105%)";
+  if (s.scrim) s.scrim.style.opacity = "0";
+  const x = s.sh.querySelector(".shead [data-action]");
+  setTimeout(() => { if (x && x.isConnected) dispatch(x.dataset.action, x.dataset); }, 190);
+}
+for (const [type, fn] of [["pointerdown", sheetDragStart], ["pointermove", sheetDragMove], ["pointerup", sheetDragEnd], ["pointercancel", sheetDragEnd]])
+  document.getElementById("app").addEventListener(type, fn);
+// iOS lays the keyboard over the page without resizing it, so a sheet pinned
+// to the bottom ends up behind the keys. --kb is how much of the page the
+// keyboard covers and --vvh the height still in view; the sheet CSS uses both.
+function syncKeyboard(vv = window.visualViewport) {
+  const root = document.documentElement;
+  if (!vv || !root || !root.style) return;
+  const kb = Math.round((root.clientHeight || window.innerHeight) - vv.height - vv.offsetTop), up = kb > 80;
+  root.style.setProperty("--kb", (up ? kb : 0) + "px");
+  root.style.setProperty("--vvh", Math.round(vv.height) + "px");
+  root.classList.toggle("kb", up);
+  const el = document.activeElement;
+  if (up && el && el.closest && el.closest(".sheet") && el.scrollIntoView) el.scrollIntoView({block: "nearest"});
+}
+if (window.visualViewport && window.visualViewport.addEventListener) {
+  window.visualViewport.addEventListener("resize", () => syncKeyboard());
+  window.visualViewport.addEventListener("scroll", () => syncKeyboard());
+}
 // Coming back to the app redraws it, so the call card and the week are current,
 // and checks whether a reminder has arrived.
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {

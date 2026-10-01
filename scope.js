@@ -902,6 +902,42 @@ function scopeImport(scopes, file) {
   scopeFillSites(fresh);
   return {ok: true, added, skipped, staffAdded, next};
 }
+// ---- EPA links ---------------------------------------------------------------------------------
+// An observation added from a case carries the case's id in `src`, so the
+// case can show what it already added instead of offering it again.
+const SCOPE_EPA_NOTE = "From scope log: ";
+const scopeDrName = (staff, id) => { const p = (staff || []).find(x => x.id === id); return p ? "Dr. " + String(p.name || "").split(",")[0].trim() : ""; };
+// {caseId: [{pid, i, status, a}]} for every observation that came from a case.
+function scopeSentMap(obsByPart) {
+  const m = {};
+  for (const pid of Object.keys(obsByPart || {})) (obsByPart[pid] || []).forEach((o, i) => {
+    if (o && o.src) (m[o.src] ||= []).push({pid, i, status: o.status || "pending", a: o.a || ""});
+  });
+  return m;
+}
+// Observations added from cases before the link existed are matched to their
+// case by date, staff and EPA. Returns how many were linked.
+function scopeLinkEpas(cases, obsByPart, staff) {
+  let n = 0;
+  for (const pid of Object.keys(obsByPart || {})) {
+    const list = obsByPart[pid] || [], taken = new Set(list.map(o => o && o.src).filter(Boolean));
+    for (const o of list) {
+      if (!o || o.src || typeof o.n !== "string" || !o.n.startsWith(SCOPE_EPA_NOTE)) continue;
+      const fits = (cases || []).filter(c => c.d === o.d && !taken.has(c.id) && scopeEpaParts(c).includes(pid) && (!o.a || scopeDrName(staff, c.staff) === o.a));
+      const hit = fits.find(c => SCOPE_EPA_NOTE + scopeSummary(c) === o.n) || fits[0];
+      if (hit) { o.src = hit.id; taken.add(hit.id); n++; }
+    }
+  }
+  return n;
+}
+// Who a form with no assessor was probably with: the staff on that day's
+// cases, the cases that fit the EPA first. `fit` says which it was.
+function scopeStaffOn(cases, iso, pid) {
+  const day = (cases || []).filter(c => c.d === iso && c.staff), fit = day.filter(c => scopeEpaParts(c).includes(pid));
+  const ids = [];
+  for (const c of fit.length ? fit : day) if (!ids.includes(c.staff)) ids.push(c.staff);
+  return {ids, fit: fit.length > 0};
+}
 // The site a consult block is at ("Consults SBH" is St. Boniface), or null
 // for blocks named after a service rather than a hospital.
 function scopeBlockSite(iso) {

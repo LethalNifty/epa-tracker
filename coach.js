@@ -286,7 +286,7 @@ function chaseList(obsByPart, today) {
   for (const P of PARTS) (obsByPart[P.id] || []).forEach((o, i) => {
     const d = attrDate(o);
     if (o.status === "approved" || !d || t - dayIndex(d) <= 14) return;
-    out.push({pid: P.id, i, label: P.label, date: fmtDate(d), a: o.a || "", age: t - dayIndex(d)});
+    out.push({pid: P.id, i, label: P.label, date: fmtDate(d), a: o.a || "", n: o.n || "", age: t - dayIndex(d)});
   });
   return out.sort((x, y) => y.age - x.age);
 }

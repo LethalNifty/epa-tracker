@@ -82,8 +82,8 @@ test("chase list: pending more than 14 days, oldest first", () => {
     c3: [obs("2026-08-01", {status: "pending"}), obs("2026-08-01")],
   })});
   assert.deepEqual(h.val(`chaseList(Store.state.obs, ${dateExpr("2026-09-24")})`), [
-    {pid: "c3", i: 0, label: "C3", date: "2026-08-01", a: "", age: 54},
-    {pid: "c2", i: 0, label: "C2", date: "2026-09-09", a: "Dr. A", age: 15},
+    {pid: "c3", i: 0, label: "C3", date: "2026-08-01", a: "", n: "", age: 54},
+    {pid: "c2", i: 0, label: "C2", date: "2026-09-09", a: "Dr. A", n: "", age: 15},
   ]);
 });
 

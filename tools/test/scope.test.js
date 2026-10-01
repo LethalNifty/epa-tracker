@@ -331,3 +331,23 @@ test("imported cases take their consult block's hospital", () => {
   const r = h.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify(file)})`);
   assert.deepEqual(r.next.cases.map(c => c.site), ["hsc", "stb", "grace", null]);
 });
+
+test("observations added from a case link back to it", () => {
+  const staff = [{id: "b", name: "Brook, Casey"}, {id: "a", name: "Attending, Alpha"}];
+  const cases = [{id: "c1", d: "2026-09-20", staff: "b", procs: ["egd.dx", "egd.bx"]}, {id: "c2", d: "2026-09-20", staff: "b", procs: ["egd.dx"]},
+    {id: "c3", d: "2026-09-20", staff: "a", procs: ["egd.dx"]}, {id: "c4", d: "2026-09-21", staff: "b", procs: ["colo.dx"], reach: "cecum"}];
+  const obs = {f3a: [
+    {d: "2026-09-20", a: "Dr. Brook", n: "From scope log: EGD", status: "pending"},          // the plain EGD, by its summary
+    {d: "2026-09-20", a: "Dr. Brook", n: "From scope log: EGD (edited since)", status: "approved"},   // the other Brook EGD that day
+    {d: "2026-09-20", a: "Dr. Brook", n: "typed by hand", status: "pending"},                // not from the scope log
+    {d: "2026-09-22", a: "Dr. Brook", n: "From scope log: EGD", status: "pending"},          // no case that day
+  ], f4: [{d: "2026-09-21", a: "Dr. Brook", n: "From scope log: Colonoscopy to cecum", status: "pending"}]};
+  const out = h.val(`(() => { const o = ${JSON.stringify(obs)}; const n = scopeLinkEpas(${JSON.stringify(cases)}, o, ${JSON.stringify(staff)}); return {n, o, again: scopeLinkEpas(${JSON.stringify(cases)}, o, ${JSON.stringify(staff)}), map: scopeSentMap(o)}; })()`);
+  assert.equal(out.n, 3);
+  assert.equal(out.again, 0);
+  assert.deepEqual(out.o.f3a.map(o => o.src || null), ["c2", "c1", null, null]);
+  assert.equal(out.o.f4[0].src, "c4");
+  assert.deepEqual(out.map.c1, [{pid: "f3a", i: 1, status: "approved", a: "Dr. Brook"}]);
+  assert.deepEqual(out.map.c4, [{pid: "f4", i: 0, status: "pending", a: "Dr. Brook"}]);
+  assert.equal(out.map.c3, undefined);
+});
