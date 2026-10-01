@@ -52,7 +52,7 @@ function noteStudy(brief, now) {
   const next = nx ? `Next: ${NOTE_DAYS[new Date(nx.d).getDay()]}, pp. ${nx.pp}.` : "";
   if (n.kind === "complete") return {title: "Mayo pass 1 is read", body: "All the pages are done. Questions next.", tag, url};
   if (n.kind === "read" && n.done) return {title: "Reading done for tonight", body: next || "Nothing more tonight.", tag, url};
-  if (n.kind === "read" && n.pp) return {title: `Tonight: pp. ${n.pp}`,
+  if (n.kind === "read" && n.pp) return {title: `Tonight: ${n.book ? n.book + " " : ""}pp. ${n.pp}`,
     body: `${n.what}. ${n.n} page${n.n === 1 ? "" : "s"}` + (n.qn ? `, ${n.qn} question${n.qn === 1 ? "" : "s"} first.` : "."), tag, url};
   if (n.kind === "skip") return {title: "Skipped tonight", body: next || "The pages move to the next reading night.", tag, url};
   if (n.kind === "ahead") return {title: "You're ahead of plan", body: "Tonight is free. " + (next || "Keep going in GI Hub if you like."), tag, url};

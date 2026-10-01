@@ -30,6 +30,9 @@ async function phone(today, st, {pw = null, file = encrypt({v: 1, q: QS}, PW, {i
 test("validation: unknown item, page outside its item, duplicate id, no answer", () => {
   const items = planItems();
   assert.deepEqual(validate(QS, items), []);
+  // A Yamada reading is an item like any other, checked against its own pages.
+  assert.deepEqual(validate([{id: "y1-1", item: "y1", page: 466, q: "?", a: ["a"]}], items), []);
+  assert.match(validate([{id: "y1-2", item: "y1", page: 475, q: "?", a: ["a"]}], items)[0], /outside y1 \(pp\. 463-474\)/);
   const bad = validate([
     {id: "x1", item: "c99", page: 35, q: "?", a: ["a"]},
     {id: "x2", item: "c3", page: 50, q: "?", a: ["a"]},
@@ -71,7 +74,7 @@ test("tonight's questions are the ones on tonight's pages", async () => {
   assert.match(html, /List TWO example questions\./);
   assert.match(html, /Name one more\./);
   assert.doesNotMatch(html, /A question for a later night/);   // p. 40 is a later night
-  assert.match(html, /Answer in your head first, even a guess, then read pp\. 35–37 to check\./);
+  assert.match(html, /Answer in your head first, even a guess, then read pp\. 35–38 to check\./);
   h.click("tab", {page: "week"});
   assert.match(h.html(), /2 questions first · Ch 3 · Esophageal Motility/);
 });
@@ -108,6 +111,19 @@ test("Not tonight moves tonight's pages and questions to the next reading night,
   h.click("studyunskip");
   assert.deepEqual(h.saved().study.pauses, []);
   assert.match(h.html(), /Before you read/);
+});
+
+test("a question on a page number two books share lands in its own reading", async () => {
+  // Printed p. 466 is in Mayo's Gallstones chapter and in Yamada's Nutrition Support.
+  const qs = [
+    {id: "g-1", item: "c40", page: 466, q: "A gallstones question.", a: ["Mayo"]},
+    {id: "n-1", item: "y1", page: 466, q: "A nutrition question.", a: ["Yamada"]},
+  ];
+  const h = await phone("2026-10-06", withStudy({"2026-10-05": 13}), {pw: PW, file: encrypt({v: 1, q: qs}, PW, {iter: 1000})});
+  assert.deepEqual(h.val("StudyQ.list.map(x => [x.id, x.i])"), [["n-1", 13], ["g-1", h.val("studyItemStart(STUDY_BY_ID.c40)") + 11]]);
+  // Tonight is Yamada pp. 466-469: only the nutrition question is asked.
+  assert.match(h.html(), /A nutrition question\./);
+  assert.doesNotMatch(h.html(), /A gallstones question\./);
 });
 
 test("no question file yet: no card, no lock", async () => {

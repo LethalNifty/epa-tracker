@@ -1,13 +1,15 @@
 "use strict";
-// GI Hub study: the Mayo Board Review reading plan (pass 1, Blocks 4 to 12) and
-// the math that turns it into tonight's pages. Pure: no DOM and no Store.
+// GI Hub study: the Mayo Board Review reading plan (pass 1, Blocks 4 to 12),
+// with a few Yamada pages where Mayo is thin, and the math that turns it into
+// tonight's pages. Pure: no DOM and no Store.
 // Loaded after coach.js (dates and blocks) and before notify.js; the views
 // are in study-view.js.
 //
 // Progress is a bookmark: the plan is one run of pages in reading order, and
 // the saved log maps each day to how far through that run you were at the
-// end of it. Page numbers are the printed ones (the PDF page is printed + 15).
-// Only table-of-contents facts live here, never the book's text.
+// end of it. Page numbers are the printed ones (Mayo's PDF page is printed +
+// 15; each Yamada item carries its own offset). Only table-of-contents facts
+// live here, never a book's text.
 
 const STUDY_START = new Date(2026, 8, 30);   // the first reading night, a Wednesday
 const STUDY_END = new Date(2027, 5, 2);      // the plan's finish: the last day of Block 12
@@ -16,7 +18,7 @@ const STUDY_NIGHTS = [1, 2, 3, 5];           // Mon, Tue, Wed and Fri; Thursday 
 const STUDY_CAP = 10;                        // the most pages one night is given
 const STUDY_SNAP = 1;                        // finish on a chapter when one ends this close
 const STUDY_EVENING = 20;                    // 20:00: the reminder, and the call-night test
-const STUDY_PDF = 15;                        // PDF page = printed page + 15
+const STUDY_PDF = 15;                        // Mayo: PDF page = printed page + 15
 const STUDY_KEEP = 4;                        // pages offered when you're ahead
 
 // The book's seven sections, with their question counts and tract glyphs.
@@ -76,14 +78,26 @@ const STUDY_CH = {
 };
 // Each section's questions and answers: [first, last].
 const STUDY_QA = {1: [45, 48], 2: [97, 101], 3: [123, 124], 4: [175, 181], 5: [269, 276], 6: [407, 423], 7: [467, 470]};
+// Supplementary reading from Yamada's Textbook of Gastroenterology (7th ed.),
+// for nutrition: 10 to 15% of the Royal College written exam, and four pages
+// of Mayo. [title, first printed page, last, Yamada chapter, PDF page offset,
+// Mayo section it sits with]. The offset differs from chapter to chapter.
+const STUDY_SUPP = {
+  1: ["Nutrition Support (Yamada)", 463, 474, 23, 77, 3],
+  2: ["Short Bowel Syndrome (Yamada)", 1170, 1181, 59, 76, 3],
+  3: ["PEG: Selection and Preparation (Yamada)", 2462, 2463, 123, 69, 3],
+  4: ["PEG: Complications (Yamada)", 2471, 2473, 123, 69, 3],
+};
 // Reading order, block by block. Blocks 1 to 3 went by before the plan
 // started; their chapters were moved to blocks whose rotation suits them.
-// A question set always follows every chapter it covers.
+// A question set always follows every chapter it covers. The nutrition
+// supplement is read on the Motility/Nutrition block; IBS and constipation
+// made room for it and are read with the other colon chapters in Block 7.
 const STUDY_PLAN = {
-  4: ["c3", "c7", "c21", "c20"],
+  4: ["c3", "y1", "y2", "y3", "y4", "c7"],
   5: ["c8", "c9", "q3", "c15", "c16", "c17", "c18"],
   6: ["c37", "c38", "c39", "c40", "q7", "c25"],
-  7: ["c19", "c22", "q5"],
+  7: ["c19", "c20", "c21", "c22", "q5"],
   8: ["c14", "c1", "c2", "c10", "q1"],
   9: ["c4", "c5", "c6", "q2", "c31", "c33"],
   10: ["c23", "c24", "c26", "c28", "c29", "c30"],
@@ -98,6 +112,9 @@ for (const b of Object.keys(STUDY_PLAN).map(Number).sort((x, y) => x - y))
     if (id[0] === "c") {
       const [title, a, z] = STUDY_CH[k];
       STUDY_ITEMS.push({id, block: b, sec: studySecOf(k), ch: k, title, p: [a, z], n: z - a + 1});
+    } else if (id[0] === "y") {
+      const [title, a, z, y, pdf, sec] = STUDY_SUPP[k];
+      STUDY_ITEMS.push({id, block: b, sec, ch: null, y, book: "Yamada", pdf, title, p: [a, z], n: z - a + 1});
     } else {
       const [a, z] = STUDY_QA[k], s = STUDY_SECTIONS[k - 1];
       STUDY_ITEMS.push({id, block: b, sec: k, ch: null, title: s.name + " questions", p: [a, z], n: z - a + 1, q: s.q});
@@ -135,14 +152,11 @@ function studyAt(i) {
   const it = STUDY_ITEMS[j];
   return {item: it, j, page: it.p[0] + Math.min(i, S.ends[j] - 1) - S.start[j]};
 }
-// The run index of a printed page, or -1 if the plan doesn't read it.
-function studyPageIndex(page) {
-  const S = studySeq();
-  for (let j = 0; j < STUDY_ITEMS.length; j++) {
-    const it = STUDY_ITEMS[j];
-    if (page >= it.p[0] && page <= it.p[1]) return S.start[j] + page - it.p[0];
-  }
-  return -1;
+// The run index of one of an item's printed pages, or -1 if it isn't one.
+// A page number alone isn't enough: two books can share it.
+function studyIndexOf(it, page) {
+  if (!it || page < it.p[0] || page > it.p[1]) return -1;
+  return studySeq().start[STUDY_ITEMS.indexOf(it)] + page - it.p[0];
 }
 const studyItemEnd = it => { const S = studySeq(); return S.ends[STUDY_ITEMS.indexOf(it)]; };
 const studyItemStart = it => { const S = studySeq(); return S.start[STUDY_ITEMS.indexOf(it)]; };
@@ -161,8 +175,12 @@ function studyPieces(from, to) {
 function studyPP(from, to) {
   return studyPieces(from, to).map(x => x.a === x.z ? String(x.a) : x.a + "–" + x.z).join(", ");
 }
-const studyPdfPP = (from, to) => studyPieces(from, to).map(x => x.a === x.z ? String(x.a + STUDY_PDF) : (x.a + STUDY_PDF) + "–" + (x.z + STUDY_PDF)).join(", ");
-const studyItemLabel = it => it.ch ? "Ch " + it.ch : "Q " + STUDY_ROMAN[it.sec];
+const studyPdfOf = it => it.pdf === undefined ? STUDY_PDF : it.pdf;
+const studyPdfPiece = x => { const k = studyPdfOf(x.item); return x.a === x.z ? String(x.a + k) : (x.a + k) + "–" + (x.z + k); };
+const studyPdfPP = (from, to) => studyPieces(from, to).map(studyPdfPiece).join(", ");
+// "PDF 50–53", or "PDF 59, Yamada PDF 540–542": which file, and where in it.
+const studyPdfNote = (from, to) => studyPieces(from, to).map(x => (x.item.book ? x.item.book + " " : "") + "PDF " + studyPdfPiece(x)).join(", ");
+const studyItemLabel = it => it.ch ? "Ch " + it.ch : it.y ? "Y " + it.y : "Q " + STUDY_ROMAN[it.sec];
 
 // ---- Days and nights ---------------------------------------------------------------
 const studyMidnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -383,6 +401,8 @@ function studyBriefNights(day, st, stretches) {
     if (to > from) {
       const pc = studyPieces(from, to);
       e.pp = studyPP(from, to); e.n = to - from;
+      // Named only when the whole night is in one other book.
+      if (pc.every(x => x.item.book && x.item.book === pc[0].item.book)) e.book = pc[0].item.book;
       e.what = pc.map(x => studyItemLabel(x.item)).filter((v, i, a) => a.indexOf(v) === i).join(" and ") +
         (pc.length === 1 ? " · " + pc[0].item.title : "");
     }

@@ -70,15 +70,24 @@ test("20:00 reminder: tonight's pages, done nights, and the Study tab on tap", (
   h.setNow("2026-09-30T20:00");
   const note = () => h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
   let n = note();
-  assert.equal(n.title, "Tonight: pp. 35–37");
-  assert.equal(n.body, "Ch 3 · Esophageal Motility. 3 pages.");
+  assert.equal(n.title, "Tonight: pp. 35–38");
+  assert.equal(n.body, "Ch 3 · Esophageal Motility. 4 pages.");
   assert.equal(n.url, "./#study");
-  h.run(`Store.setStudyCursor(3, getToday())`);
+  h.run(`Store.setStudyCursor(4, getToday())`);
   n = note();
   assert.equal(n.title, "Reading done for tonight");
-  assert.match(n.body, /^Next: Fri, pp\. 38–/);
+  assert.match(n.body, /^Next: Fri, pp\. 39–/);
   // Nothing saved: still a useful nudge.
   assert.equal(h.val(`noticeFor({kind: "study", t: 0}, null, 0).title`), "Tonight's reading");
+});
+
+test("20:00 reminder on a Yamada night says which book", () => {
+  const h = load({today: "2026-10-06"});
+  h.run(`Store.setStudyCursor(13, new Date(2026, 9, 5))`);
+  h.setNow("2026-10-06T20:00");
+  const n = h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
+  assert.equal(n.title, "Tonight: Yamada pp. 466–469");
+  assert.equal(n.body, "Y 23 · Nutrition Support (Yamada). 4 pages.");
 });
 
 test("with nothing saved on the phone, reminders still say something useful", () => {

@@ -1,6 +1,6 @@
 "use strict";
 // GI Hub study questions: Royal College-style short-answer questions on the
-// Mayo pages, three or four a night, answered before reading. The file,
+// plan's pages, three or four a night, answered before reading. The file,
 // studyq.json, is encrypted, because this site is public: the phone decrypts
 // it with a password typed once and kept on this phone only (never in the
 // backup). tools/studyq/build.js writes the file from the private questions.
@@ -33,8 +33,8 @@ async function studyqDecrypt(enc, pw) {
 function studyqAccept(payload) {
   const out = [];
   for (const x of (payload && Array.isArray(payload.q) ? payload.q : [])) {
-    const it = STUDY_BY_ID[x.item], i = studyPageIndex(x.page);
-    if (!it || i < 0 || x.page < it.p[0] || x.page > it.p[1] || !x.q || !Array.isArray(x.a)) continue;
+    const it = STUDY_BY_ID[x.item], i = studyIndexOf(it, x.page);
+    if (i < 0 || !x.q || !Array.isArray(x.a)) continue;
     out.push({...x, i});
   }
   return out.sort((a, b) => a.i - b.i || String(a.id).localeCompare(String(b.id)));

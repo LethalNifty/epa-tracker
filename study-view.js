@@ -27,7 +27,9 @@ function studyWhat(from, to) {
     const pages = x.a === x.z ? (x.z === x.item.p[1] ? "the last page" : x.z === x.item.p[0] ? "the first page" : "p. " + x.a) : "pp. " + x.a + "–" + x.z;
     return (pc.indexOf(x) < pc.indexOf(main) ? "Starts with " : "Ends with ") + pages + " of " + studyItemLabel(x.item);
   });
-  return {lbl: items.map(studyItemLabel).join(" → "), title: main ? main.item.title : "", note: side.join(". "), items};
+  // Two readings from one Yamada chapter carry the same label: say it once.
+  const lbls = items.map(studyItemLabel).filter((v, i, a) => a.indexOf(v) === i);
+  return {lbl: lbls.join(" → "), title: main ? main.item.title : "", note: side.join(". "), items};
 }
 const studyPages = n => n + (n === 1 ? " page" : " pages");
 function studyDeltaLabel(dl) {
@@ -65,7 +67,7 @@ function studyHeroHTML(st) {
   } else if (t.kind === "read" && !t.ahead && !t.done) {
     const w = studyWhat(t.from, t.to);
     body = `<div class="sm-ch mono">${w.lbl}</div><div class="sm-title">${esc(w.title)}</div>` + range(t.from, t.to) +
-      `<div class="sm-sub">${w.note ? esc(w.note) + ". " : ""}${studyPages(t.n)} · PDF ${studyPdfPP(t.from, t.to)}` +
+      `<div class="sm-sub">${w.note ? esc(w.note) + ". " : ""}${studyPages(t.n)} · ${studyPdfNote(t.from, t.to)}` +
       (t.partial ? ` · <span class="flu">read to p. ${studyAt(t.now - 1).page}</span>` : "") + `</div>`;
     strip = w.items; tn = {from: t.from, to: t.to};
   } else if (t.kind === "read" && t.done) {
@@ -86,7 +88,7 @@ function studyHeroHTML(st) {
     else
     body = t.kind === "before"
       ? `<div class="sm-ch mono">First night · ${studyDay(STUDY_START)}</div><div class="sm-title">${esc(studyWhat(t.keep.from, t.keep.to).title)}</div>` +
-        range(t.keep.from, t.keep.to) + `<div class="sm-sub">${studyPages(t.keep.to - t.keep.from)} · PDF ${studyPdfPP(t.keep.from, t.keep.to)}</div>`
+        range(t.keep.from, t.keep.to) + `<div class="sm-sub">${studyPages(t.keep.to - t.keep.from)} · ${studyPdfNote(t.keep.from, t.keep.to)}</div>`
       : `<div class="sm-ch mono">${ic("moon", "sm")}Night off</div><div class="sm-title">${esc(why)}</div>` +
         (t.keep ? `<div class="sm-sub">Reading anyway? Next up:</div>` + range(t.keep.from, t.keep.to) : "") +
         (t.next ? `<div class="sm-next mono">Next reading night · ${studyDay(t.next.day)}</div>` : "");
@@ -119,6 +121,14 @@ function studyActionsHTML(t) {
   if (t.keep)
     return `<div class="sm-acts"><button class="btn fluline" data-action="studyread" data-to="${t.keep.to}">${ic("check")}I read pp. ${studyPP(t.keep.from, t.keep.to)}</button>${stop}</div>`;
   return `<div class="sm-acts">${stop}</div>`;
+}
+
+// While there are pages to read: how to highlight, so a mark means "I didn't
+// know this" and the cards made from the highlights stay few.
+function studyTipHTML(t) {
+  if (t.kind === "complete" || t.kind === "after" || (t.kind === "read" && t.done)) return "";
+  return `<p class="goal hltip">Highlight only what you didn't know: the number, the drug, the term. ` +
+    `For a whole table or figure, highlight its title. Aim for 3 to 6 marks a page.</p>`;
 }
 
 // ---- Questions: before you read, and the bank --------------------------------------------
@@ -328,12 +338,13 @@ function viewStudy() {
   const st = studyState(), {today, t} = st, S = studySeq(), blk = blockFor(today);
   let h = `<header class="ph"><p class="eyebrow mono">Mayo Board Review · Pass 1</p><h1 class="title">Study</h1>` +
     `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>`;
-  h += warningsHTML(today) + studyHeroHTML(st) + studyQCardHTML(st) + studyScoreAskHTML(st.s);
+  h += warningsHTML(today) + studyHeroHTML(st) + studyTipHTML(t) + studyQCardHTML(st) + studyScoreAskHTML(st.s);
   if (t.kind !== "after" && t.kind !== "complete") h += studyNightsHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyBlockHTML(st);
   h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st) + studyBankHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyPauseHTML(st);
-  return h + `<p class="bfoot">Printed page numbers. Edge's page box counts PDF pages: printed + 15. ` +
+  return h + `<p class="bfoot">Printed page numbers. Edge's page box counts PDF pages: in Mayo, printed + 15. ` +
+    `Yamada's PDF page numbers are shown with each night's pages. ` +
     `Reading nights are Monday, Tuesday, Wednesday and Friday; call nights are skipped, and reading on any night counts.</p>`;
 }
 

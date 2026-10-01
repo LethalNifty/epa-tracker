@@ -12,19 +12,37 @@ const H = (iso, h) => `new Date(${iso.slice(0, 4)}, ${+iso.slice(5, 7) - 1}, ${+
 const st = (log = {}, extra = {}) => JSON.stringify({log, q: {}, pauses: [], ...extra});
 const tonight = (iso, log, extra, stretches = "[]") => v(`studyTonight(${D(iso)}, ${st(log, extra)}, ${stretches})`);
 
-test("the plan reads every chapter and question set once, 431 pages", () => {
-  assert.equal(v("STUDY_ITEMS.length"), 47);
-  assert.equal(v("studySeq().total"), 431);
+test("the plan reads every chapter, question set and Yamada supplement once, 460 pages", () => {
+  assert.equal(v("STUDY_ITEMS.length"), 51);
+  assert.equal(v("studySeq().total"), 460);
   const ids = v("STUDY_ITEMS.map(x => x.id)");
   for (let c = 1; c <= 40; c++) assert.equal(ids.filter(x => x === "c" + c).length, 1, "c" + c);
   for (let q = 1; q <= 7; q++) assert.equal(ids.filter(x => x === "q" + q).length, 1, "q" + q);
+  for (let y = 1; y <= 4; y++) assert.equal(ids.filter(x => x === "y" + y).length, 1, "y" + y);
+});
+
+test("the nutrition supplement is Yamada pages in Block 4, straight after Chapter 3", () => {
+  assert.deepEqual(v("STUDY_PLAN[4]"), ["c3", "y1", "y2", "y3", "y4", "c7"]);
+  const y1 = v("STUDY_BY_ID.y1");
+  assert.deepEqual([y1.book, y1.y, y1.p, y1.n, y1.pdf, y1.sec, y1.block], ["Yamada", 23, [463, 474], 12, 77, 3, 4]);
+  assert.deepEqual(v("['y2', 'y3', 'y4'].map(id => [STUDY_BY_ID[id].y, STUDY_BY_ID[id].p, STUDY_BY_ID[id].pdf])"),
+    [[59, [1170, 1181], 76], [123, [2462, 2463], 69], [123, [2471, 2473], 69]]);
+  assert.equal(v("studyItemLabel(STUDY_BY_ID.y1)"), "Y 23");
+  assert.equal(v("studyItemLabel(STUDY_BY_ID.c3)"), "Ch 3");
+  assert.equal(v("studyItemLabel(STUDY_BY_ID.q3)"), "Q III");
+  // The bookmark of anyone part-way through Chapter 3 still points at the same page.
+  assert.deepEqual(v("[studyAt(5).item.id, studyAt(5).page]"), ["c3", 40]);
+});
+
+test("IBS and constipation moved to Block 7, with the other colon chapters, before the colon questions", () => {
+  assert.deepEqual(v("STUDY_PLAN[7]"), ["c19", "c20", "c21", "c22", "q5"]);
 });
 
 test("block loads match the plan", () => {
   const per = v("[4,5,6,7,8,9,10,11,12].map(b => studyDue(b) - studyDue(b - 1))");
-  assert.deepEqual(per, [42, 54, 59, 35, 48, 48, 50, 49, 46]);
+  assert.deepEqual(per, [52, 54, 59, 54, 48, 48, 50, 49, 46]);
   assert.equal(v("studyDue(3)"), 0);
-  assert.equal(v("studyDue(13)"), 431);
+  assert.equal(v("studyDue(13)"), 460);
 });
 
 test("each question set comes after every chapter it covers", () => {
@@ -38,13 +56,30 @@ test("each question set comes after every chapter it covers", () => {
 
 test("run index and printed pages map both ways", () => {
   assert.deepEqual(v("[studyAt(0).item.id, studyAt(0).page]"), ["c3", 35]);
-  assert.deepEqual(v("[studyAt(10).item.id, studyAt(10).page]"), ["c7", 83]);
-  assert.equal(v("studyPageIndex(35)"), 0);
-  assert.equal(v("studyPageIndex(36)"), 1);
-  assert.equal(v("studyPageIndex(83)"), 10);
-  assert.equal(v("studyPageIndex(22)"), -1);   // a blank page, never read
-  assert.equal(v("studyPP(8, 12)"), "43–44, 83–84");
+  assert.deepEqual(v("[studyAt(10).item.id, studyAt(10).page]"), ["y1", 463]);
+  assert.deepEqual(v("[studyAt(39).item.id, studyAt(39).page]"), ["c7", 83]);
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.c3, 35)"), 0);
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.c3, 36)"), 1);
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.c7, 83)"), 39);
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.c3, 22)"), -1);   // not one of the chapter's pages
+  assert.equal(v("studyPP(8, 12)"), "43–44, 463–464");
   assert.equal(v("studyPdfPP(0, 4)"), "50–53");
+});
+
+test("a page number two books share is found in the item it belongs to", () => {
+  // Printed p. 466 is in Mayo's Gallstones chapter and in Yamada's Nutrition Support.
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.y1, 466)"), 13);
+  assert.equal(v("studyIndexOf(STUDY_BY_ID.c40, 466)"), v("studyItemStart(STUDY_BY_ID.c40)") + 11);
+  assert.notEqual(v("studyIndexOf(STUDY_BY_ID.c40, 466)"), 13);
+});
+
+test("Yamada pages give their own PDF page numbers and are named as Yamada's", () => {
+  assert.equal(v("studyPdfPP(10, 13)"), "540–542");            // 463 + 77
+  assert.equal(v("studyPdfPP(22, 24)"), "1246–1247");          // 1170 + 76
+  assert.equal(v("studyPdfPP(34, 36)"), "2531–2532");          // 2462 + 69
+  assert.equal(v("studyPdfNote(0, 4)"), "PDF 50–53");
+  assert.equal(v("studyPdfNote(10, 13)"), "Yamada PDF 540–542");
+  assert.equal(v("studyPdfNote(9, 13)"), "PDF 59, Yamada PDF 540–542");
 });
 
 test("reading nights: Mon, Tue, Wed, Fri from 30 Sep", () => {
@@ -76,28 +111,28 @@ test("Block 4 has 13 reading nights from 30 Sep", () => {
   assert.equal(v(`studyCountNights(${D("2026-09-30")}, blockEnd(4), [], [])`), 13);
 });
 
-test("the first night: 42 pages over 13 nights is 3, pp. 35–37", () => {
+test("the first night: 52 pages over 13 nights is 4, pp. 35–38", () => {
   const t = tonight("2026-09-30", {});
   assert.equal(t.kind, "read");
-  assert.deepEqual([t.from, t.to, t.n], [0, 3, 3]);
-  assert.equal(v("studyPP(0, 3)"), "35–37");
+  assert.deepEqual([t.from, t.to, t.n], [0, 4, 4]);
+  assert.equal(v("studyPP(0, 4)"), "35–38");
   assert.equal(t.done, false);
-  assert.equal(t.next.from, 3);   // Friday picks up where tonight ends
+  assert.equal(t.next.from, 4);   // Friday picks up where tonight ends
 });
 
 test("before the start, the card previews Wednesday", () => {
   const t = tonight("2026-09-28", {});
   assert.equal(t.kind, "before");
   assert.equal(v(`fmtDate(new Date(${JSON.stringify(t.next.day)}))`), "2026-09-30");
-  assert.deepEqual([t.next.from, t.next.to], [0, 3]);
+  assert.deepEqual([t.next.from, t.next.to], [0, 4]);
 });
 
 test("done once the bookmark reaches the end of tonight", () => {
-  const t = tonight("2026-09-30", {"2026-09-30": 3});
+  const t = tonight("2026-09-30", {"2026-09-30": 4});
   assert.equal(t.done, true);
-  assert.deepEqual([t.from, t.to], [0, 3]);
-  const f = tonight("2026-10-02", {"2026-09-30": 4});
-  assert.equal(f.from, 4);
+  assert.deepEqual([t.from, t.to], [0, 4]);
+  const f = tonight("2026-10-02", {"2026-09-30": 5});
+  assert.equal(f.from, 5);
 });
 
 test("part-read tonight is partial, not done", () => {
@@ -117,11 +152,11 @@ test("a range ends on the chapter when the chapter ends a page away", () => {
 });
 
 test("unfinished pages carry into the next block", () => {
-  // Fri 23 Oct, Block 5's first reading night, with 30 read: 96 - 30 = 66
-  // over 16 nights is 4 (4.1, rounded): pp. 30..34 of the run.
+  // Fri 23 Oct, Block 5's first reading night, with 40 read: 106 - 40 = 66
+  // over 16 nights is 4 (4.1, rounded): pp. 40..44 of the run.
   assert.equal(v(`studyCountNights(${D("2026-10-23")}, blockEnd(5), [], [])`), 16);
-  const t = tonight("2026-10-23", {"2026-10-21": 30});
-  assert.deepEqual([t.from, t.to], [30, 34]);
+  const t = tonight("2026-10-23", {"2026-10-21": 40});
+  assert.deepEqual([t.from, t.to], [40, 44]);
 });
 
 test("the last night of a block is capped at 10 pages", () => {
@@ -130,9 +165,9 @@ test("the last night of a block is capped at 10 pages", () => {
 });
 
 test("ahead: the block's pages are read, tonight is free with pages to keep going", () => {
-  const t = tonight("2026-10-12", {"2026-10-09": 42});
+  const t = tonight("2026-10-12", {"2026-10-09": 52});
   assert.equal(t.ahead, true);
-  assert.deepEqual([t.keep.from, t.keep.to], [42, 46]);
+  assert.deepEqual([t.keep.from, t.keep.to], [52, 56]);
 });
 
 test("off nights offer the next night's pages", () => {
@@ -143,15 +178,15 @@ test("off nights offer the next night's pages", () => {
 });
 
 test("the whole plan read is complete", () => {
-  assert.equal(tonight("2026-11-02", {"2026-11-01": 431}).kind, "complete");
+  assert.equal(tonight("2026-11-02", {"2026-11-01": 460}).kind, "complete");
 });
 
 test("plan delta: an even spread over the block's nights", () => {
   assert.equal(v(`studyPlanDelta(${D("2026-09-30")}, ${st({})}, [])`), 0);
-  // After tonight's 4 on the first night: 42/13 = 3.2 expected, 4 read.
-  assert.equal(v(`studyPlanDelta(${D("2026-09-30")}, ${st({"2026-09-30": 4})}, [])`), 1);
-  // Nothing read by Mon 5 Oct: two nights gone, 6.5 expected.
-  assert.equal(v(`studyPlanDelta(${D("2026-10-05")}, ${st({})}, [])`), -6);
+  // After 5 on the first night: 52/13 = 4 expected, 5 read.
+  assert.equal(v(`studyPlanDelta(${D("2026-09-30")}, ${st({"2026-09-30": 5})}, [])`), 1);
+  // Nothing read by Mon 5 Oct: two nights gone, 8 expected.
+  assert.equal(v(`studyPlanDelta(${D("2026-10-05")}, ${st({})}, [])`), -8);
 });
 
 test("pace needs a week; then pages per week and a finish date", () => {
@@ -167,15 +202,15 @@ test("the nights grid: 28 days from Thursday, pages spread evenly", () => {
   assert.equal(v(`fmtDate(new Date(${JSON.stringify(n[0].date)}))`), "2026-09-24");
   const wed = n.find(x => x.key === "2026-09-30");
   assert.equal(wed.state, "today");
-  assert.equal(wed.pages, 3);
+  assert.equal(wed.pages, 4);
   const fri = n.find(x => x.key === "2026-10-02");
   assert.equal(fri.state, "future");
   assert.ok(fri.pages >= 3);
   const total = n.reduce((a, x) => a + x.pages, 0);
-  assert.equal(total, 42);
+  assert.equal(total, 52);
   const nights = n.filter(x => x.kind === "read").map(x => x.pages);
   assert.equal(nights.length, 13);
-  assert.ok(Math.min(...nights) >= 2 && Math.max(...nights) <= 5, nights.join(","));
+  assert.ok(Math.min(...nights) >= 2 && Math.max(...nights) <= 6, nights.join(","));
 });
 
 test("the nights grid marks done, missed and extra", () => {
@@ -197,7 +232,18 @@ test("the brief writes out tonight and 13 days after", () => {
   const b = v(`studyBriefNights(${D("2026-09-30")}, ${st({})}, [])`);
   assert.equal(b.length, 14);
   assert.equal(b[0].kind, "read");
-  assert.equal(b[0].pp, "35–37");
+  assert.equal(b[0].pp, "35–38");
   assert.equal(b[0].what, "Ch 3 · Esophageal Motility");
   assert.equal(b[1].kind, "thu");
+});
+
+test("the brief names Yamada on a Yamada night, so the notification says which book", () => {
+  // 13 read by Mon 5 Oct: Tuesday is four pages of Yamada's Nutrition Support.
+  const b = v(`studyBriefNights(${D("2026-10-06")}, ${st({"2026-10-05": 13})}, [])`);
+  assert.equal(b[0].pp, "466–469");
+  assert.equal(b[0].what, "Y 23 · Nutrition Support (Yamada)");
+  assert.equal(b[0].book, "Yamada");
+  // A Mayo night, or a night across both books, names no single book.
+  assert.equal(v(`studyBriefNights(${D("2026-09-30")}, ${st({})}, [])`)[0].book, undefined);
+  assert.equal(v(`studyBriefNights(${D("2026-10-05")}, ${st({"2026-10-02": 9})}, [])`)[0].book, undefined);
 });
