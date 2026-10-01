@@ -1078,7 +1078,7 @@ html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .savebar .btn { margin: 0; }
 .savebar .btn.primary { flex: 1; }
 .btn.ghostbtn { flex: 0 0 auto; width: auto; padding: 0 16px; background: transparent; color: var(--dim); }
-.btn.epalink { margin-top: 14px; background: transparent; border-style: dashed; color: var(--dim); font-weight: 520; }
+.btn.epalink { min-height: 42px; margin-top: 8px; background: transparent; border-style: dashed; color: var(--dim); font-size: 14px; font-weight: 520; }
 
 /* Rows: today and earlier. */
 .slist { padding: 0; overflow: hidden; }

@@ -394,8 +394,9 @@ function scopeSheetHTML() {
   const head = (t, extra) => `<div class="scrim${fresh}" data-action="scopeclose"></div><div class="sheet scopesheet${fresh}" role="dialog" aria-modal="true" aria-label="${esc(t)}">` +
     `<div class="grab"></div><div class="shead"><b>${esc(t)}</b><button class="iconbtn" data-action="scopeclose" aria-label="Close">${ic("x")}</button></div>` + (extra || "");
   if (sh.kind === "capture")
-    return head("Log a case") + scopeBoxHTML("sheet") + scopeCardsHTML() +
-      `<button class="btn epalink" data-action="sheet">${ic("epas")}Log an EPA observation instead</button></div>`;
+    // Above the box, so the keyboard and its toolbar can never cover it.
+    return head("Log a case", `<button class="btn epalink" data-action="sheet">${ic("epas")}Log an EPA observation instead</button>`) +
+      scopeBoxHTML("sheet") + scopeCardsHTML() + `</div>`;
   if (sh.kind === "edit") {
     const c = sh.card;
     return head(sh.copy ? "Another like that" : "Edit case") + `<div class="scards">${scopeCardHTML(c, 0, {noClose: true, still: true})}</div>` +
