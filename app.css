@@ -629,8 +629,10 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .grab { height: 26px; margin: -8px -18px -9px; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }
 .grab::before { content: ""; width: 38px; height: 5px; border-radius: 3px; background: var(--fold-2); }
 .shead { display: flex; align-items: center; justify-content: space-between; touch-action: none; user-select: none; -webkit-user-select: none; }
-/* With the keyboard up the sheet ends at the keys, so the home-bar inset is not needed. */
-html.kb .sheet { padding-bottom: 14px; }
+/* With the keyboard up the sheet ends at the keys, so the home-bar inset is not needed.
+   iOS floats its arrows-and-tick toolbar over the last 45px above the keys, and does
+   not count it as keyboard, so the sheet's contents end above it (--kbbar). */
+html.kb .sheet { --kbbar: 48px; padding-bottom: calc(12px + var(--kbbar)); }
 /* A field brought into view in a sheet keeps clear of the keys and their toolbar. */
 .sheet input, .sheet textarea { scroll-margin: 20px 0 64px; }
 .shead b { font-size: 19px; font-weight: 640; letter-spacing: -.015em; }
@@ -1072,6 +1074,7 @@ button.chip.on { padding-right: 12px; }
   padding: 8px; border-radius: 16px; background: rgba(11, 27, 30, .92); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   box-shadow: 0 0 0 1px var(--fold-2), 0 16px 40px rgba(0, 0, 0, .45); }
 .scopesheet .savebar { bottom: 0; }
+html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .savebar .btn { margin: 0; }
 .savebar .btn.primary { flex: 1; }
 .btn.ghostbtn { flex: 0 0 auto; width: auto; padding: 0 16px; background: transparent; color: var(--dim); }
