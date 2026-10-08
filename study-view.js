@@ -338,7 +338,8 @@ function viewStudy() {
   const st = studyState(), {today, t} = st, S = studySeq(), blk = blockFor(today);
   let h = `<header class="ph"><p class="eyebrow mono">Mayo Board Review · Pass 1</p><h1 class="title">Study</h1>` +
     `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>`;
-  h += warningsHTML(today) + studyHeroHTML(st) + studyTipHTML(t) + studyQCardHTML(st) + studyScoreAskHTML(st.s);
+  h += warningsHTML(today) + studyHeroHTML(st) + (t.kind === "read" ? guidesStudyHTML(studyAt(t.from).item) : "") +
+    studyTipHTML(t) + studyQCardHTML(st) + studyScoreAskHTML(st.s);
   if (t.kind !== "after" && t.kind !== "complete") h += studyNightsHTML(st);
   if (t.kind !== "complete" && t.kind !== "after") h += studyBlockHTML(st);
   h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st) + studyBankHTML(st);

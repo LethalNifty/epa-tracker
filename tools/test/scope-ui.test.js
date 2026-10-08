@@ -20,18 +20,20 @@ function endo(today = "2026-09-28", st) {
   return h;
 }
 
-test("the bar's Endo tab opens on Log with the capture box; Biopsy lives inside", () => {
+test("the bar's Endo tab opens on Log with the capture box; Biopsy moved to Guides", () => {
   const h = endo();
   const html = h.html();
   assert.match(html, /<h1 class="title">Endo<\/h1>/);
-  assert.match(html, /class="segtabs three"/);
+  assert.match(html, /aria-label="Endo views"/);
+  assert.doesNotMatch(html, /data-tab="biopsy"/);
   assert.match(html, /id="scopebox-tab"/);
   assert.match(html, /Read it/);
   assert.match(html, /Your logbook starts here/);
   assert.match(html, /class="nv on" data-action="tab" data-page="endo"/);
-  h.click("scopetab", {tab: "biopsy"});
+  h.click("tab", {page: "biopsy"});
   assert.match(h.html(), /Open the full Manitoba guideline/);
-  assert.doesNotMatch(h.html(), /<h1 class="title">Biopsy<\/h1>/);
+  assert.match(h.html(), /<h1 class="title">Guides<\/h1>/);
+  assert.match(h.html(), /class="nv on" data-action="tab" data-page="guides"/);
 });
 
 test("the + button opens the capture sheet with a way to the EPA sheet", () => {

@@ -374,15 +374,14 @@ function scopeProgressHTML() {
 // ---- The tab -----------------------------------------------------------------------------------------
 function scopeSwitchHTML() {
   const b = (k, label) => `<button class="${scopeTab === k ? "on" : ""}" data-action="scopetab" data-tab="${k}"${scopeTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<div class="segtabs three" role="group" aria-label="Endo views">${b("log", "Log")}${b("progress", "Progress")}${b("biopsy", "Biopsy")}</div>`;
+  return `<div class="segtabs" role="group" aria-label="Endo views">${b("log", "Log")}${b("progress", "Progress")}</div>`;
 }
 function viewEndo() {
   const s = scopeData(), blk = blockFor(getToday());
   const inBlock = blk ? scopeTotals(s.cases, fmtDate(blockStart(blk.num)), fmtDate(blockEnd(blk.num))).procs : 0;
-  let h = `<header class="ph"><p class="eyebrow mono">${scopeTab === "biopsy" ? "Shared Health Manitoba · 2022" : "Procedure log"}</p><h1 class="title">Endo</h1>` +
-    (scopeTab === "biopsy" ? `<p class="ph-note">Biopsy protocols: Manitoba first; other sources where it's silent.</p>` :
-      `<div class="ph-meta mono">${blk ? `<b>${inBlock}</b> this block · ` : ""}<b>${scopeTotals(s.cases).procs}</b> logged</div>`) + `</header>` + scopeSwitchHTML();
-  if (scopeTab === "biopsy") return h + viewBiopsy({embedded: true});
+  if (scopeTab !== "progress") scopeTab = "log";
+  let h = `<header class="ph"><p class="eyebrow mono">Procedure log</p><h1 class="title">Endo</h1>` +
+    `<div class="ph-meta mono">${blk ? `<b>${inBlock}</b> this block · ` : ""}<b>${scopeTotals(s.cases).procs}</b> logged</div></header>` + scopeSwitchHTML();
   h += warningsHTML(getToday());
   return h + (scopeTab === "progress" ? scopeProgressHTML() : scopeLogHTML());
 }

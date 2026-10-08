@@ -13,12 +13,12 @@ test("EPAs tab: stage groups, done EPAs folded, pending shown as text", () => {
   assert.doesNotMatch(html, /[\u23F3\u{1F680}\u{1F3C5}\u{1F512}\u{1F389}]/u);
 });
 
-test("bottom bar: Week, EPAs, the log button, Study, Endo; current tab highlighted", () => {
+test("bottom bar: Week, EPAs, Study, the log button, Endo, Guides; current tab highlighted", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "study"});
   const nav = h.html().slice(h.html().indexOf('<nav class="bnav"'));
-  assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "epas", "study", "endo"]);
-  assert.ok(nav.indexOf('class="fab"') > nav.indexOf('data-page="epas"') && nav.indexOf('class="fab"') < nav.indexOf('data-page="study"'));
+  assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "epas", "study", "endo", "guides"]);
+  assert.ok(nav.indexOf('class="fab"') > nav.indexOf('data-page="study"') && nav.indexOf('class="fab"') < nav.indexOf('data-page="endo"'));
   assert.match(nav, /class="nv on" data-action="tab" data-page="study"/);
 });
 

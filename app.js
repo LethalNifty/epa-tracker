@@ -1,6 +1,7 @@
 "use strict";
 // GI Hub app: saved progress (Store), the screens, and what each tap does.
-// Reads EPA_DATA and BIOPSY_DATA (index.html) and the coach (coach.js).
+// Reads EPA_DATA and BIOPSY_DATA (index.html), the coach (coach.js) and the
+// guideline library (guides.js).
 
 const KEY = "epa-state-v1";
 const Store = {
@@ -21,6 +22,8 @@ const Store = {
       learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled)};
     // Once: cases imported before sites were filled on import take their block's hospital.
     if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; }
+    const gd = this.state.guides;
+    this.state.guides = {pins: arr(gd && gd.pins).filter(x => typeof x === "string"), seen: arr(gd && gd.seen).filter(x => typeof x === "string")};
     scopeLinkEpas(this.state.scopes.cases, this.state.obs, this.state.scopes.staff); },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -31,6 +34,12 @@ const Store = {
   toggleObsStatus(p, i) { const o = this.state.obs[p][i];
     o.status = o.status === "approved" ? "pending" : "approved"; this.save(); return o.status; },
   setRecapSeen(key) { this.state.recapSeen = key; this.save(); },
+  toggleGuidePin(id) { const p = this.state.guides.pins, i = p.indexOf(id);
+    if (i >= 0) p.splice(i, 1); else p.push(id); this.save(); return i < 0; },
+  // Keys of guidelines shown in Guides' New list; the newest 300 are kept.
+  markGuidesSeen(keys) { const s = this.state.guides.seen;
+    for (const k of keys) if (!s.includes(k)) s.push(k);
+    if (s.length > 300) s.splice(0, s.length - 300); this.save(); },
   partApproved(p) { return (this.state.obs[p]||[]).filter(o => o.status === "approved").length; },
   partPending(p) { return (this.state.obs[p]||[]).filter(o => o.status !== "approved").length; },
   overallApproved() { let d = 0; for (const e of EPA_DATA) for (const p of e.parts)
@@ -56,7 +65,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -216,13 +225,15 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 });
 
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
-const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"]];
+const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
 // Pages that light up another tab in the bar: the year plan sits inside EPAs.
 const NAV_HOME = {plan: "epas"};
 function navHTML(active) {
   active = NAV_HOME[active] || active;
+  const dot = page => page === "guides" && active !== "guides" && guidesUnseenCount() > 0;
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
-    (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span></button>`;
+    (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span>` +
+    (dot(page) ? `<i class="nvdot" aria-label="New guidelines"></i>` : "") + `</button>`;
   const split = NAV.length - 2;
   return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.slice(0, split).map(item).join("")}` +
     `<button class="fab" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>` +
@@ -719,7 +730,7 @@ function render() {
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : viewEpa(route.code);
+      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
       (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (toast ? toastHTML() : "");
@@ -740,6 +751,7 @@ function render() {
   studyAfterRender();
   scopeAfterRender();
   remindAfterRender();
+  guidesAfterRender();
 }
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
@@ -758,8 +770,8 @@ function countUpDial() {
 }
 // Navigate. Tabs and Back return to where that page was last scrolled.
 function go(next, restore) {
-  // Biopsy moved inside the Endo tab.
-  if (next.page === "biopsy") { next = {...next, page: "endo"}; scopeTab = "biopsy"; }
+  // Biopsy lives in Guides.
+  if (next.page === "biopsy") { next = {...next, page: "guides"}; guidesTab = "b"; }
   if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
   route = next; callError = null;
   if (restore && scrollMemo[next.page]) route.restoreY = scrollMemo[next.page];
@@ -768,6 +780,7 @@ function go(next, restore) {
 }
 function dispatch(act, d) {
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) render(); return; }
   if (act.startsWith("scope")) {
     d = d || {};
     if (act === "scopetab") { scopeDispatch(act, d); render(); return; }
@@ -834,7 +847,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) dispatch(t.dataset.action, t.dataset);
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target)) return;
+  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -923,7 +936,7 @@ if (window.visualViewport && window.visualViewport.addEventListener) {
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   const a = document.activeElement;
   if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
-      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); studyqInit(); }
+      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); studyqInit(); guidesInit(); }
 });
 // A tapped call reminder opens the Call screen: by link when the app was
 // closed, by message from the service worker when it was open.
@@ -941,4 +954,5 @@ CallStore.load();
 render();
 remindInit();
 studyqInit();
+guidesInit();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");

@@ -557,6 +557,8 @@ a.btn.callbtn .ic { color: inherit; }
 #biopsyq { width: 100%; height: 50px; padding: 0 46px 0 44px; border-radius: var(--r-md); border: 1px solid var(--fold-2);
   background: var(--wall); color: var(--light); font-size: 16.5px; -webkit-appearance: none; appearance: none; }
 #biopsyq::placeholder { color: var(--faint); }
+/* The app draws its own clear button; hide the browser's. */
+#biopsyq::-webkit-search-cancel-button, #guidesq::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 #biopsyq:focus { border-color: var(--nbi); box-shadow: 0 0 0 4px var(--nbi-wash); }
 .qclear { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; color: var(--dim); }
@@ -593,6 +595,103 @@ a.srcrow:active { background: var(--wall-2); }
 .srcrow .ic { width: 17px; height: 17px; }
 .bempty { padding: 40px 20px; text-align: center; color: var(--dim); }
 .bfoot { padding: 24px 12px 0; text-align: center; font-size: 12px; line-height: 1.6; color: var(--faint); }
+
+/* Guides. White light: the reference view in the endoscopy suite, warm
+   white against the NBI field. Canadian guidance keeps NBI cyan. */
+.guidemon { --cut: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--wli) 42%, var(--fold-2)), var(--fold-2) 58%); }
+.guidemon .monitor-in { padding: 12px 16px 12px;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(241, 228, 208, .09), transparent 70%),
+    radial-gradient(120% 90% at 50% 46%, #0f2b2e 0%, #0a1c1f 48%, #071416 100%); }
+.guidemon .ov { font-size: 10.5px; }
+.guidemon .ov span:first-child { color: var(--wli); }
+.gl-beads { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+.gl-beads circle { fill: rgba(241, 228, 208, .34); }
+.gl-beads circle.fresh { fill: var(--wli); }
+.gl-beads circle.ca { fill: var(--nbi); }
+.gl-beads circle.old { fill: var(--capillary); fill-opacity: .75; }
+.gl-years { position: relative; height: 15px; margin-top: 6px; border-top: 1px solid var(--fold); color: var(--faint); font-size: 9.5px; }
+.gl-years span { position: absolute; top: 3px; transform: translateX(-50%); }
+.gl-years span:first-child { transform: none; left: 0 !important; }
+.gl-years span.now { transform: none; left: auto !important; right: 0; color: var(--wli); }
+.gl-sum { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--dim); }
+.gl-sum b { color: var(--wli); font-weight: 600; }
+.gl-sum b.ca { color: var(--nbi-ink); }
+.gl-sum b.old { color: var(--capillary); }
+
+.gnew { margin-top: 14px; padding: 12px 14px 4px; border-radius: var(--r-lg); background: var(--wall); border: 1px solid var(--fold); }
+.gnew-h { display: flex; justify-content: space-between; color: var(--wli); font-size: 10.5px; }
+.gnew-h span:last-child { color: var(--faint); }
+.gnew-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 0; border-top: 1px solid var(--fold); text-align: left; color: var(--light); }
+.gnew-h + .gnew-row { border-top: 0; margin-top: 2px; }
+.gnew-row .d { flex: 0 0 44px; color: var(--faint); font-size: 10.5px; }
+.gnew-row .tx { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
+.gnew-row .tx b { color: var(--wli); font-weight: 600; margin-right: 2px; }
+.gnew-row .tx b.ca { color: var(--nbi-ink); }
+.gnew-row .tp { display: block; margin-top: 2px; color: var(--dim); font-size: 12px; }
+.gnew-row > .ic { color: var(--faint); }
+.gdot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--wli); box-shadow: 0 0 0 3px rgba(241, 228, 208, .14), 0 0 10px rgba(241, 228, 208, .55); }
+
+#guidesq { width: 100%; height: 50px; padding: 0 46px 0 44px; border-radius: var(--r-md); border: 1px solid var(--fold-2);
+  background: var(--wall); color: var(--light); font-size: 16.5px; -webkit-appearance: none; appearance: none; }
+#guidesq::placeholder { color: var(--faint); }
+#guidesq:focus { border-color: var(--wli); box-shadow: 0 0 0 4px var(--wli-wash); outline: none; }
+.gcats .bcat.on { background: var(--wli); border-color: var(--wli); color: #2a2216; }
+.gt-off { display: flex; align-items: center; gap: 8px; margin: 12px 2px 0; color: var(--capillary); font-size: 12.5px; }
+
+.gt { scroll-margin-top: 14px; margin-bottom: 6px; background: var(--wall); border: 1px solid var(--fold); border-radius: 14px; transition: border-color .15s, background .15s; }
+.gt.open { background: var(--wall-2); border-color: color-mix(in srgb, var(--wli) 22%, var(--fold-2)); }
+.gt-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 8px 12px 8px 15px; text-align: left; color: var(--light); }
+.gt-head:active { transform: scale(.99); }
+.gt-name { flex: 1; min-width: 0; font-size: 15px; line-height: 1.3; font-weight: 560; letter-spacing: -.005em; }
+.gt-sec { display: block; margin-bottom: 2px; color: var(--faint); font-size: 9.5px; }
+.gt-name mark { background: rgba(241, 228, 208, .2); color: inherit; border-radius: 3px; padding: 0 1px; }
+.gt-lead { flex: 0 0 auto; color: var(--dim); font-size: 10.5px; letter-spacing: .05em; }
+.gt-lead.ca { color: var(--nbi-ink); }
+.gt-lead.old { color: var(--capillary); }
+.gt-lead .more { margin-left: 5px; color: var(--faint); }
+.gt-head .ic.pin { width: 14px; height: 14px; color: var(--wli); fill: var(--wli); }
+.gt-head .ic.chev { width: 16px; height: 16px; color: var(--faint); transition: transform .2s var(--ease); }
+.gt.open .gt-head .ic.chev { transform: rotate(180deg); color: var(--wli); }
+.gt-body { padding: 0 12px 12px; }
+.gt-body > .btn { margin-bottom: 4px; }
+
+.glink { display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 11px 12px; border-radius: var(--r-md);
+  background: var(--field); border: 1px solid var(--fold); color: var(--light); font-size: 14px; line-height: 1.35; }
+.glink:active { background: var(--wall-3); }
+.glink .who { flex: 0 0 58px; display: flex; flex-direction: column; gap: 2px; color: var(--wli); font-size: 10.5px; letter-spacing: .05em; }
+.glink .who .yr { color: var(--faint); font-size: 10px; }
+.glink.ca .who { color: var(--nbi-ink); }
+.glink .tt { flex: 1; min-width: 0; }
+.glink > .ic { color: var(--faint); }
+.catag { display: inline-block; margin-left: 7px; padding: 2px 5px 1px; border-radius: 5px; background: var(--nbi-wash); color: var(--nbi-ink); font-size: 9.5px; vertical-align: 1px; }
+.glink.alt { background: transparent; border-style: dashed; border-color: var(--fold-2); color: #c3d0ce; font-size: 13.5px; padding: 9px 12px; }
+.glink.alt .who { color: var(--dim); }
+.glink.alt.ca .who { color: var(--nbi-ink); }
+.gt-sub { margin: 14px 2px 0; color: var(--faint); font-size: 10px; }
+.gsc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.gsc a { padding: 6px 10px; border-radius: 99px; border: 1px solid var(--fold-2); color: var(--dim); font-size: 12.5px; }
+.gsc a:active { background: var(--wall-3); }
+.gt-meta { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--fold); }
+.gread { display: flex; align-items: flex-start; gap: 8px; color: var(--dim); font-size: 12.5px; line-height: 1.4; text-align: left; }
+.gread .ic { margin-top: 1px; color: var(--flu); }
+.gread.bx { color: var(--nbi-ink); }
+.gread.bx .ic { color: var(--nbi-ink); }
+.gread.bx span { flex: 1; }
+.gt-note { margin: 12px 2px 0; color: var(--dim); font-size: 12.5px; line-height: 1.45; }
+.gt-warn { display: flex; gap: 7px; margin: 8px 2px 0; color: var(--capillary); font-size: 12.5px; line-height: 1.4; }
+.gt-warn .ic { margin-top: 1px; }
+.gt-acts { display: flex; justify-content: flex-end; margin-top: 8px; }
+.gt-acts .textbtn { display: inline-flex; align-items: center; color: var(--dim); }
+.gt-acts .textbtn.on { color: var(--wli); }
+.gt-acts .textbtn.on .ic { fill: var(--wli); }
+
+.gstudy { margin-top: 14px; }
+.gstudy > .mono { color: var(--faint); font-size: 10px; }
+.gstudy-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.gstudy-row .chip .ic { color: var(--wli); }
+
+.nvdot { position: absolute; top: 5px; left: calc(50% + 7px); width: 7px; height: 7px; border-radius: 50%;
+  background: var(--wli); box-shadow: 0 0 0 2px var(--field), 0 0 8px rgba(241, 228, 208, .6); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
