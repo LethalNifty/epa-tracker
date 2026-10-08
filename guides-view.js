@@ -47,7 +47,7 @@ function guidesLightHTML(D, today) {
     `<svg class="gl-beads" viewBox="0 0 ${W} ${H}" aria-hidden="true">${dots}</svg>` +
     `<div class="gl-years mono">${ticks}</div>` +
     `<p class="gl-sum"><b>${f.recent}</b> topics led by a guideline from the last 3 years · <b class="ca">${f.ca}</b> Canadian-led` +
-    (f.old ? ` · <b class="old">${f.old}</b> ${GUIDES_OLD_YEARS} or more years old` : "") + `</p></div></section>`;
+    (f.old ? ` · <b class="old">${f.old}</b> with a lead guideline ${GUIDES_OLD_YEARS} or more years old` : "") + `</p></div></section>`;
 }
 
 // ---- New --------------------------------------------------------------------------------

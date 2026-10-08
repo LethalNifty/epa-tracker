@@ -62,8 +62,8 @@ async function guidesInit() {
 // Lower case, accents and punctuation off: "H. pylori" finds "h pylori",
 // "Crohn's" finds "crohns".
 function guidesNorm(s) {
-  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/['\u2019]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 // Each topic's words, by how much a match there should count.
 function guidesHay(t) {
