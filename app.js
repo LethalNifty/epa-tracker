@@ -234,10 +234,11 @@ function navHTML(active) {
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span>` +
     (dot(page) ? `<i class="nvdot" aria-label="New guidelines"></i>` : "") + `</button>`;
-  const split = NAV.length - 2;
-  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.slice(0, split).map(item).join("")}` +
-    `<button class="fab" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>` +
-    `${NAV.slice(split).map(item).join("")}</div></nav>`;
+  // Five even tabs; the log button floats above the bar's right end. It steps
+  // aside while Endo's own save bar is up, where it would cover Clear.
+  const busy = active === "endo" && scopeTab !== "progress" && scopeCap.cards.length;
+  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.map(item).join("")}</div></nav>` +
+    (busy ? "" : `<button class="fab float" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`);
 }
 function warningsHTML(today) {
   let h = "";

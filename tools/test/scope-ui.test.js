@@ -38,13 +38,26 @@ test("the bar's Endo tab opens on Log with the capture box; Biopsy moved to Guid
 
 test("the + button opens the capture sheet with a way to the EPA sheet", () => {
   const h = load({today: "2026-09-28"});
-  assert.match(h.html(), /class="fab" data-action="scopeopen"/);
+  assert.match(h.html(), /class="fab float" data-action="scopeopen"/);
   h.click("scopeopen");
   assert.match(h.html(), /aria-label="Log a case"/);
   assert.match(h.html(), /id="scopebox-sheet"/);
   h.click("sheet");
   assert.match(h.html(), /Log observation/);
   assert.doesNotMatch(h.html(), /id="scopebox-sheet"/);
+});
+
+test("the floating + steps aside while Endo's save bar is up, and comes back after saving", () => {
+  const h = endo("2026-09-28", withScopes());
+  assert.match(h.html(), /class="fab float"/);
+  h.say("EGD with Brook at HSC, biopsies for dysphagia, EoE");
+  assert.match(h.html(), /class="savebar"/);
+  assert.doesNotMatch(h.html(), /class="fab float"/);
+  h.click("scopetab", {tab: "progress"});
+  assert.match(h.html(), /class="fab float"/);
+  h.click("scopetab", {tab: "log"});
+  h.click("scopesave");
+  assert.match(h.html(), /class="fab float"/);
 });
 
 test("say a case, read it, confirm, save; undo takes it back", () => {
