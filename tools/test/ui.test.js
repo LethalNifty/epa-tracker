@@ -218,12 +218,21 @@ test("stage cards show where each stage stands", () => {
   assert.match(h.html(), /<button class="stg st-core locked"[\s\S]*?Locked<\/span>/);
 });
 
-test("the dial lights up only the first time Week is drawn", () => {
+test("the monitor powers on from standby, and later draws show it finished", () => {
   const h = load({today: "2026-09-24"});
+  // The tests have no screen, so nothing arms the power-on.
+  assert.match(h.html(), /<section class="monitor"/);
+  // Armed: every draw keeps it dark in standby until it switches on.
+  h.run(`liveBootState = "wait"; render();`);
+  assert.match(h.html(), /<section class="monitor boot standby"/);
   assert.match(h.html(), /<svg class="dial intro"/);
   h.click("tab", {page: "plan"});
   h.click("tab", {page: "week"});
-  assert.doesNotMatch(h.html(), /<svg class="dial intro"/);
+  assert.match(h.html(), /<section class="monitor boot standby"/);
+  // Running or done: a redraw shows the finished monitor rather than starting over.
+  h.run(`liveBootState = "run"; render();`);
+  assert.match(h.html(), /<section class="monitor"/);
+  assert.doesNotMatch(h.html(), /dial intro/);
 });
 
 test("pages animate in on navigation, not on every redraw", () => {

@@ -292,9 +292,9 @@ function monitorHTML(today, cur) {
   const t = tally(PARTS), curT = cur ? stageTally(cur) : null;
   const date = `${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
   // The first draw after launch powers the monitor on: light, ticks, overlay.
-  return `<section class="monitor${introDone ? "" : " boot"}" aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
+  return `<section class="monitor${liveBootClass()}" aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
     `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
-    `<div class="dial-wrap">${dialSVG(stageSegs(cur), {size: 300, r2: 140, r1: 114, r1off: 126, gap: 3, rings: [102, 78], cls: introDone ? "" : "intro"})}` +
+    `<div class="dial-wrap">${dialSVG(stageSegs(cur), {size: 300, r2: 140, r1: 114, r1off: 126, gap: 3, rings: [102, 78], cls: liveBootClass() ? "intro" : ""})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
     (cur ? `<div class="dial-sub mono st-${cur}">${STAGE_NAMES[cur]} ${curT.logged}/${curT.req}</div>` : `<div class="dial-sub mono">Every stage logged</div>`) +
     `</div></div><div class="ov mono"><span class="ok">${t.approved} approved</span><span class="pend">${t.pending} pending</span></div></div></section>`;
@@ -734,6 +734,8 @@ let enterNext = true;
 const scrollMemo = {};
 function render() {
   const p = route.page;
+  // Opening the app (or coming back to it) on Week powers the monitor on.
+  if (p === "week" && !introDone) { introDone = true; liveBootArm(); }
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
@@ -750,13 +752,11 @@ function render() {
   liveBeforeSwap(app);
   app.innerHTML = html;
   liveAfterSwap();
-  const countUp = p === "week" && !introDone;
-  if (p === "week") introDone = true;
   enterNext = false; sheetFresh = false; toastFresh = false;
   if (route.restoreY !== undefined) { window.scrollTo(0, route.restoreY); delete route.restoreY; }
   else if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
-  if (countUp) countUpDial();
+  liveBootKick();
   callAfterRender();
   studyAfterRender();
   scopeAfterRender();
@@ -946,10 +946,16 @@ if (window.visualViewport && window.visualViewport.addEventListener) {
 }
 // Coming back to the app redraws it, so the call card and the week are current,
 // and checks whether a reminder has arrived.
+// Back on Week after more than a few seconds away, the monitor powers on again:
+// iOS keeps the app alive in the background, so this is what opening it looks like.
+let hiddenAt = 0;
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
   if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
-      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); remindInit(); studyqInit(); guidesInit(); }
+      !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
+    if (route.page === "week" && hiddenAt && Date.now() - hiddenAt > 5000) introDone = false;
+    route.keepScroll = true; render(); remindInit(); studyqInit(); guidesInit(); }
 });
 // A tapped call reminder opens the Call screen: by link when the app was
 // closed, by message from the service worker when it was open.

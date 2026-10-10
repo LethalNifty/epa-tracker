@@ -137,6 +137,43 @@ function liveScrolled() {
   root.classList.toggle("titled", liveTitleEnd > 0 && y > liveTitleEnd);
 }
 
+// ---- Power-on -------------------------------------------------------------------------
+// The monitor powers on when the app is opened. It is drawn in standby and
+// switches on once the screen is showing and the app has stopped redrawing:
+// right after opening, it redraws a few times as reminders, questions and
+// guidelines finish loading, and each redraw would start the animation over.
+let liveBootState = "off", liveBootTimer = null, liveBootWaiting = false;
+function liveBootArm() {
+  if (LIVE_DOC && typeof requestAnimationFrame === "function" && !liveCalm()) liveBootState = "wait";
+}
+const liveBootClass = () => liveBootState === "wait" ? " boot standby" : "";
+function liveBootKick() {
+  if (!LIVE_DOC || liveBootState !== "wait") return;
+  clearTimeout(liveBootTimer);
+  if (document.visibilityState === "hidden") {
+    if (!liveBootWaiting) {
+      liveBootWaiting = true;
+      const wake = () => {
+        if (document.visibilityState === "hidden") return;
+        document.removeEventListener("visibilitychange", wake); liveBootWaiting = false; liveBootKick();
+      };
+      document.addEventListener("visibilitychange", wake);
+    }
+    return;
+  }
+  liveBootTimer = setTimeout(liveBootStart, 380);
+}
+function liveBootStart() {
+  const mon = document.querySelector(".monitor.boot.standby");
+  if (!mon) { liveBootState = "off"; return; }   // Week was left before it switched on
+  requestAnimationFrame(() => {
+    if (liveBootState !== "wait" || !mon.isConnected) return liveBootKick();
+    liveBootState = "run"; mon.classList.remove("standby"); countUpDial();
+    // A redraw while it runs shows the finished monitor rather than starting over.
+    setTimeout(() => { if (liveBootState === "run") liveBootState = "off"; }, 1900);
+  });
+}
+
 // ---- The monitor's clock -----------------------------------------------------------------
 // Like the time on a scope monitor's overlay; the colon breathes.
 let liveClockTimer = null;

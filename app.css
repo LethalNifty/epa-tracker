@@ -164,8 +164,8 @@ section.sec { margin-top: 28px; }
 .dial.ring .t { fill: none; stroke-width: 6.5; stroke-linecap: butt; }
 
 /* Intro: the dial lights up tick by tick the first time it is drawn. */
-@keyframes tickOn { 0% { stroke: var(--fold-2); } 38% { stroke: #effffb; stroke-width: 3.6; } }
-.intro .t.lit, .intro .t.pend { animation: tickOn .62s var(--ease) both; animation-delay: calc(var(--i) / var(--n, 100) * 900ms + 260ms); }
+@keyframes tickOn { 0% { stroke: var(--fold-2); } 38% { stroke: #effffb; stroke-width: 3.6px; } }
+.intro .t.lit, .intro .t.pend { animation: tickOn .62s var(--ease) both; animation-delay: calc(var(--i) / var(--n, 100) * 1100ms + 260ms); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 .enter > * { animation: rise .42s var(--ease-out) both; }
 .enter > *:nth-child(2) { animation-delay: .04s; }
@@ -1438,7 +1438,9 @@ html.stacked .amb { opacity: 0; }
 /* The monitor powers on: the light source blooms, the dim ring fades up, the
    logged ticks ignite in one clockwise sweep and the overlay types in. */
 .monitor-in::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
-  background: radial-gradient(55% 46% at 50% 46%, rgba(200, 255, 246, .32), rgba(82, 223, 198, .08) 48%, transparent 72%); }
+  background: radial-gradient(55% 46% at 50% 46%, rgba(200, 255, 246, .42), rgba(82, 223, 198, .1) 48%, transparent 72%); }
+/* Standby: drawn but held dark until the screen is showing (liveBoot). */
+.monitor.standby *, .monitor.standby .monitor-in::after { animation-play-state: paused !important; }
 .monitor.boot .monitor-in::after { animation: bloom 1.4s var(--ease-out) .05s both; }
 @keyframes bloom { 0% { opacity: 0; transform: scale(.35); } 28% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
 .monitor.boot .dial .t.off { animation: ringUp .6s ease .08s both; }
