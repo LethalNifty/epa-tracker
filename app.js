@@ -187,19 +187,21 @@ function dialSVG(segs, o) {
   const S = o.size, c = S / 2, gap = o.gap || 0;
   const slots = segs.reduce((a, s) => a + s.total + gap, 0), step = 2 * Math.PI / slots;
   const f = v => Math.round(v * 10) / 10;
-  let k = gap / 2, i = 0, lines = "";
+  // --i orders the lit ticks for the power-on sweep; --w the active stage's
+  // open ticks, which a slow wave of light runs along.
+  let k = gap / 2, i = 0, w = 0, lines = "";
   for (const s of segs) {
     for (let j = 0; j < s.total; j++, k++) {
-      const kind = j < s.approved ? "lit" : j < s.approved + s.pending ? "pend" : "off";
+      const kind = j < s.approved ? "lit" : j < s.approved + s.pending ? "pend" : "off", next = kind === "off" && s.next;
       const a = -Math.PI / 2 + (k + .5) * step, cs = Math.cos(a), sn = Math.sin(a);
       const r1 = kind === "off" ? o.r1off : o.r1;
-      lines += `<line class="t ${kind}${kind === "off" && s.next ? " next" : ""} st-${s.stage}" x1="${f(c + r1 * cs)}" y1="${f(c + r1 * sn)}"` +
-        ` x2="${f(c + o.r2 * cs)}" y2="${f(c + o.r2 * sn)}"` + (kind === "off" ? "" : ` style="--i:${i++}"`) + `/>`;
+      lines += `<line class="t ${kind}${next ? " next" : ""} st-${s.stage}" x1="${f(c + r1 * cs)}" y1="${f(c + r1 * sn)}"` +
+        ` x2="${f(c + o.r2 * cs)}" y2="${f(c + o.r2 * sn)}"` + (kind !== "off" ? ` style="--i:${i++}"` : next ? ` style="--w:${w++}"` : "") + `/>`;
     }
     k += gap;
   }
   const rings = (o.rings || []).map(r => `<circle class="fold-ring" cx="${c}" cy="${c}" r="${r}"/>`).join("");
-  return `<svg class="dial${o.cls ? " " + o.cls : ""}" viewBox="0 0 ${S} ${S}" aria-hidden="true">${rings}${lines}</svg>`;
+  return `<svg class="dial${o.cls ? " " + o.cls : ""}" style="--n:${Math.max(1, i)}" viewBox="0 0 ${S} ${S}" aria-hidden="true">${rings}${lines}</svg>`;
 }
 // The small version for one EPA: a ring of arcs, one per required observation,
 // with a wider gap between parts. Reads well even with only a handful.
@@ -234,11 +236,14 @@ function navHTML(active) {
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span>` +
     (dot(page) ? `<i class="nvdot" aria-label="New guidelines"></i>` : "") + `</button>`;
-  // Five even tabs; the log button floats above the bar's right end. It steps
-  // aside while Endo's own save bar is up, where it would cover Clear.
+  // A glass capsule of five tabs with a lens under the open one, and the log
+  // button beside it, as iOS lays out a tab bar and its action. The button
+  // steps aside while Endo's own save bar is up, where it would cover Clear.
   const busy = active === "endo" && scopeTab !== "progress" && scopeCap.cards.length;
-  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.map(item).join("")}</div></nav>` +
-    (busy ? "" : `<button class="fab float" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`);
+  const at = NAV.findIndex(n => n[0] === active);
+  return `<nav class="bnav" aria-label="Main"><div class="bnav-row"><div class="tabbar">` +
+    (at >= 0 ? `<span class="lens" style="--at:${at}" aria-hidden="true"></span>` : "") + NAV.map(item).join("") + `</div>` +
+    (busy ? "" : `<button class="fab" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`) + `</div></nav>`;
 }
 function warningsHTML(today) {
   let h = "";
@@ -286,8 +291,9 @@ let introDone = false, chaseOpen = false;
 function monitorHTML(today, cur) {
   const t = tally(PARTS), curT = cur ? stageTally(cur) : null;
   const date = `${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
-  return `<section class="monitor" aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
-    `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}</span></div>` +
+  // The first draw after launch powers the monitor on: light, ticks, overlay.
+  return `<section class="monitor${introDone ? "" : " boot"}" aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
+    `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
     `<div class="dial-wrap">${dialSVG(stageSegs(cur), {size: 300, r2: 140, r1: 114, r1off: 126, gap: 3, rings: [102, 78], cls: introDone ? "" : "intro"})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
     (cur ? `<div class="dial-sub mono st-${cur}">${STAGE_NAMES[cur]} ${curT.logged}/${curT.req}</div>` : `<div class="dial-sub mono">Every stage logged</div>`) +
@@ -524,7 +530,7 @@ function viewEpa(code) {
   const segs = e.parts.map(p => { const pt = tally([PART_BY_ID[p.id]]);
     return {stage: st, total: p.required, approved: pt.approved, pending: pt.pending, next: true}; });
   let h = `<header class="ph"><button class="back" data-action="back">${ic("back")}${backTo}</button></header>` +
-    `<div class="epa-hero st-${st}"><div class="dial-wrap">${ringSVG(segs, {size: 104, r: 45, gap: e.parts.length > 1 ? .6 : 0})}` +
+    `<div class="epa-hero st-${st}" data-code="${e.code}" data-bar="${e.code} · ${STAGE_NAMES[st]}"><div class="dial-wrap">${ringSVG(segs, {size: 104, r: 45, gap: e.parts.length > 1 ? .6 : 0})}` +
     `<div class="dial-center"><div class="dial-num">${t.logged}</div><div class="dial-lbl">of ${t.req}</div></div></div>` +
     `<div><p class="eyebrow mono">${e.code} · ${STAGE_NAMES[st]}</p><h1 class="detail-title">${esc(e.title)}</h1>` +
     `<div class="ph-meta mono">${t.approved} approved · ${t.pending} pending</div></div></div>`;
@@ -732,7 +738,7 @@ function render() {
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "guides" ? viewGuides() : viewEpa(route.code);
-    html = `<main class="page${enterNext ? " enter" : ""}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
+    html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
       (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
@@ -740,7 +746,10 @@ function render() {
     html = `<main class="page">${crashHTML()}</main>`;
   }
   scopeBeforeRender();
-  document.getElementById("app").innerHTML = html;
+  const app = document.getElementById("app");
+  liveBeforeSwap(app);
+  app.innerHTML = html;
+  liveAfterSwap();
   const countUp = p === "week" && !introDone;
   if (p === "week") introDone = true;
   enterNext = false; sheetFresh = false; toastFresh = false;
@@ -753,6 +762,7 @@ function render() {
   scopeAfterRender();
   remindAfterRender();
   guidesAfterRender();
+  liveAfterRender(p);
 }
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
@@ -774,23 +784,24 @@ function go(next, restore) {
   // Biopsy lives in Guides.
   if (next.page === "biopsy") { next = {...next, page: "guides"}; guidesTab = "b"; }
   if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
+  const kind = liveKind(route.page, next.page);
   route = next; callError = null;
   if (restore && scrollMemo[next.page]) route.restoreY = scrollMemo[next.page];
   enterNext = true;
-  render();
+  liveSwap(render, kind);
 }
 function dispatch(act, d) {
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
-  if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) render(); return; }
+  if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
   if (act.startsWith("scope")) {
     d = d || {};
-    if (act === "scopetab") { scopeDispatch(act, d); render(); return; }
+    if (act === "scopetab") { scopeDispatch(act, d); liveSwap(render, "seg"); return; }
     if (scopeDispatch(act, d) !== false) { route.keepScroll = true; render(); }
     return;
   }
   if (act === "open") go({page: "epa", code: d.code, from: route.page === "epa" ? route.from : route.page});
   else if (act === "back") go({page: route.from || "epas"}, true);
-  else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo(0, 0); }
+  else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo({top: 0, behavior: "smooth"}); }
   else if (act === "sheet") {
     scopeSheet = null; openSheet(d.part, d.obs);
     // From the pending list: it stays open behind the sheet, and the scope log's guess is offered.
@@ -845,7 +856,7 @@ function dispatch(act, d) {
 }
 document.getElementById("app").addEventListener("click", ev => {
   const t = ev.target.closest("[data-action]");
-  if (t) dispatch(t.dataset.action, t.dataset);
+  if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
   if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target)) return;
@@ -897,6 +908,7 @@ function sheetDragMove(ev) {
   s.dy = Math.max(0, ev.clientY - s.y);
   s.sh.style.transform = `translateY(${s.dy}px)`;
   if (s.scrim) { s.scrim.style.animation = "none"; s.scrim.style.opacity = String(Math.max(.2, 1 - s.dy / Math.max(1, s.sh.offsetHeight))); }
+  liveLift(s.dy / Math.max(1, s.sh.offsetHeight));
 }
 function sheetDragEnd(ev) {
   const s = sheetDrag;
@@ -907,7 +919,7 @@ function sheetDragEnd(ev) {
   const close = ev.type === "pointerup" && (s.dy > Math.min(130, s.sh.offsetHeight * .3) || flick);
   s.sh.style.transition = "transform .2s cubic-bezier(.2, .8, .2, 1)";
   if (s.scrim) s.scrim.style.transition = "opacity .2s";
-  if (!close) { s.sh.style.transform = ""; if (s.scrim) s.scrim.style.opacity = ""; return; }
+  if (!close) { s.sh.style.transform = ""; if (s.scrim) s.scrim.style.opacity = ""; liveLift(0, true); return; }
   s.sh.style.transform = "translateY(105%)";
   if (s.scrim) s.scrim.style.opacity = "0";
   const x = s.sh.querySelector(".shead [data-action]");
