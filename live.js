@@ -1,9 +1,9 @@
 "use strict";
 // GI Hub "Live view": what makes the app feel like a scope tower switched on.
 // Each tab has its own imaging light, pages move like iOS pages, sheets stack
-// over the page, taps can be felt, the monitor keeps time and boots once per
-// launch. Every piece checks for its browser feature first and otherwise does
-// nothing, so the app (and the tests, which have no DOM) work without it.
+// over the page, the monitor keeps time and boots once per launch. Every piece
+// checks for its browser feature first and otherwise does nothing, so the app
+// (and the tests, which have no DOM) work without it.
 
 // The light each page is seen in: NBI cyan, fluorescein for reading, white
 // light for the library and call.
@@ -11,34 +11,10 @@ const LIVE_MODE = {week: "nbi", epas: "nbi", epa: "nbi", plan: "nbi", endo: "nbi
 const LIVE_DOC = typeof document !== "undefined" && document.documentElement && document.documentElement.style ? document : null;
 const liveCalm = () => !!(typeof window !== "undefined" && window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-// ---- Haptics ------------------------------------------------------------------------------
-// iOS has no vibration API, but flipping a native switch plays the system tap,
-// so a hidden one is flipped for each tap we want felt. Android vibrates.
-const LIVE_TAP_OK = new Set(["sheetsave", "scopesave", "scopesavecopy", "scopeupdate", "studydone", "studysave", "chaseok", "scopeaddstaff"]);
-const LIVE_TAP = new Set(["tab", "scopetab", "guidestab", "togglestatus", "cycleline", "sheetstatus", "sheetdate", "pickpart", "pickassessor",
-  "pickall", "scopechip", "scopepicked", "scopeurg", "scopereach", "scopeset", "scopestaff1", "scopeepa", "scopeopen", "scoperead", "sheet",
-  "studymark", "studyreveal", "studystep", "studypick", "studyskip", "studyunskip", "studyread", "guidespin", "guideschip", "bcat", "undo",
-  "callopen", "open", "back"]);
-let liveSwitch = null;
-function haptic(n = 1) {
-  if (!LIVE_DOC || !document.body) return;
-  const a = document.activeElement;
-  if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;   // never take the keyboard's focus
-  if (navigator.vibrate && !/iP(hone|ad|od)/.test(navigator.userAgent || "")) { try { navigator.vibrate(n > 1 ? [8, 60, 12] : 8); } catch (e) {} return; }
-  if (!liveSwitch) {
-    const lab = document.createElement("label"), inp = document.createElement("input");
-    inp.type = "checkbox"; inp.setAttribute("switch", ""); inp.tabIndex = -1;
-    lab.setAttribute("aria-hidden", "true"); lab.className = "tapsw"; lab.appendChild(inp);
-    document.body.appendChild(lab); liveSwitch = lab;
-  }
-  try { liveSwitch.click(); if (n > 1) setTimeout(() => liveSwitch.click(), 110); } catch (e) {}
-}
+// ---- The last tap -------------------------------------------------------------------------
+// Remembered so the EPA chip that was tapped can grow into its ring.
 let liveLastTap = null;
-function liveTap(act, el) {
-  liveLastTap = el || null;
-  if (LIVE_TAP_OK.has(act)) haptic(2);
-  else if (LIVE_TAP.has(act)) haptic(1);
-}
+function liveTap(act, el) { liveLastTap = el || null; }
 
 // ---- Page moves ---------------------------------------------------------------------------
 // Tabs cross-fade; opening an EPA or the call screen pushes in from the right
@@ -86,7 +62,10 @@ function liveSwap(fn, kind) {
   };
   try { tr = document.startViewTransition(swap); } catch (e) { liveMoving = false; delete root.dataset.vt; liveName(from, ""); return fn(); }
   // The transition was the page's entrance, so its own fade-in must not start again afterwards.
-  const done = () => { liveMoving = false; document.querySelectorAll("main.page.enter").forEach(m => m.classList.remove("enter")); delete root.dataset.vt; };
+  // A transition that never ends would leave its overlay taking every tap, so
+  // one still running after 1.5 s is finished at once.
+  const dog = setTimeout(() => { try { tr.skipTransition(); } catch (e) {} }, 1500);
+  const done = () => { clearTimeout(dog); liveMoving = false; document.querySelectorAll("main.page.enter").forEach(m => m.classList.remove("enter")); delete root.dataset.vt; };
   tr.finished.then(done, done);
 }
 

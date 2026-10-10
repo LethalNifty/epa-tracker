@@ -1424,11 +1424,11 @@ html.stacked { background: #020708; }
 html.stacked .amb { opacity: 0; }
 /* --lift (0 to 1) brings the page forward while a sheet is dragged down. */
 .page.under { transform: scale(calc(.94 + .06 * var(--lift, 0))); transform-origin: 50% calc(var(--sy, 0px) + 42vh); border-radius: 28px;
-  background: var(--field); filter: saturate(.75); }
+  background: var(--field); }
 .page.sink { animation: pageSink .52s var(--ease-sheet) both; }
 .page.rise { animation: pageRise .44s var(--ease-sheet) both; transform-origin: 50% calc(var(--sy, 0px) + 42vh); }
-@keyframes pageSink { from { transform: none; border-radius: 0; filter: none; } }
-@keyframes pageRise { from { transform: scale(calc(.94 + .06 * var(--lift, 0))); border-radius: 28px; filter: saturate(.75); } }
+@keyframes pageSink { from { transform: none; border-radius: 0; } }
+@keyframes pageRise { from { transform: scale(calc(.94 + .06 * var(--lift, 0))); border-radius: 28px; } }
 .sheetghost { position: fixed; z-index: 32; inset: 0; pointer-events: none; }
 .sheetghost .scrim { animation: ghostFade .32s ease both; }
 .sheetghost .sheet { animation: ghostDown .4s var(--ease-sheet) both; }
@@ -1492,8 +1492,6 @@ html[data-vt="pop"]::view-transition-new(root) { animation: vtPopNew .4s var(--e
 .wrow .tick, .epa .code { transition: transform .3s var(--spring); }
 .wrow:active .tick, .epa:active .code { transform: scale(.88); }
 
-/* The hidden switch flipped for a tap you can feel. */
-.tapsw { position: fixed; left: -100px; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important;
