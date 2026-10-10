@@ -229,8 +229,12 @@ test("the monitor powers on from standby, and later draws show it finished", () 
   h.click("tab", {page: "plan"});
   h.click("tab", {page: "week"});
   assert.match(h.html(), /<section class="monitor boot standby"/);
-  // Running or done: a redraw shows the finished monitor rather than starting over.
-  h.run(`liveBootState = "run"; render();`);
+  // Running: a redraw carries the animation on from how far it had got.
+  h.run(`liveBootState = "run"; liveBootT0 = Date.now() - 700; render();`);
+  assert.match(h.html(), /<section class="monitor boot" style="--boot-el:7\d\dms"/);
+  assert.match(h.html(), /<svg class="dial intro"/);
+  // Done: plain.
+  h.run(`liveBootState = "off"; render();`);
   assert.match(h.html(), /<section class="monitor"/);
   assert.doesNotMatch(h.html(), /dial intro/);
 });
@@ -267,4 +271,10 @@ test("Back returns to where the list was scrolled", () => {
   assert.equal(pos.at(-1), 0);        // the detail opens at the top
   h.click("back");
   assert.equal(pos.at(-1), 640);      // and Back lands where you were
+});
+
+test("the foot of EPAs says which version this phone is running", () => {
+  const h = load({today: "2026-09-24"});
+  h.click("tab", {page: "epas"});
+  assert.match(h.html(), /<p class="bfoot mono appver">GI Hub epa-v\d+<\/p>/);
 });

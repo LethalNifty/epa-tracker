@@ -4,6 +4,8 @@
 // guideline library (guides.js).
 
 const KEY = "epa-state-v1";
+// Matches the service worker's cache name; shown at the foot of EPAs.
+const APP_VERSION = "epa-v28";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
@@ -112,6 +114,10 @@ const Store = {
 };
 
 let nudgeDismissed = false, backupError = null;
+// Which version this phone is running, and whether iOS has motion turned down.
+function versionHTML() {
+  return `<p class="bfoot mono appver">GI Hub ${APP_VERSION}${liveCalm() ? " · Reduce Motion on: gentle animations" : ""}</p>`;
+}
 function needsNudge(today) {
   if (!Store.hasData()) return false;
   const lb = Store.state.lastBackup;
@@ -292,7 +298,7 @@ function monitorHTML(today, cur) {
   const t = tally(PARTS), curT = cur ? stageTally(cur) : null;
   const date = `${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
   // The first draw after launch powers the monitor on: light, ticks, overlay.
-  return `<section class="monitor${liveBootClass()}" aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
+  return `<section class="monitor${liveBootClass()}"${liveBootStyle()} aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
     `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
     `<div class="dial-wrap">${dialSVG(stageSegs(cur), {size: 300, r2: 140, r1: 114, r1off: 126, gap: 3, rings: [102, 78], cls: liveBootClass() ? "intro" : ""})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
@@ -459,7 +465,7 @@ function viewEpas() {
     if (done.length) h += `<details class="donegrp"><summary>${ic("chev")}Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
     h += `</section>`;
   }
-  return h + backupHTML() + remindSectionHTML();
+  return h + backupHTML() + remindSectionHTML() + versionHTML();
 }
 
 // ---- EPA detail --------------------------------------------------------------
@@ -768,15 +774,18 @@ function render() {
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const el = document.querySelector(".dial-num[data-count]");
-  if (!el) return;
-  const target = +el.dataset.count, t0 = performance.now(), dur = 950;
+  const el0 = document.querySelector(".dial-num[data-count]");
+  if (!el0) return;
+  const target = +el0.dataset.count, t0 = performance.now(), dur = 950;
   const step = now => {
+    // A redraw may have replaced the number; carry on in the new one.
+    const el = document.querySelector(".dial-num[data-count]");
+    if (!el) return;
     const k = Math.min(1, (now - t0) / dur);
     el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
     if (k < 1) requestAnimationFrame(step);
   };
-  el.textContent = "0";
+  el0.textContent = "0";
   requestAnimationFrame(step);
 }
 // Navigate. Tabs and Back return to where that page was last scrolled.
@@ -952,8 +961,10 @@ let hiddenAt = 0;
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
+  if (document.visibilityState === "visible") updateCheck();
   if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
+    if (updateNow()) return;
     if (route.page === "week" && hiddenAt && Date.now() - hiddenAt > 5000) introDone = false;
     route.keepScroll = true; render(); remindInit(); studyqInit(); guidesInit(); }
 });
@@ -974,4 +985,38 @@ render();
 remindInit();
 studyqInit();
 guidesInit();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+// ---- Updates ----------------------------------------------------------------------------
+// A new version installs in the background. When it takes over, the app
+// reloads into it straight away if it was just opened, otherwise the next time
+// it comes back, and never in the middle of an entry. A toast says so.
+let updateReady = false;
+const openedAt = Date.now();
+function updateNow() {
+  if (!updateReady) return false;
+  updateReady = false;
+  try { sessionStorage.setItem("gi-updated", "1"); } catch (e) {}
+  location.reload();
+  return true;
+}
+// iOS resumes the app rather than relaunching it, so look for a new version on the way back too.
+function updateCheck() {
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistration)
+    navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
+}
+if ("serviceWorker" in navigator) {
+  const hadWorker = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadWorker) return;   // the first install: this page is already the newest
+    updateReady = true;
+    const a = document.activeElement;
+    if (Date.now() - openedAt < 15000 && !sheet && !studySheet && !scopeSheet && !scopePick &&
+        !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) updateNow();
+  });
+}
+try {
+  if (sessionStorage.getItem("gi-updated")) {
+    sessionStorage.removeItem("gi-updated");
+    showToast(`Updated to ${APP_VERSION}`); route.keepScroll = true; render();
+  }
+} catch (e) {}

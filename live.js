@@ -46,7 +46,9 @@ function liveHeroTo(kind, code) {
 }
 let liveMoving = false;
 function liveSwap(fn, kind) {
-  if (!LIVE_DOC || !document.startViewTransition || liveCalm() || liveMoving) return fn();
+  if (!LIVE_DOC || !document.startViewTransition || liveMoving) return fn();
+  // With Reduce Motion on, every move is a plain cross-fade: nothing slides or grows.
+  if (liveCalm()) kind = "fade";
   const root = document.documentElement, hero = document.querySelector(".epa-hero");
   const code = hero && hero.dataset ? hero.dataset.code : null;   // the EPA being left, on Back
   const from = liveHeroFrom(kind);
@@ -142,11 +144,14 @@ function liveScrolled() {
 // switches on once the screen is showing and the app has stopped redrawing:
 // right after opening, it redraws a few times as reminders, questions and
 // guidelines finish loading, and each redraw would start the animation over.
-let liveBootState = "off", liveBootTimer = null, liveBootWaiting = false;
+let liveBootState = "off", liveBootTimer = null, liveBootWaiting = false, liveBootT0 = 0;
 function liveBootArm() {
-  if (LIVE_DOC && typeof requestAnimationFrame === "function" && !liveCalm()) liveBootState = "wait";
+  if (LIVE_DOC && typeof requestAnimationFrame === "function") liveBootState = "wait";
 }
-const liveBootClass = () => liveBootState === "wait" ? " boot standby" : "";
+const liveBootClass = () => liveBootState === "wait" ? " boot standby" : liveBootState === "run" ? " boot" : "";
+// While it runs, a redraw (guidelines and questions arrive over the network a
+// moment after opening) carries the animation on from where it had got to.
+const liveBootStyle = () => liveBootState === "run" ? ` style="--boot-el:${Math.max(0, Date.now() - liveBootT0)}ms"` : "";
 function liveBootKick() {
   if (!LIVE_DOC || liveBootState !== "wait") return;
   clearTimeout(liveBootTimer);
@@ -168,9 +173,8 @@ function liveBootStart() {
   if (!mon) { liveBootState = "off"; return; }   // Week was left before it switched on
   requestAnimationFrame(() => {
     if (liveBootState !== "wait" || !mon.isConnected) return liveBootKick();
-    liveBootState = "run"; mon.classList.remove("standby"); countUpDial();
-    // A redraw while it runs shows the finished monitor rather than starting over.
-    setTimeout(() => { if (liveBootState === "run") liveBootState = "off"; }, 1900);
+    liveBootState = "run"; liveBootT0 = Date.now(); mon.classList.remove("standby"); countUpDial();
+    setTimeout(() => { if (liveBootState === "run") liveBootState = "off"; }, 2400);
   });
 }
 
@@ -193,7 +197,7 @@ function liveDial() {
   const ts = document.querySelectorAll(".monitor .dial .t");
   if (!ts.length) return;
   const now = Array.from(ts, t => t.classList.contains("lit") ? 2 : t.classList.contains("pend") ? 1 : 0);
-  if (liveDialWas && liveDialWas.length === now.length && !liveCalm())
+  if (liveDialWas && liveDialWas.length === now.length)
     now.forEach((v, i) => { if (v > liveDialWas[i]) ts[i].classList.add("ignite"); });
   liveDialWas = now;
 }

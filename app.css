@@ -165,7 +165,9 @@ section.sec { margin-top: 28px; }
 
 /* Intro: the dial lights up tick by tick the first time it is drawn. */
 @keyframes tickOn { 0% { stroke: var(--fold-2); } 38% { stroke: #effffb; stroke-width: 3.6px; } }
-.intro .t.lit, .intro .t.pend { animation: tickOn .62s var(--ease) both; animation-delay: calc(var(--i) / var(--n, 100) * 1100ms + 260ms); }
+/* --boot-el is how far the power-on had got when the monitor was last redrawn,
+   so a redraw carries on from there instead of starting over. */
+.intro .t.lit, .intro .t.pend { animation: tickOn .62s var(--ease) both; animation-delay: calc(var(--i) / var(--n, 100) * 1100ms + 260ms - var(--boot-el, 0ms)); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 .enter > * { animation: rise .42s var(--ease-out) both; }
 .enter > *:nth-child(2) { animation-delay: .04s; }
@@ -1441,17 +1443,17 @@ html.stacked .amb { opacity: 0; }
   background: radial-gradient(55% 46% at 50% 46%, rgba(200, 255, 246, .42), rgba(82, 223, 198, .1) 48%, transparent 72%); }
 /* Standby: drawn but held dark until the screen is showing (liveBoot). */
 .monitor.standby *, .monitor.standby .monitor-in::after { animation-play-state: paused !important; }
-.monitor.boot .monitor-in::after { animation: bloom 1.4s var(--ease-out) .05s both; }
+.monitor.boot .monitor-in::after { animation: bloom 1.4s var(--ease-out) calc(.05s - var(--boot-el, 0ms)) both; }
 @keyframes bloom { 0% { opacity: 0; transform: scale(.35); } 28% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
-.monitor.boot .dial .t.off { animation: ringUp .6s ease .08s both; }
+.monitor.boot .dial .t.off { animation: ringUp .6s ease calc(.08s - var(--boot-el, 0ms)) both; }
 @keyframes ringUp { from { opacity: 0; } }
-.monitor.boot .ov > span { animation: typeOn .62s steps(16, end) .3s both; }
+.monitor.boot .ov > span { animation: typeOn .62s steps(16, end) calc(.3s - var(--boot-el, 0ms)) both; }
 @keyframes typeOn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-.monitor.boot .dial-center { animation: rise .7s var(--ease-out) .2s both; }
+.monitor.boot .dial-center { animation: rise .7s var(--ease-out) calc(.2s - var(--boot-el, 0ms)) both; }
 
 /* What the active stage still needs: a slow wave of light runs along it. */
 .dial .t.next { animation: dueWave 5.2s ease-in-out infinite; animation-delay: calc(var(--w, 0) * 95ms); }
-.monitor.boot .dial .t.next { animation: ringUp .6s ease .08s both, dueWave 5.2s ease-in-out infinite; animation-delay: .08s, calc(1.4s + var(--w, 0) * 95ms); }
+.monitor.boot .dial .t.next { animation: ringUp .6s ease .08s both, dueWave 5.2s ease-in-out infinite; animation-delay: calc(.08s - var(--boot-el, 0ms)), calc(1.4s + var(--w, 0) * 95ms - var(--boot-el, 0ms)); }
 @keyframes dueWave { 0%, 100% { stroke: color-mix(in srgb, var(--c) 50%, #0b1b1e); } 50% { stroke: color-mix(in srgb, var(--c) 95%, #0b1b1e); } }
 /* A tick logged since Week was last drawn ignites on the way back. */
 .dial .t.ignite { animation: tickOn .9s var(--ease) .32s both; }
@@ -1502,4 +1504,16 @@ html[data-vt="pop"]::view-transition-new(root) { animation: vtPopNew .4s var(--e
   .pit.tn, .bk-ch i.tn { animation: none !important; }
   .ch-last { animation: none !important; }
   .amb, .dial .t.next, .ov .clock i, .ov .clock::before { animation: none !important; }
+  /* Reduce Motion keeps the power-on as light only: nothing moves or grows, the
+     ticks still light up, and pages cross-fade without sliding. */
+  .monitor.boot .monitor-in::after { animation-name: bloomCalm !important; animation-duration: 1.4s !important; animation-delay: calc(.05s - var(--boot-el, 0ms)) !important; }
+  .monitor.boot .dial .t.off { animation-duration: .6s !important; animation-delay: calc(.08s - var(--boot-el, 0ms)) !important; }
+  .monitor.boot .ov > span { animation-duration: .62s !important; animation-delay: calc(.3s - var(--boot-el, 0ms)) !important; }
+  .intro .t.lit, .intro .t.pend { animation-duration: .62s !important; animation-delay: calc(var(--i) / var(--n, 100) * 1100ms + 260ms - var(--boot-el, 0ms)) !important; }
+  .monitor.boot .dial-center { animation-name: fade !important; animation-duration: .7s !important; animation-delay: calc(.2s - var(--boot-el, 0ms)) !important; }
+  .dial .t.ignite { animation-duration: .9s !important; animation-delay: .32s !important; }
+  html[data-vt]::view-transition-old(root) { animation: vtOut .2s ease both !important; }
+  html[data-vt]::view-transition-new(root) { animation: fade .3s ease both !important; }
+  ::view-transition-group(*) { animation-duration: .001ms !important; }
 }
+@keyframes bloomCalm { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
