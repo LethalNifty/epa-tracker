@@ -99,7 +99,7 @@ test("recap shows once per block week", () => {
 test("chase list approves in place", () => {
   const h = load({today: "2026-09-24", state: state({c2: [obs("2026-09-01", {status: "pending", a: "Dr. A"})]})});
   assert.match(h.html(), /1 form pending 14\+ days/);
-  assert.match(h.html(), /<span class="num">1 Sep<\/span> · Dr\. A<\/span>/);
+  assert.match(h.html(), /<span class="num">1 Sep<\/span> · A<\/span>/);
   h.click("chaseok", {part: "c2", obs: "0"});
   assert.equal(h.saved().obs.c2[0].status, "approved");
   assert.doesNotMatch(h.html(), /pending 14\+ days/);
@@ -109,7 +109,7 @@ test("a pending form says what it is, who it was with and the note", () => {
   const h = load({today: "2026-09-24", state: state({f3a: [obs("2026-09-01", {status: "pending", a: "Dr. A", n: "From scope log: EGD \u00b7 biopsy"})]})});
   const row = /<div class="crow">.*?<\/div>/.exec(h.html())[0];
   assert.match(row, /<b>EGD<\/b>/);
-  assert.match(row, /<span class="num">1 Sep<\/span> · Dr\. A · EGD · biopsy<\/span>/);
+  assert.match(row, /<span class="num">1 Sep<\/span> · A · EGD · biopsy<\/span>/);
   assert.doesNotMatch(row, /From scope log/);
 });
 
@@ -124,21 +124,21 @@ test("a pending form with no assessor takes the name from that day's scopes, and
   const rows = h.html().match(/<div class="crow">.*?<\/div>/g);
   const row = (part, i) => rows.find(r => r.includes(`data-part="${part}" data-obs="${i}"`));
   // The EGD that day was with Brook, so F3-A (EGD) suggests Brook alone.
-  assert.match(row("f3a", 0), /data-a="Dr\. Brook"/);
-  assert.match(row("f3a", 0), /<i>Dr\. Brook\?<\/i> from your scope log/);
+  assert.match(row("f3a", 0), /data-a="Brook"/);
+  assert.match(row("f3a", 0), /<i>Brook\?<\/i> from your scope log/);
   // Two staff fit: both are named, neither is filled in.
-  assert.match(row("f3a", 1), /<i>Dr\. Attending or Dr\. Brook\?<\/i>/);
+  assert.match(row("f3a", 1), /<i>Attending or Brook\?<\/i>/);
   assert.doesNotMatch(row("f3a", 1), /data-a=/);
   // Not a scope EPA: whoever was scoped with that day.
-  assert.match(row("f1a", 0), /<i>Dr\. Brook or Dr\. Attending\?<\/i>/);
+  assert.match(row("f1a", 0), /<i>Brook or Attending\?<\/i>/);
   // No scopes that day.
   assert.match(row("f1a", 1), /No assessor yet · tap to add/);
-  h.click("sheet", {part: "f3a", obs: "0", chase: "1", a: "Dr. Brook"});
-  assert.equal(h.val("sheet.a"), "Dr. Brook");
+  h.click("sheet", {part: "f3a", obs: "0", chase: "1", a: "Brook"});
+  assert.equal(h.val("sheet.a"), "Brook");
   assert.equal(h.val("chaseOpen"), true);
   h.click("sheetsave");
-  assert.equal(h.saved().obs.f3a[0].a, "Dr. Brook");
-  assert.match(h.html(), /<span class="num">1 Sep<\/span> · Dr\. Brook<\/span>/);
+  assert.equal(h.saved().obs.f3a[0].a, "Brook");
+  assert.match(h.html(), /<span class="num">1 Sep<\/span> · Brook<\/span>/);
 });
 
 test("estimated completion shows both dates", () => {

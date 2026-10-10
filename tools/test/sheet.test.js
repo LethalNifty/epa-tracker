@@ -43,18 +43,19 @@ test("editing and deleting an observation through the sheet", () => {
   assert.equal(h.saved().obs.c5.length, 0);
 });
 
-test("assessor suggestions: most recent first, filtered as you type", () => {
+test("assessor suggestions: most recent first, surname alone, filtered as you type", () => {
   const h = load({today: "2026-09-24", state: state({c2: [
-    {d: "2026-09-01", a: "Dr. A", status: "approved", ts: "2026-09-01T18:00:00Z"},
-    {d: "2026-09-10", a: "Dr. B", status: "approved", ts: "2026-09-10T18:00:00Z"},
-    {d: "2026-09-11", a: "dr. a", status: "approved", ts: "2026-09-11T18:00:00Z"}]})});
-  assert.deepEqual(h.val(`assessorSuggestions("")`), ["dr. a", "Dr. B"]);
-  assert.deepEqual(h.val(`assessorSuggestions("b")`), ["Dr. B"]);
-  assert.deepEqual(h.val(`assessorSuggestions("dr. b")`), []);
+    {d: "2026-09-01", a: "Dr. Alpha", status: "approved", ts: "2026-09-01T18:00:00Z"},
+    {d: "2026-09-10", a: "Bravo", status: "approved", ts: "2026-09-10T18:00:00Z"},
+    {d: "2026-09-11", a: "dr. alpha", status: "approved", ts: "2026-09-11T18:00:00Z"}]})});
+  assert.deepEqual(h.val(`assessorSuggestions("")`), ["alpha", "Bravo"]);
+  assert.deepEqual(h.val(`assessorSuggestions("b")`), ["Bravo"]);
+  assert.deepEqual(h.val(`assessorSuggestions("bravo")`), []);
   h.click("sheet", {part: "c2"});
-  assert.match(h.html(), /data-action="pickassessor" data-name="dr\. a"/);
-  h.click("pickassessor", {name: "Dr. B"});
-  assert.equal(h.val("sheet.a"), "Dr. B");
+  assert.match(h.html(), /data-action="pickassessor" data-name="alpha"/);
+  assert.match(h.html(), /placeholder="Surname" data-sheet="a"/);
+  h.click("pickassessor", {name: "Bravo"});
+  assert.equal(h.val("sheet.a"), "Bravo");
 });
 
 test("All EPAs shows every part grouped by stage", () => {

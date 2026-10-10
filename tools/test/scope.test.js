@@ -152,6 +152,23 @@ test("staff: first names, misheard names, aliases, unknown names", () => {
   assert.equal(h.one("EGD for melena").staff, null);
 });
 
+test("staff: a surname alone is enough, misheard too, without with or Dr.", () => {
+  assert.equal(h.one("Brook, EGD, gastritis").staff, "b");
+  assert.equal(h.one("Kovalchik, colonoscopy to the cecum").staff, "k");
+  assert.equal(h.one("colonoscopy Kovalchik").staff, "k");
+  // A short name has to be said right without a cue, and a finding is never a person.
+  assert.equal(h.one("EGD, brooke").staff, null);
+  assert.equal(h.one("ERCP, stones").staff, null);
+});
+
+test("a rectal ulcer is its own finding, never a peptic ulcer", () => {
+  assert.deepEqual(h.one("colonoscopy with Brook, rectal ulcer").found, ["rectal"]);
+  assert.deepEqual(h.one("flex sig, solitary rectal ulcers").found, ["rectal"]);
+  assert.deepEqual(h.one("colonoscopy, ulcer in the rectum").found, ["rectal"]);
+  assert.deepEqual(h.one("EGD, ulcer").found, ["pud"]);
+  assert.equal(h.val(`scopeFoundLabel("rectal")`), "Rectal ulcer");
+});
+
 test("site, location and urgency words", () => {
   const c = h.one("urgent EGD at St. B in the ICU");
   assert.equal(c.site, "stb");
@@ -341,13 +358,13 @@ test("observations added from a case link back to it", () => {
     {d: "2026-09-20", a: "Dr. Brook", n: "From scope log: EGD (edited since)", status: "approved"},   // the other Brook EGD that day
     {d: "2026-09-20", a: "Dr. Brook", n: "typed by hand", status: "pending"},                // not from the scope log
     {d: "2026-09-22", a: "Dr. Brook", n: "From scope log: EGD", status: "pending"},          // no case that day
-  ], f4: [{d: "2026-09-21", a: "Dr. Brook", n: "From scope log: Colonoscopy to cecum", status: "pending"}]};
+  ], f4: [{d: "2026-09-21", a: "brook", n: "From scope log: Colonoscopy to cecum", status: "pending"}]};   // surname alone, as typed
   const out = h.val(`(() => { const o = ${JSON.stringify(obs)}; const n = scopeLinkEpas(${JSON.stringify(cases)}, o, ${JSON.stringify(staff)}); return {n, o, again: scopeLinkEpas(${JSON.stringify(cases)}, o, ${JSON.stringify(staff)}), map: scopeSentMap(o)}; })()`);
   assert.equal(out.n, 3);
   assert.equal(out.again, 0);
   assert.deepEqual(out.o.f3a.map(o => o.src || null), ["c2", "c1", null, null]);
   assert.equal(out.o.f4[0].src, "c4");
   assert.deepEqual(out.map.c1, [{pid: "f3a", i: 1, status: "approved", a: "Dr. Brook"}]);
-  assert.deepEqual(out.map.c4, [{pid: "f4", i: 0, status: "pending", a: "Dr. Brook"}]);
+  assert.deepEqual(out.map.c4, [{pid: "f4", i: 0, status: "pending", a: "brook"}]);
   assert.equal(out.map.c3, undefined);
 });

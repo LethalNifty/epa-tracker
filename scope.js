@@ -123,6 +123,7 @@ const SCOPE_FOUND = [
   ["gastritis", "Gastritis", "gastritis"],
   ["gu", "Gastric ulcer", "gastric ulcers?|stomach ulcers?|antral ulcers?|prepyloric ulcers?"],
   ["du", "Duodenal ulcer", "duodenal ulcers?|bulb(?:ar)? ulcers?|ulcers? in the (?:duodenum|bulb)"],
+  ["rectal", "Rectal ulcer", "(?:solitary )?rectal ulcer(?:s|ation)?|ulcers? in the rectum"],
   ["pud", "Peptic ulcer", "peptic ulcers?|pud|ulcers?"],
   ["angio", "Angiodysplasia", "angiodysplasias?|angioectasias?|avms?|ectasias?"],
   ["gave", "GAVE", "gave|watermelon stomach"],
@@ -526,7 +527,9 @@ function scopeReadCase(text, ctx) {
     const r = scopeStaffMatch(tok, staff);
     if (!r) return;
     const collide = vocabWords.has(scopeLetters(tok)) || SCOPE_STOP.has(tok);
-    if (!cue && (collide || r.score < 3)) return;
+    // With no cue, a misheard name counts only if it sounds like a long enough name.
+    const loose = r.score >= 2 && scopeKey(tok).length >= 4;
+    if (!cue && (collide || (r.score < 3 && !loose))) return;
     const score = r.score + (cue ? .5 : 0);
     if (!best || score > best.score) best = {r, score, a, b};
   };
@@ -906,7 +909,9 @@ function scopeImport(scopes, file) {
 // An observation added from a case carries the case's id in `src`, so the
 // case can show what it already added instead of offering it again.
 const SCOPE_EPA_NOTE = "From scope log: ";
-const scopeDrName = (staff, id) => { const p = (staff || []).find(x => x.id === id); return p ? "Dr. " + String(p.name || "").split(",")[0].trim() : ""; };
+// Staff go by surname alone ("Brook"); forms saved before that may say "Dr. Brook".
+const scopeBare = s => String(s || "").trim().replace(/^(?:dr\.?|doctor)\s+/i, "");
+const scopeStaffName = (staff, id) => { const p = (staff || []).find(x => x.id === id); return p ? String(p.name || "").split(",")[0].trim() : ""; };
 // {caseId: [{pid, i, status, a}]} for every observation that came from a case.
 function scopeSentMap(obsByPart) {
   const m = {};
@@ -923,7 +928,7 @@ function scopeLinkEpas(cases, obsByPart, staff) {
     const list = obsByPart[pid] || [], taken = new Set(list.map(o => o && o.src).filter(Boolean));
     for (const o of list) {
       if (!o || o.src || typeof o.n !== "string" || !o.n.startsWith(SCOPE_EPA_NOTE)) continue;
-      const fits = (cases || []).filter(c => c.d === o.d && !taken.has(c.id) && scopeEpaParts(c).includes(pid) && (!o.a || scopeDrName(staff, c.staff) === o.a));
+      const fits = (cases || []).filter(c => c.d === o.d && !taken.has(c.id) && scopeEpaParts(c).includes(pid) && (!o.a || scopeStaffName(staff, c.staff).toLowerCase() === scopeBare(o.a).toLowerCase()));
       const hit = fits.find(c => SCOPE_EPA_NOTE + scopeSummary(c) === o.n) || fits[0];
       if (hit) { o.src = hit.id; taken.add(hit.id); n++; }
     }

@@ -343,8 +343,8 @@ function chaseHTML(list) {
     list.map(c => {
       // No assessor on the form: the scope log may know who it was with.
       const sc = Store.state.scopes, g = c.a ? {ids: []} : scopeStaffOn(sc.cases, c.date, c.pid);
-      const names = g.ids.map(id => scopeDrName(sc.staff, id)).filter(Boolean).slice(0, 2);
-      const who = c.a ? esc(c.a) : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
+      const names = g.ids.map(id => scopeStaffName(sc.staff, id)).filter(Boolean).slice(0, 2);
+      const who = c.a ? esc(scopeBare(c.a)) : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
       const note = c.n.startsWith(SCOPE_EPA_NOTE) ? c.n.slice(SCOPE_EPA_NOTE.length) : c.n;
       return `<div class="crow"><button class="cmain" data-action="sheet" data-part="${c.pid}" data-obs="${c.i}" data-chase="1"` +
         `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
@@ -482,7 +482,7 @@ function partBlock(p, st) {
         `${ic(appd ? "check" : "clock")}${appd ? "Approved" : "Pending"}</button>` +
         `<button class="ometabtn" data-action="sheet" data-part="${p.id}" data-obs="${i}">` +
         `<span class="onum">${String(i + 1).padStart(2, "0")}</span><span class="odate">${esc(o.d || "no date")}</span>` +
-        `<span class="otext">${[o.a, o.n].filter(Boolean).map(esc).join(" · ")}</span></button></li>`;
+        `<span class="otext">${[scopeBare(o.a), o.n].filter(Boolean).map(esc).join(" · ")}</span></button></li>`;
     });
     h += `</ol>`;
   }
@@ -643,7 +643,7 @@ function assessorNames() {
   all.sort((x, y) => String(y.ts || "").localeCompare(String(x.ts || "")));
   const out = [];
   for (const o of all) {
-    const name = o.a.trim();
+    const name = scopeBare(o.a);
     if (!out.some(x => x.toLowerCase() === name.toLowerCase())) out.push(name);
   }
   return out;
@@ -680,7 +680,7 @@ function sheetHTML() {
     `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>` + picker +
     `<label class="lbl mono">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
-    `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Dr. Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
+    `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
     `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` +
     `<div class="seg" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +

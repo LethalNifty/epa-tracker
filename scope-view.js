@@ -18,7 +18,7 @@ let scopeCardsFresh = false, scopeIntroDone = false, scopeLit = null, scopeErr =
 const scopeData = () => Store.state.scopes;
 const scopeStaffOf = id => scopeData().staff.find(p => p.id === id) || null;
 const scopeSurname = p => String(p.name || "").split(",")[0].trim();
-const scopeDr = id => { const p = scopeStaffOf(id); return p ? "Dr. " + scopeSurname(p) : ""; };
+const scopeWho = id => { const p = scopeStaffOf(id); return p ? scopeSurname(p) : ""; };
 const scopeSiteShort = k => (SCOPE_SITES.find(x => x[0] === k) || [, , ""])[2];
 const scopeLocShort = k => (SCOPE_LOCS.find(x => x[0] === k) || [, , ""])[2];
 const scopeIsoDate = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d, 12); };
@@ -135,22 +135,22 @@ function scopeCardHTML(card, i, o = {}) {
   const miss = card.err || [];
   const staffP = scopeStaffOf(card.staff);
   let staff;
-  if (staffP) staff = scopeChip(`${ic("user")}${esc(scopeDr(card.staff))}`, "scopechip", {key: card.key, kind: "staff"}, "on" + (card.carried && card.carried.staff ? " carried" : ""));
+  if (staffP) staff = scopeChip(`${ic("user")}${esc(scopeWho(card.staff))}`, "scopechip", {key: card.key, kind: "staff"}, "on" + (card.carried && card.carried.staff ? " carried" : ""));
   else if (card.staffHeard) staff = scopeChip(`${ic("plus")}Add ${esc(card.staffHeard)}`, "scopenewstaff", {key: card.key}, "warn") +
     scopeChip("Someone else", "scopechip", {key: card.key, kind: "staff"}, "ghost");
-  else if (card.staffAlt && card.staffAlt.length) staff = card.staffAlt.map(id => scopeChip(esc(scopeDr(id)) + "?", "scopestaff1", {key: card.key, id}, "ghost")).join("");
+  else if (card.staffAlt && card.staffAlt.length) staff = card.staffAlt.map(id => scopeChip(esc(scopeWho(id)) + "?", "scopestaff1", {key: card.key, id}, "ghost")).join("");
   else staff = scopeChip(`${ic("user")}Staff`, "scopechip", {key: card.key, kind: "staff"}, "ghost");
   const sent = scopeSentFor(card.editId).filter(x => PART_BY_ID[x.pid]);
   const offers = scopeOffers(card).filter(pid => !sent.some(x => x.pid === pid));
   const epa = sent.length || offers.length ? `<div class="offers">` + sent.map(x => {
     const P = PART_BY_ID[x.pid];
     return `<div class="offer sent"><span class="obox">${ic("check")}</span><span><b>${P.label}</b> added, ` +
-      `${x.status === "approved" ? "approved" : "pending"}${x.a ? " with " + esc(x.a) : ""}</span>` +
+      `${x.status === "approved" ? "approved" : "pending"}${x.a ? " with " + esc(scopeBare(x.a)) : ""}</span>` +
       `<span class="cc sm st-${P.stage}">${esc(PART_SHORT[x.pid] || "")}</span></div>`;
   }).join("") + offers.map(pid => {
     const on = !!card.epa[pid], P = PART_BY_ID[pid];
     return `<button class="offer${on ? " on" : ""}" data-action="scopeepa" data-key="${card.key}" data-pid="${pid}" aria-pressed="${on}">` +
-      `<span class="obox">${on ? ic("check") : ""}</span><span>${on ? "Adding" : "Add"} <b>${P.label}</b> as pending with ${esc(scopeDr(card.staff))}</span>` +
+      `<span class="obox">${on ? ic("check") : ""}</span><span>${on ? "Adding" : "Add"} <b>${P.label}</b> as pending with ${esc(scopeWho(card.staff))}</span>` +
       `<span class="cc sm st-${P.stage}">${esc(PART_SHORT[pid] || "")}</span></button>`;
   }).join("") + `</div>` : "";
   const left = card.leftover.length ? `<div class="leftover"><span class="mono">Didn't catch</span><div class="chips">` +
@@ -178,13 +178,13 @@ function scopeCardHTML(card, i, o = {}) {
 function scopeCtxLine() {
   const t = fmtDate(getToday()), today = scopeData().cases.filter(c => c.d === t).sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0];
   if (!today) return "New day";
-  return [scopeDr(today.staff), scopeSiteShort(today.site), scopeLocShort(today.loc)].filter(Boolean).join(" · ") || "New day";
+  return [scopeWho(today.staff), scopeSiteShort(today.site), scopeLocShort(today.loc)].filter(Boolean).join(" · ") || "New day";
 }
 function scopeBoxHTML(where) {
   const today = getToday(), n = scopeCap.cards.length;
   return `<section class="monitor capmon" aria-label="Say the case"><div class="monitor-in">` +
     `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="capctx">${esc(scopeCtxLine())}</span></div>` +
-    `<textarea id="scopebox-${where}" class="capbox" rows="3" data-scopefield="text" placeholder="EGD with Dr. Surname, biopsies for dysphagia, EoE" ` +
+    `<textarea id="scopebox-${where}" class="capbox" rows="3" data-scopefield="text" placeholder="EGD with Surname, biopsies for dysphagia, EoE" ` +
     `autocapitalize="sentences" enterkeyhint="done" aria-label="Say or type the case">${esc(scopeCap.text)}</textarea>` +
     `<div class="cap-f"><span class="cap-hint">${ic("mic", "sm")}<span>Tap the mic on your keyboard and say the case. A whole day works too.</span></span>` +
     `<button class="btn primary readbtn" data-action="scoperead">${n ? "Read again" : "Read it"}</button></div>` +
@@ -201,7 +201,7 @@ function scopeCardsHTML() {
 
 // ---- Log -------------------------------------------------------------------------------------------
 function scopeRowHTML(c) {
-  const sub = [scopeDr(c.staff), scopeSiteShort(c.site), scopeLocShort(c.loc)].filter(Boolean).join(" · ");
+  const sub = [scopeWho(c.staff), scopeSiteShort(c.site), scopeLocShort(c.loc)].filter(Boolean).join(" · ");
   const found = (c.found || []).filter(x => x !== "normal" || (c.found || []).length === 1).slice(0, 2).map(scopeFoundLabel).join(", ");
   return `<div class="srow${c.urg === "urgent" ? " urgent" : ""}${scopeLit === c.id ? " lit" : ""}"><button class="srow-b" data-action="scopeedit" data-id="${esc(c.id)}">` +
     `<span class="srow-g">${scopeGlyph(c)}</span><span class="srow-m"><b>${esc(scopeSummary(c))}</b>` +
@@ -221,13 +221,13 @@ function scopeHintHTML() {
     .map(P => ({P, left: P.required - (Store.state.obs[P.id] || []).length})).filter(x => x.left > 0);
   if (!needs.length) return "";
   const list = needs.map(x => `${x.P.label} (${PART_SHORT[x.P.id]}) needs ${x.left}`).join(", ");
-  return `<div class="card shint">${ic("target")}<div><b>Before your next case</b><span>If ${esc(scopeDr(today.staff))} is open to it, ask now: ${esc(list)}.</span></div>` +
+  return `<div class="card shint">${ic("target")}<div><b>Before your next case</b><span>If ${esc(scopeWho(today.staff))} is open to it, ask now: ${esc(list)}.</span></div>` +
     `<button class="iconbtn" data-action="scopehintoff" aria-label="Dismiss for today">${ic("x")}</button></div>`;
 }
 function scopeRecentHTML() {
   const t = fmtDate(getToday()), q = scopeSearch.trim().toLowerCase();
   let list = scopeData().cases.filter(c => c.d !== t).slice().sort((a, b) => -scopeByDate(a, b));
-  if (q) list = list.filter(c => (scopeSummary(c) + " " + scopeDr(c.staff) + " " + (c.found || []).map(scopeFoundLabel).join(" ") + " " +
+  if (q) list = list.filter(c => (scopeSummary(c) + " " + scopeWho(c.staff) + " " + (c.found || []).map(scopeFoundLabel).join(" ") + " " +
     (c.why || []).map(scopeWhyLabel).join(" ") + " " + scopeSiteShort(c.site) + " " + scopeDayLabel(c.d) + " " + (c.note || "")).toLowerCase().includes(q));
   const total = list.length, shown = scopeAllRecent || q ? list : list.slice(0, 24);
   if (!total) return `<div class="card empty">${q ? "Nothing matches. Try a staff name, procedure or finding." : "Earlier cases show up here."}</div>`;
@@ -294,7 +294,7 @@ function scopeDepthHTML() {
   const sel = scopeDot && series.find(x => x.id === scopeDot) ? series.find(x => x.id === scopeDot) : series[n - 1];
   const selC = sel ? s.cases.find(c => c.id === sel.id) : null;
   const read = selC ? `<div class="readout"><span class="mono">${sel === series[n - 1] && !scopeDot ? "Latest" : "Case " + sel.i}</span>` +
-    `<b>${esc(scopeReachLabel(sel.reach))}</b><span>${esc(scopeShortDate(sel.d))}${selC.staff ? " · " + esc(scopeDr(selC.staff)) : ""}</span></div>` : "";
+    `<b>${esc(scopeReachLabel(sel.reach))}</b><span>${esc(scopeShortDate(sel.d))}${selC.staff ? " · " + esc(scopeWho(selC.staff)) : ""}</span></div>` : "";
   const desc = n ? `${n} colonoscopies by how far you got; ${cec} of the last ${last20.length} reached the cecum.` : "No colonoscopies yet.";
   return `<section class="monitor depthmon" aria-label="Colon depth"><div class="monitor-in">` +
     `<div class="ov mono"><span>Colon depth</span><span>${n} colonoscop${n === 1 ? "y" : "ies"}</span></div>` +
@@ -346,7 +346,7 @@ function scopeBarsHTML(rows, total) {
 function scopeBreadthHTML() {
   const s = scopeData(), b = scopeBreadth(s.cases, null, null, s.staff);
   if (!b.n) return "";
-  const staff = b.staff.slice(0, 8).map(r => ({label: r.id === "none" ? "Not recorded" : "Dr. " + scopeSurname(r), n: r.n}));
+  const staff = b.staff.slice(0, 8).map(r => ({label: r.id === "none" ? "Not recorded" : scopeSurname(r), n: r.n}));
   const map = (obj, list) => list.map(([k, label]) => ({label, n: obj[k] || 0})).concat(obj.none ? [{label: "Not recorded", n: obj.none}] : []).filter(x => x.n);
   return `<section class="sec"><div class="sec-head"><h2>Breadth</h2><span class="mono">All ${b.n} cases</span></div><div class="card pad breadth">` +
     `<div class="bgrp2"><span class="mono">Staff</span>${scopeBarsHTML(staff)}</div>` +
@@ -476,7 +476,7 @@ function scopeRead() {
   // What could identify a patient leaves the box too.
   if (r.removed) scopeCap.text = scopeGuard(scopeCap.text).text;
   scopeCardsFresh = true;
-  if (!scopeCap.cards.length) scopeErr = scopeCap.text.trim() ? "Nothing to log in that. Say the procedure, like “EGD with Dr. Surname”." : "Say or type a case first.";
+  if (!scopeCap.cards.length) scopeErr = scopeCap.text.trim() ? "Nothing to log in that. Say the procedure, like “EGD with Surname”." : "Say or type a case first.";
   else scopeErr = null;
 }
 function scopeValidate(card) {
@@ -497,7 +497,7 @@ function scopeAddEpa(card, caseId) {
   for (const pid of Object.keys(card.epa || {})) {
     if (!card.epa[pid]) continue;
     const i = Store.logObs(pid);
-    Store.setObsMeta(pid, i, {d: card.d || fmtDate(getToday()), a: scopeDr(card.staff), n: SCOPE_EPA_NOTE + scopeSummary(card), status: "pending", src: caseId});
+    Store.setObsMeta(pid, i, {d: card.d || fmtDate(getToday()), a: scopeWho(card.staff), n: SCOPE_EPA_NOTE + scopeSummary(card), status: "pending", src: caseId});
     added.push(PART_BY_ID[pid].label);
   }
   return added;
@@ -575,7 +575,7 @@ function scopeDispatch(act, d = {}) {
   else if (act === "scopepickclose") scopePick = null;
   else if (act === "scopestaff1" && card) { card.staff = d.id; card.staffAlt = []; if (card.staffSaid) Store.learnStaff(d.id, card.staffSaid.toLowerCase()); scopeCardsFresh = false; }
   else if (act === "scopenewstaff" && card) { const id = Store.addStaff(card.staffHeard); card.staff = id; card.staffHeard = null; scopeCardsFresh = false;
-    showToast(`${scopeDr(id)} added to your staff`); }
+    showToast(`${scopeWho(id)} added to your staff`); }
   else if (act === "scopeepa" && card) { card.epa = {...card.epa, [d.pid]: !card.epa[d.pid]}; scopeCardsFresh = false; }
   else if (act === "scopetonote" && card) { card.note = [card.note, card.leftover.join(" ")].filter(Boolean).join(" "); card.leftover = []; scopeCardsFresh = false; }
   else if (act === "scopesave") { if (scopeSaveAll() === "invalid") { const bad = scopeCap.cards.find(c => c.err); scopeFocus = bad && bad.key; } }

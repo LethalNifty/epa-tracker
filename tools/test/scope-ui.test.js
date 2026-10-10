@@ -73,7 +73,8 @@ test("say a case, read it, confirm, save; undo takes it back", () => {
   assert.match(html, /class="scard/);
   assert.match(html, /<b>EGD<\/b>/);
   assert.match(html, />Biopsy</);
-  assert.match(html, /Dr\. Brook/);
+  assert.match(html, /<\/svg>Brook</);
+  assert.doesNotMatch(html, /Dr\.? Brook/);
   assert.match(html, /Save case/);
   h.click("scopesave");
   const saved = h.saved().scopes.cases;
@@ -175,13 +176,13 @@ test("the EPA offer adds a pending observation with the staff member, only in th
   const h = endo("2026-09-28", withScopes());
   h.say("EGD with Brook");
   const key = h.card().key;
-  assert.match(h.html(), /Add <b>F3-A<\/b> as pending with Dr\. Brook/);
+  assert.match(h.html(), /Add <b>F3-A<\/b> as pending with Brook/);
   h.click("scopeepa", {key, pid: "f3a"});
   h.click("scopesave");
   const o = h.saved().obs.f3a;
   assert.equal(o.length, 1);
   assert.equal(o[0].status, "pending");
-  assert.equal(o[0].a, "Dr. Brook");
+  assert.equal(o[0].a, "Brook");
   assert.equal(o[0].n, "From scope log: EGD");
   assert.match(h.html(), /F3-A pending/);
   h.click("undo");
@@ -203,7 +204,7 @@ test("no staff, no offer; the number guard shows on the box", () => {
 test("carry-forward from today's saved case, and the context line", () => {
   const cases = [{id: "x1", d: "2026-09-28", staff: "sb", site: "stb", loc: "suite", urg: "elective", procs: ["egd.dx"], why: [], found: [], ts: "2026-09-28T14:00:00.000Z"}];
   const h = endo("2026-09-28", withScopes(cases));
-  assert.match(h.html(), /Dr\. Brook · St\. B · Suite/);
+  assert.match(h.html(), />Brook · St\. B · Suite/);
   h.say("EGD, gastritis");
   assert.equal(h.card().staff, "sb");
   assert.equal(h.card().site, "stb");
@@ -361,7 +362,7 @@ test("a case that added an EPA shows it as added and stops offering it", () => {
   const h = endo("2026-09-28", withScopes());
   h.say("EGD with Dr. Brook, biopsies");
   const key = h.card().key;
-  assert.match(h.html(), /Add <b>F3-A<\/b> as pending with Dr\. Brook/);
+  assert.match(h.html(), /Add <b>F3-A<\/b> as pending with Brook/);
   h.click("scopeepa", {key, pid: "f3a"});
   h.click("scopesave");
   const s = h.saved(), id = s.scopes.cases[0].id;
@@ -370,7 +371,7 @@ test("a case that added an EPA shows it as added and stops offering it", () => {
   assert.match(h.html(), /class="cc sm st-f sentc">F3-A<span class="sr"> added, pending<\/span>/);
   // The card records it and no longer offers it.
   h.click("scopeedit", {id});
-  assert.match(h.html(), /<div class="offer sent">.*?<b>F3-A<\/b> added, pending with Dr\. Brook/);
+  assert.match(h.html(), /<div class="offer sent">.*?<b>F3-A<\/b> added, pending with Brook/);
   assert.doesNotMatch(h.html(), /data-action="scopeepa"/);
   h.click("scopeupdate");
   assert.equal(h.saved().obs.f3a.length, 1);
@@ -381,7 +382,7 @@ test("a case that added an EPA shows it as added and stops offering it", () => {
   // Approved in Entrada, then deleted: the card follows the observation.
   h.run(`Store.setObsStatus("f3a", 0, "approved")`);
   h.click("scopeedit", {id});
-  assert.match(h.html(), /<b>F3-A<\/b> added, approved with Dr\. Brook/);
+  assert.match(h.html(), /<b>F3-A<\/b> added, approved with Brook/);
   h.click("scopeclose");
   h.run(`Store.removeObs("f3a", 0)`);
   h.click("scopeedit", {id});
@@ -395,7 +396,7 @@ test("an EPA added from a case before cases were linked is matched on load", () 
   const h = endo("2026-09-28", st);
   assert.equal(h.val("Store.state.obs.f3a[0].src"), "a");
   h.click("scopeedit", {id: "a"});
-  assert.match(h.html(), /<b>F3-A<\/b> added, pending with Dr\. Brook/);
+  assert.match(h.html(), /<b>F3-A<\/b> added, pending with Brook/);
 });
 
 test("every sheet has a handle and a close button the handle can use", () => {
