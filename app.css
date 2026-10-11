@@ -790,7 +790,11 @@ a.srcrow:active { background: var(--wall-2); }
 #ibdq::placeholder { color: var(--faint); }
 #ibdq::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 #ibdq:focus { border-color: var(--wli); box-shadow: 0 0 0 4px var(--wli-wash); outline: none; }
-.ibdcats { scroll-margin-top: 14px; }
+.ibdcats { scroll-margin-top: 14px; --fl: 0px; --fr: 0px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.ibdcats.fl { --fl: 34px; }
+.ibdcats.fr { --fr: 48px; }
 .ibdcats + .bcount { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .offkey { display: inline-flex; align-items: center; gap: 7px; }
 .offkey .dr-off { margin: 0; }

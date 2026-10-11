@@ -11,6 +11,7 @@ const ibdOpen = new Set();
 let ibdPrepOpen = false;
 let ibdIntro = true;           // the map plays its one entrance the first time it is drawn
 let ibdFresh = null;           // the card just opened, so only it slides open on the redraw
+let ibdCatsX = 0;              // how far the chip row is scrolled, kept across redraws
 
 // Targets on the map, in the order the lymphocyte passes them. x and y are in
 // the map's 320 by 180 viewBox, beside what each labels; at is when the pin
@@ -255,6 +256,28 @@ function ibdField(el) {
 // The map's entrance plays once per visit to the IBD view.
 function ibdAfterRender() {
   ibdFresh = null;
+  ibdCatsRestore();
   if (route.page === "guides" && guidesTab === "d") ibdIntro = false;
   else ibdIntro = true;
+}
+// The chip row scrolls sideways: it keeps its place across redraws, keeps the
+// picked chip in view, and fades whichever edge has more chips past it.
+function ibdCatsRestore() {
+  const row = typeof document !== "undefined" && document.getElementById && document.getElementById("ibd-list");
+  if (!row || !row.querySelector) return;
+  row.scrollLeft = ibdCatsX;
+  const on = row.querySelector(".bcat.on");
+  if (on && ibdChip !== "all") {
+    // Clear of the faded edges (34 and 48 px wide).
+    const l = on.offsetLeft - 40, r = on.offsetLeft + on.offsetWidth + 54 - row.clientWidth;
+    if (row.scrollLeft > l) row.scrollLeft = l;
+    else if (row.scrollLeft < r) row.scrollLeft = r;
+  }
+  const edges = () => {
+    ibdCatsX = row.scrollLeft;
+    row.classList.toggle("fl", row.scrollLeft > 4);
+    row.classList.toggle("fr", row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+  };
+  edges();
+  row.onscroll = edges;
 }

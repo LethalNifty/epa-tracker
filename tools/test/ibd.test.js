@@ -237,6 +237,23 @@ test("UC and Crohn's narrow the list", () => {
   assert.ok(cd.every(id => byId[id].dz.includes("cd")));
 });
 
+test("the chip row keeps its place, keeps the picked chip in view and fades the edges with more chips", () => {
+  const h = phone();
+  const cls = new Set();
+  const on = {offsetLeft: 900, offsetWidth: 90};
+  h.els["ibd-list"] = {scrollLeft: 0, clientWidth: 390, scrollWidth: 1300, querySelector: () => on,
+    classList: {toggle: (c, v) => { if (v) cls.add(c); else cls.delete(c); }}};
+  h.run(`ibdCatsX = 300; ibdChip = "s:pso"; ibdCatsRestore();`);
+  const row = h.els["ibd-list"];
+  // The picked chip (900 to 990) ends up clear of the right fade.
+  assert.equal(row.scrollLeft, 900 + 90 + 54 - 390);
+  assert.deepEqual([...cls].sort(), ["fl", "fr"]);
+  row.scrollLeft = 1300 - 390;
+  row.onscroll();
+  assert.deepEqual([...cls], ["fl"]);
+  assert.equal(h.val("ibdCatsX"), 910);
+});
+
 test("a situation groups the drugs by verdict, each with its reason", () => {
   const h = phone();
   h.click("guidesdchip", {chip: "s:preg"});
