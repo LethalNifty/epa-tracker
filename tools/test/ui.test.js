@@ -92,12 +92,12 @@ test("This week lists only Foundations, carried first, and names the stage", () 
 
 test("recap shows once per block week", () => {
   const h = load({today: "2026-09-24", state: state({c2: many(2, "2026-09-20")})});
-  assert.match(h.html(), /Your week, Jared/);
+  assert.match(h.html(), /Your week/);
   assert.match(h.html(), /Logged last week: <b>C2 ×2<\/b>/);
   h.click("dismissrecap", {key: "4-1"});
-  assert.doesNotMatch(h.html(), /Your week, Jared/);
-  assert.doesNotMatch(load({today: "2026-09-24", state: h.saved()}).html(), /Your week, Jared/);
-  assert.match(load({today: "2026-10-01", state: h.saved()}).html(), /Your week, Jared/);
+  assert.doesNotMatch(h.html(), /Your week/);
+  assert.doesNotMatch(load({today: "2026-09-24", state: h.saved()}).html(), /Your week/);
+  assert.match(load({today: "2026-10-01", state: h.saved()}).html(), /Your week/);
 });
 
 test("chase list approves in place", () => {
@@ -258,7 +258,7 @@ test("a screen that throws shows a recovery screen with export, not a blank page
 
 test("This week comes before the week in review", () => {
   const h = load({today: "2026-09-24"});
-  assert.ok(h.html().indexOf("<h2>This week</h2>") < h.html().indexOf("Your week, Jared"));
+  assert.ok(h.html().indexOf("<h2>This week</h2>") < h.html().indexOf("Your week"));
 });
 
 test("Back returns to where the list was scrolled", () => {

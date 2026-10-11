@@ -140,7 +140,7 @@ section.sec { margin-top: 28px; }
 .monitor, .callnow { --cut: 20px; position: relative; margin-top: 16px; padding: 1px; background: var(--fold-2);
   clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)),
     calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut)); }
-.monitor-in, .callnow-in { position: relative; padding: 12px 14px 11px;
+.monitor-in, .callnow-in { position: relative; padding: 12px 14px 11px; overflow: hidden;
   clip-path: polygon(calc(var(--cut) - .4px) 0, calc(100% - var(--cut) + .4px) 0, 100% calc(var(--cut) - .4px),
     100% calc(100% - var(--cut) + .4px), calc(100% - var(--cut) + .4px) 100%, calc(var(--cut) - .4px) 100%,
     0 calc(100% - var(--cut) + .4px), 0 calc(var(--cut) - .4px));
@@ -1447,7 +1447,7 @@ html.stacked .amb { opacity: 0; }
 @keyframes bloom { 0% { opacity: 0; transform: scale(.35); } 28% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
 .monitor.boot .dial .t.off { animation: ringUp .6s ease calc(.08s - var(--boot-el, 0ms)) both; }
 @keyframes ringUp { from { opacity: 0; } }
-.monitor.boot .ov > span { animation: typeOn .62s steps(16, end) calc(.3s - var(--boot-el, 0ms)) both; }
+.monitor.boot .ov > span { animation: typeOn .62s steps(16, end) calc(.3s - var(--boot-el, 0ms)) backwards; }
 @keyframes typeOn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .monitor.boot .dial-center { animation: rise .7s var(--ease-out) calc(.2s - var(--boot-el, 0ms)) both; }
 

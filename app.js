@@ -5,7 +5,7 @@
 
 const KEY = "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
-const APP_VERSION = "epa-v28";
+const APP_VERSION = "epa-v29";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
@@ -326,7 +326,7 @@ function recapHTML(rc, rows) {
   if (scopes) items.push(scopes);
   return `<section class="brief" aria-label="Week in review"><div class="brief-head"><span class="mono">Week in review</span>` +
     `<button class="iconbtn" data-action="dismissrecap" data-key="${rc.key}" aria-label="Dismiss">${ic("x")}</button></div>` +
-    `<h2>Your week, Jared</h2><ul>${items.join("")}</ul></section>`;
+    `<h2>Your week</h2><ul>${items.join("")}</ul></section>`;
 }
 function thisWeekHTML(rows, stage) {
   const due = rows.reduce((a, r) => a + r.outstanding, 0);

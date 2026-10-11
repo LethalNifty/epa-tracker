@@ -22,11 +22,19 @@ test("the app never says Elentra", () => {
   assert.doesNotMatch(ownText(), /elentra/i);
 });
 
+test("the power-on leaves nothing clipped: the typed overlay drops its clip when done, and the bloom stays inside the monitor", () => {
+  const css = read("app.css");
+  // Held only before it starts, so a stepped animation stopping one step short can't crop the last letter.
+  assert.match(css, /\.monitor\.boot \.ov > span \{ animation: typeOn [^}]*\) backwards; \}/);
+  // The bloom grows past the monitor's edges; clipped there, it can't widen the page.
+  assert.match(css, /\.monitor-in, \.callnow-in \{[^}]*overflow: hidden;/);
+});
+
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v28";/);
+  assert.match(sw, /const CACHE = "epa-v29";/);
   // The page shows the same version the service worker caches.
-  assert.match(read("app.js"), /const APP_VERSION = "epa-v28";/);
+  assert.match(read("app.js"), /const APP_VERSION = "epa-v29";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
     "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
     "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"]) {
