@@ -52,9 +52,9 @@ test("the look loads nothing from other sites: Outfit is served from the app", (
 
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v33";/);
+  assert.match(sw, /const CACHE = "epa-v34";/);
   // The page shows the same version the service worker caches.
-  assert.match(read("app.js"), /const APP_VERSION = "epa-v33";/);
+  assert.match(read("app.js"), /const APP_VERSION = "epa-v34";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
     "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);

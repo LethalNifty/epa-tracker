@@ -615,7 +615,8 @@ a.btn.callbtn .ic { color: inherit; }
 .brow:first-of-type { border-top: 0; }
 .bk { padding-top: 3px; font: 500 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
 .bv { line-height: 1.45; }
-.bv b { color: var(--nbi-ink); font-weight: 540; }
+/* Numbers are lit: warm gold with a soft glow, so they stand clear of the text. */
+.bv b { color: var(--flu); font-weight: 640; text-shadow: 0 0 10px rgba(255, 200, 114, .35); }
 .bv.note { color: #cfcae6; font-size: 13.5px; }
 .bcard mark { background: rgba(255, 174, 138, .28); color: inherit; border-radius: 3px; padding: 0 1px; }
 .srcrow { display: flex; align-items: center; gap: 9px; margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md);
