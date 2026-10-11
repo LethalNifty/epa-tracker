@@ -20,7 +20,7 @@ function guidesDay(iso) {
 }
 function guidesSwitchHTML() {
   const b = (k, label) => `<button class="${guidesTab === k ? "on" : ""}" data-action="guidestab" data-tab="${k}"${guidesTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<div class="segtabs four" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("t", "Trials")}${b("b", "Biopsy")}${b("d", "IBD drugs")}</div>`;
+  return `<div class="segtabs four" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("t", "Trials")}${b("d", "IBD drugs")}${b("b", "Biopsy")}</div>`;
 }
 function guidesState() { return Store.state.guides; }
 
@@ -250,7 +250,7 @@ function guidesAfterRender() {
   const el = document.querySelector && document.querySelector(sel);
   if (el && el.scrollIntoView) el.scrollIntoView({block: "start", behavior: "smooth"});
 }
-// Chip rows scroll sideways (Guidelines, Trials, Biopsy, IBD drugs). Each keeps its
+// Chip rows scroll sideways (Guidelines, Trials, IBD drugs, Biopsy). Each keeps its
 // place across redraws, brings a newly picked chip clear of the faded edges,
 // and fades whichever edge has more chips past it.
 const guidesCats = {};

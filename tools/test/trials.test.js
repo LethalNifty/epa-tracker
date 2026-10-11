@@ -111,7 +111,8 @@ test("this block's trials follow this block's guideline topics", () => {
 test("Trials is the second view in Guides, grouped by section, one card per trial", () => {
   const html = trialsTab().html();
   assert.match(html, /class="segtabs four"/);
-  const order = ["Guidelines", "Trials", "Biopsy", "IBD drugs"].map(l => html.indexOf(`>${l}</button>`));
+  // Biopsy last: the view used least.
+  const order = ["Guidelines", "Trials", "IBD drugs", "Biopsy"].map(l => html.indexOf(`>${l}</button>`));
   assert.ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), "tab order " + order);
   assert.match(html, /data-tab="t" aria-current="page">Trials</);
   assert.equal((html.match(/<article class="lt[ "]/g) || []).length, 48);
