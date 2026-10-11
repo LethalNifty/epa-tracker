@@ -4,7 +4,7 @@
 // light: the reference view every other image is read against. Loaded after
 // guides.js and before app.js; uses app.js helpers when it runs.
 
-let guidesTab = "g";          // "g": guidelines, "b": biopsy protocols
+let guidesTab = "g";          // "g": guidelines, "b": biopsy protocols, "d": IBD drugs
 let guidesTerm = "";
 let guidesChip = "all";       // "all", "block", "pins", or a section id
 const guidesOpen = new Set();
@@ -20,7 +20,7 @@ function guidesDay(iso) {
 }
 function guidesSwitchHTML() {
   const b = (k, label) => `<button class="${guidesTab === k ? "on" : ""}" data-action="guidestab" data-tab="${k}"${guidesTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<div class="segtabs" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("b", "Biopsy")}</div>`;
+  return `<div class="segtabs three" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("b", "Biopsy")}${b("d", "IBD drugs")}</div>`;
 }
 function guidesState() { return Store.state.guides; }
 
@@ -92,6 +92,7 @@ function guidesTopicHTML(t, opts = {}) {
   if (!open) return h + `</article>`;
   h += `<div class="gt-body">`;
   if (t.id === "biopsy") h += `<button class="btn" data-action="guidestab" data-tab="b">${ic("jar")}Open the biopsy protocols</button>`;
+  if (t.s === "ibd") h += `<button class="btn" data-action="guidestab" data-tab="d">${ic("shield")}Open the IBD drug reference</button>`;
   h += t.p.map(d => guidesLinkHTML(d)).join("");
   if (old) h += `<p class="gt-warn">${ic("clock", "sm")}The lead guideline is ${GUIDES_OLD_YEARS} or more years old. Check for newer guidance.</p>`;
   if (t.a.length) h += `<div class="gt-sub mono">Also</div>` + t.a.map(d => guidesLinkHTML(d, true)).join("");
@@ -121,6 +122,9 @@ function viewGuides() {
   if (guidesTab === "b")
     return head("Shared Health Manitoba · 2022", `<p class="ph-note">Biopsy protocols: Manitoba first; other sources where it's silent.</p>`) +
       guidesSwitchHTML() + viewBiopsy({embedded: true});
+  if (guidesTab === "d")
+    return head("Health Canada · CAG · NACI", `<p class="ph-note">Every IBD drug sold in Canada: use, dose, work-up, monitoring and pregnancy, each line tagged with its source.</p>`) +
+      guidesSwitchHTML() + viewIbd();
   if (!D)
     return head("Guideline library", "") + guidesSwitchHTML() +
       `<div class="card empty spaced">${Guides.status === "idle" ? "Loading the guideline library." :
@@ -199,6 +203,7 @@ function guidesStudyHTML(item) {
 // ---- Taps and typing ---------------------------------------------------------------------------
 // Returns false when nothing needs redrawing.
 function guidesDispatch(act, d) {
+  if (act.startsWith("guidesd")) return ibdDispatch(act, d);
   if (act === "guidestab") { guidesTab = d.tab; if (route.page !== "guides") { go({page: "guides"}); return false; } route.keepScroll = false; enterNext = true; return true; }
   if (act === "guideschip") { guidesChip = d.chip; guidesOpen.clear(); route.keepScroll = false; return true; }
   if (act === "guidestoggle") { if (guidesOpen.has(d.id)) guidesOpen.delete(d.id); else guidesOpen.add(d.id); return true; }
@@ -213,6 +218,7 @@ function guidesDispatch(act, d) {
   return true;
 }
 function guidesField(el) {
+  if (ibdField(el)) return true;
   if (!el || el.id !== "guidesq") return false;
   const caret = el.selectionStart;
   guidesTerm = el.value;
@@ -224,13 +230,15 @@ function guidesField(el) {
 }
 // After a draw: scroll a jumped-to topic into view, and mark today's news seen.
 function guidesAfterRender() {
+  ibdAfterRender();
   if (route.page !== "guides") { guidesVisit = null; return; }
-  if (guidesTab !== "g" || !Guides.data) return;
-  const news = guidesNews(Guides.data.topics, getToday());
-  if (guidesUnseen(news, Store.state.guides.seen).length) Store.markGuidesSeen(news.map(n => n.k));
+  if (guidesTab === "g" && Guides.data) {
+    const news = guidesNews(Guides.data.topics, getToday());
+    if (guidesUnseen(news, Store.state.guides.seen).length) Store.markGuidesSeen(news.map(n => n.k));
+  }
   if (!guidesJump) return;
   const sel = guidesJump; guidesJump = null;
-  if (sel === "#guidesq") { const q = document.getElementById("guidesq"); if (q) q.focus(); return; }
+  if (sel === "#guidesq" || sel === "#ibdq") { const q = document.getElementById(sel.slice(1)); if (q) q.focus(); return; }
   const el = document.querySelector && document.querySelector(sel);
   if (el && el.scrollIntoView) el.scrollIntoView({block: "start", behavior: "smooth"});
 }

@@ -32,11 +32,11 @@ test("the power-on leaves nothing clipped: the typed overlay drops its clip when
 
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v29";/);
+  assert.match(sw, /const CACHE = "epa-v30";/);
   // The page shows the same version the service worker caches.
-  assert.match(read("app.js"), /const APP_VERSION = "epa-v29";/);
+  assert.match(read("app.js"), /const APP_VERSION = "epa-v30";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
-    "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
+    "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
     "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), "missing file " + f);
