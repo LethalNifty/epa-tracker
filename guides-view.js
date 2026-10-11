@@ -231,6 +231,7 @@ function guidesField(el) {
 // After a draw: scroll a jumped-to topic into view, and mark today's news seen.
 function guidesAfterRender() {
   ibdAfterRender();
+  guidesCatsAfterRender();
   if (route.page !== "guides") { guidesVisit = null; return; }
   if (guidesTab === "g" && Guides.data) {
     const news = guidesNews(Guides.data.topics, getToday());
@@ -241,6 +242,33 @@ function guidesAfterRender() {
   if (sel === "#guidesq" || sel === "#ibdq") { const q = document.getElementById(sel.slice(1)); if (q) q.focus(); return; }
   const el = document.querySelector && document.querySelector(sel);
   if (el && el.scrollIntoView) el.scrollIntoView({block: "start", behavior: "smooth"});
+}
+// Chip rows scroll sideways (Guidelines, Biopsy, IBD drugs). Each keeps its
+// place across redraws, brings a newly picked chip clear of the faded edges,
+// and fades whichever edge has more chips past it.
+const guidesCats = {};
+function guidesCatsAfterRender() {
+  if (route.page !== "guides" || typeof document === "undefined" || !document.querySelectorAll) return;
+  document.querySelectorAll(".bcats").forEach((row, i) => {
+    const st = guidesCats[guidesTab + i] || (guidesCats[guidesTab + i] = {x: 0, on: null});
+    row.scrollLeft = st.x;
+    const on = row.querySelector(".bcat.on");
+    const id = on ? on.getAttribute("data-chip") || on.getAttribute("data-cat") : null;
+    if (on && st.on !== null && id !== st.on) {
+      // The fades are 34 px (left) and 48 px (right) wide.
+      const l = on.offsetLeft - 40, r = on.offsetLeft + on.offsetWidth + 54 - row.clientWidth;
+      if (row.scrollLeft > l) row.scrollLeft = l;
+      else if (row.scrollLeft < r) row.scrollLeft = r;
+    }
+    st.on = id;
+    const edges = () => {
+      st.x = row.scrollLeft;
+      row.classList.toggle("fl", row.scrollLeft > 4);
+      row.classList.toggle("fr", row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+    };
+    edges();
+    row.onscroll = edges;
+  });
 }
 // Redraws once the library arrives, unless a sheet is open or a field has
 // the keyboard.

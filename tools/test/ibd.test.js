@@ -237,21 +237,23 @@ test("UC and Crohn's narrow the list", () => {
   assert.ok(cd.every(id => byId[id].dz.includes("cd")));
 });
 
-test("the chip row keeps its place, keeps the picked chip in view and fades the edges with more chips", () => {
+test("chip rows in Guides keep their place, bring a newly picked chip into view and fade the edges with more chips", () => {
   const h = phone();
-  const cls = new Set();
-  const on = {offsetLeft: 900, offsetWidth: 90};
-  h.els["ibd-list"] = {scrollLeft: 0, clientWidth: 390, scrollWidth: 1300, querySelector: () => on,
-    classList: {toggle: (c, v) => { if (v) cls.add(c); else cls.delete(c); }}};
-  h.run(`ibdCatsX = 300; ibdChip = "s:pso"; ibdCatsRestore();`);
-  const row = h.els["ibd-list"];
-  // The picked chip (900 to 990) ends up clear of the right fade.
-  assert.equal(row.scrollLeft, 900 + 90 + 54 - 390);
-  assert.deepEqual([...cls].sort(), ["fl", "fr"]);
-  row.scrollLeft = 1300 - 390;
-  row.onscroll();
-  assert.deepEqual([...cls], ["fl"]);
-  assert.equal(h.val("ibdCatsX"), 910);
+  h.run(`
+    var __cls = new Set(), __on = {offsetLeft: 900, offsetWidth: 90, getAttribute: k => k === "data-chip" ? window.__chip : null};
+    var __row = {scrollLeft: 0, clientWidth: 390, scrollWidth: 1300, querySelector: () => __on,
+      classList: {toggle: (c, v) => { if (v) __cls.add(c); else __cls.delete(c); }}};
+    document.querySelectorAll = () => [__row];
+    window.__chip = "all"; guidesCatsAfterRender();
+    __row.scrollLeft = 300; __row.onscroll();
+    window.__chip = "s:pso"; guidesCatsAfterRender();`);
+  // The new pick (900 to 990) ends up clear of the right fade.
+  assert.equal(h.val("__row.scrollLeft"), 900 + 90 + 54 - 390);
+  assert.deepEqual(h.val("[...__cls].sort()"), ["fl", "fr"]);
+  // A redraw with the same pick keeps the place the user scrolled to.
+  h.run(`__row.scrollLeft = 1300 - 390; __row.onscroll(); guidesCatsAfterRender();`);
+  assert.equal(h.val("__row.scrollLeft"), 910);
+  assert.deepEqual(h.val("[...__cls]"), ["fl"]);
 });
 
 test("a situation groups the drugs by verdict, each with its reason", () => {
