@@ -856,6 +856,8 @@ a.srcrow:active { background: var(--wall-2); }
 .dl.ck li.own::before { box-shadow: inset 0 0 0 1.4px var(--c); }
 .ibd-prep .dl li::before { background: var(--wli); }
 .ibd-prep .dl.ck li::before { background: none; box-shadow: inset 0 0 0 1.4px color-mix(in srgb, var(--wli) 45%, var(--fold-2)); }
+.dl b.lead { color: var(--light); font-weight: 600; }
+.harm .dl li::before { background: var(--mucosa); }
 .differ > h4 { color: var(--capillary); }
 .differ .dl li::before { background: var(--capillary); }
 .dl-none { margin-top: 2px; color: var(--faint); font-size: 13px; }

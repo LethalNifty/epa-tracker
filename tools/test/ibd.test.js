@@ -27,7 +27,7 @@ function allLines() {
   const out = [];
   for (const d of DRUGS) {
     const add = (where, ls) => ls.forEach(l => out.push({where: d.id + " " + where, l}));
-    add("how", [d.how]); add("use", d.use); add("dose", d.dose); add("avoid", d.avoid); add("preg", d.preg);
+    add("how", [d.how]); add("use", d.use); add("dose", d.dose); add("avoid", d.avoid); add("harm", d.harm); add("preg", d.preg);
     add("monitor", d.monitor); add("before", d.before.extra);
     if (d.warn) add("warn", [d.warn]);
     if (d.differ) add("differ", d.differ);
@@ -58,7 +58,7 @@ test("every card has the parts a card needs", () => {
     assert.ok(d.n && d.brands && d.k !== undefined, d.id);
     assert.ok(d.dz.length && d.dz.every(z => z === "uc" || z === "cd"), d.id + " disease");
     assert.ok(d.route.length && d.route.every(r => ["oral", "rectal", "iv", "sc"].includes(r)), d.id + " route");
-    for (const part of ["use", "dose", "avoid", "monitor"]) assert.ok(d[part].length, d.id + " has no " + part);
+    for (const part of ["use", "dose", "avoid", "harm", "monitor"]) assert.ok(d[part].length, d.id + " has no " + part);
     assert.ok(Array.isArray(d.preg), d.id + " pregnancy");
     assert.ok(d.before.base.every(id => BASE[id]), d.id + " work-up");
   }
@@ -125,6 +125,25 @@ test("each work-up adds what that drug needs to the shared tests", () => {
     for (const id of ["tb", "hbv"]) assert.ok(d.before.base.includes(id), d.id + " " + id);
 });
 
+test("serious side effects name the specific cancers and harms, not just 'cancer'", () => {
+  const harm = id => byId[id].harm.map(l => l[0]).join(" ");
+  assert.match(harm("thiopurines"), /Pancreatitis/);
+  assert.match(harm("thiopurines"), /hepatosplenic T-cell lymphoma/);
+  assert.match(harm("thiopurines"), /melanoma/);
+  for (const id of ["infliximab", "adalimumab", "golimumab", "certolizumab"]) {
+    assert.match(harm(id), /Hepatosplenic T-cell lymphoma/, id);
+    assert.match(harm(id), /melanoma, Merkel cell|melanoma and Merkel cell/, id);
+  }
+  assert.match(harm("infliximab"), /Hodgkin/);
+  assert.match(harm("tofacitinib"), /lung cancer/);
+  assert.match(harm("ozanimod"), /basal cell/);
+  // Past cancer is never left vague.
+  const text = JSON.stringify(DRUGS);
+  assert.doesNotMatch(text, /Past cancer: weigh carefully\./);
+  assert.doesNotMatch(text, /"(Serious infections including TB; )?lymphoma and other cancers\."/i);
+  assert.equal(H.val(`ibdSearch(IBD_DRUGS, "pancreatitis")[0].id`), "thiopurines");
+});
+
 test("the copied work-up reads like an order list", () => {
   const up = H.val("ibdWorkupText(IBD_BY_ID.upadacitinib)");
   assert.match(up, /^Before upadacitinib:\n- IGRA/);
@@ -173,7 +192,7 @@ test("a drug opens into its card and closes again", () => {
   h.click("guidesdrug", {id: "infliximab"});
   const html = h.html();
   assert.match(html, /<article class="dr c-tnf open fresh" id="d-infliximab">/);
-  for (const sec of ["Use", "Dose", "Avoid or use with care", "Pregnancy and breastfeeding", "Before starting", "Once started", "Where sources differ", "Sources"])
+  for (const sec of ["Use", "Dose", "Avoid or use with care", "Serious side effects", "Pregnancy and breastfeeding", "Before starting", "Once started", "Where sources differ", "Sources"])
     assert.ok(html.includes(`>${sec}</h4>`), sec);
   assert.match(html, /Health Canada boxed warning/);
   assert.match(html, /href="https:\/\/health-products\.canada\.ca\/dpd-bdpp\/info\?lang=eng&amp;code=\d+"/);

@@ -44,7 +44,12 @@ function ibdTags(keys) {
     `<span class="st${IBD_SRC_CA.has(w) ? " ca" : w === "Practice" ? " pr" : ""}" title="${esc(ts.join("; "))}">${esc(w)}</span>`).join("");
 }
 function ibdLine(line) {
-  return `<li>${ibdHi(esc(line[0]))}<span class="sts">${ibdTags(line[1])}</span></li>`;
+  return `<li>${ibdHi(ibdLead(esc(line[0])))}<span class="sts">${ibdTags(line[1])}</span></li>`;
+}
+// A short label before a colon ("Liver:", "Past cancer:") reads as the line's lead.
+function ibdLead(html) {
+  const m = /^([^:<]{2,40}): /.exec(html);
+  return m ? `<b class="lead">${m[1]}</b>: ${html.slice(m[0].length)}` : html;
 }
 function ibdList(lines) { return lines && lines.length ? `<ul class="dl">${lines.map(ibdLine).join("")}</ul>` : ""; }
 function ibdSec(title, lines, cls) {
@@ -140,6 +145,7 @@ function ibdDrugHTML(d, opts = {}) {
   h += ibdSec("Use", d.use);
   h += ibdSec("Dose", d.dose);
   h += ibdSec("Avoid or use with care", d.avoid);
+  h += ibdSec("Serious side effects", d.harm, "harm");
   h += d.preg.length ? ibdSec("Pregnancy and breastfeeding", d.preg) :
     `<section class="ds"><h4 class="mono">Pregnancy and breastfeeding</h4><p class="dl-none">Not addressed in the sources used here.</p></section>`;
   const wk = ibdWorkup(d);

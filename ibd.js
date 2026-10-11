@@ -16,6 +16,7 @@ const IBD_SRC = {
   hcSalaz: {w: "HC", t: "Salazopyrin monograph", d: "2020-10-19", u: IBD_DPD(17417)},
   hcEntocort: {w: "HC", t: "Entocort capsules monograph", d: "2023-03-09", u: IBD_DPD(43534)},
   hcEntEnema: {w: "HC", t: "Entocort Enema monograph", d: "2023-03-31", u: IBD_DPD(16264)},
+  hcPred: {w: "HC", t: "Teva-Prednisone monograph", d: "2025-01-15", u: IBD_DPD(507)},
   hcCortiment: {w: "HC", t: "Cortiment monograph", d: "2018-05-23", u: IBD_DPD(94275)},
   hcUceris: {w: "HC", t: "Uceris rectal foam monograph", d: "2020-04-15", u: IBD_DPD(98785)},
   hcImuran: {w: "HC", t: "Imuran monograph", d: "2026-09-09", u: IBD_DPD(1192)},
@@ -123,8 +124,14 @@ const IBD_DRUGS = [
     avoid: [
       ["Allergy to salicylates, including ASA.", "hcMezavant"],
       ["Severe kidney impairment (GFR under 30) or severe liver impairment.", "hcMezavant"],
+    ],
+    harm: [
       ["Acute intolerance in about 3%: cramps, bloody diarrhea and fever that mimic a flare. Stop it.", "hcMezavant"],
-      ["Interstitial nephritis and kidney stones are rare; keep fluid intake up.", "hcMezavant"],
+      ["Kidney: interstitial nephritis and kidney stones, both rare; keep fluid intake up.", "hcMezavant"],
+      ["Heart: myocarditis or pericarditis, a rare allergic reaction.", "hcMezavant hcPentasa"],
+      ["Blood: serious blood dyscrasias, rare; more likely alongside azathioprine or 6-MP.", "hcMezavant hcPentasa"],
+      ["Skin: DRESS, Stevens-Johnson syndrome or toxic epidermal necrolysis; stop at the first sign.", "hcMezavant hcPentasa"],
+      ["Liver failure has been reported in people with existing liver disease.", "hcMezavant hcPentasa"],
     ],
     preg: [["Continue through pregnancy and breastfeeding.", "gc25"]],
     before: {base: ["renal"], extra: []},
@@ -146,7 +153,13 @@ const IBD_DRUGS = [
     avoid: [
       ["Sulfonamide or salicylate allergy; asthma or hives set off by ASA or NSAIDs.", "hcSalaz"],
       ["Porphyria, intestinal or urinary obstruction, severe kidney impairment.", "hcSalaz"],
-      ["Reversible low sperm count and infertility in men; recovers 2 to 3 months after stopping.", "hcSalaz"],
+    ],
+    harm: [
+      ["Common, in about a third: nausea, headache and poor appetite.", "hcSalaz"],
+      ["Blood: agranulocytosis, aplastic anemia and other cytopenias; hemolysis, especially with G6PD deficiency.", "hcSalaz"],
+      ["Hypersensitivity: DRESS, Stevens-Johnson syndrome or toxic epidermal necrolysis, mostly in the first 3 months.", "hcSalaz"],
+      ["Liver injury; rarely fibrosing alveolitis in the lungs.", "hcSalaz"],
+      ["Men: low sperm count and infertility, reversed 2 to 3 months after stopping.", "hcSalaz"],
       ["Lowers folate.", "hcSalaz"],
     ],
     preg: [
@@ -182,6 +195,11 @@ const IBD_DRUGS = [
       ["Cirrhosis raises the amount that reaches the body.", "hcEntocort"],
       ["Switching from systemic steroids: watch for adrenal insufficiency.", "hcEntocort"],
     ],
+    harm: [
+      ["Fewer steroid effects than prednisone, but still possible: adrenal suppression, Cushingoid features, lower bone density.", "hcEntocort"],
+      ["Eyes: cataract, glaucoma and, rarely, central serous chorioretinopathy.", "hcEntocort"],
+      ["Rarely, psychiatric or behavioural changes.", "hcEntocort"],
+    ],
     preg: [["Steroids can be used in pregnancy when needed, and while breastfeeding.", "gc25"]],
     before: {base: [], extra: [["Ask about TB exposure and current infection", "hcEntocort"]]},
     monitor: [["Long courses: consider checking adrenal function.", "hcEntocort"]],
@@ -206,6 +224,15 @@ const IBD_DRUGS = [
       ["15 mg or more for 2 to 4 weeks can make TB skin tests falsely negative, so test first when you can.", "cts"],
       ["With 2 other immunosuppressants, or with a calcineurin inhibitor: consider PJP prophylaxis.", "ecco"],
     ],
+    harm: [
+      ["Infection: more of it, with its signs masked, including fungal infection and TB reactivation.", "hcPred"],
+      ["Bone: osteoporosis, vertebral fractures and avascular necrosis.", "hcPred"],
+      ["Eyes: posterior subcapsular cataract and glaucoma.", "hcPred"],
+      ["Metabolic: high glucose or new diabetes, high blood pressure, fluid retention and low potassium.", "hcPred"],
+      ["Mood: insomnia, euphoria, mood swings, depression and psychosis.", "hcPred"],
+      ["Blood clots; peptic ulcer bleeding or perforation with few symptoms; pancreatitis.", "hcPred"],
+      ["Adrenal suppression that can last months after stopping, so taper.", "hcPred"],
+    ],
     preg: [["Can be used in pregnancy when needed; breastfeeding is fine.", "gc25"]],
     before: {base: ["hbv"], extra: [["TB test before a long course, if time allows", "cts"]]},
     monitor: [["Bone density with long or repeated courses or other osteoporosis risks.", "acg25p"]],
@@ -216,7 +243,7 @@ const IBD_DRUGS = [
   {id: "thiopurines", cls: "imm", n: "Azathioprine and mercaptopurine",
     brands: "Imuran and generics (azathioprine); Purinethol and generics (mercaptopurine, 6-MP)",
     off: "Off-label for IBD in Canada: labelled for transplant and rheumatoid arthritis (azathioprine) and leukemia (6-MP).",
-    dz: ["uc", "cd"], route: ["oral"], k: "thiopurine aza 6mp 6-mp tpmt nudt15 imuran purinethol",
+    dz: ["uc", "cd"], route: ["oral"], k: "thiopurine aza 6mp 6-mp tpmt nudt15 imuran purinethol pancreatitis",
     how: ["Purine antimetabolites that suppress lymphocytes.", "hcImuran hcPurinethol"],
     use: [
       ["Maintenance after steroid-induced remission; not for induction on its own.", "aga24uc aga25cd cag15 cag19"],
@@ -233,9 +260,18 @@ const IBD_DRUGS = [
       ["TPMT or NUDT15 poor metabolizers: severe, possibly fatal marrow suppression.", "cpic hcImuran"],
       ["Allopurinol without a dose cut.", "hcImuran"],
       ["5-ASA inhibits TPMT and can deepen marrow suppression.", "hcImuran"],
-      ["Lymphoma risk rises with age. Hepatosplenic T-cell lymphoma: mostly young men also on an anti-TNF.", "aga20old hcRemicade"],
-      ["Non-melanoma skin cancer: sun protection and yearly skin checks.", "acg25p"],
-      ["Rare liver injury, including non-cirrhotic portal hypertension.", "hcImuran"],
+      ["Pancreatitis on a thiopurine before: do not rechallenge with either drug.", "hcImuran hcPurinethol"],
+      ["Past lymphoma or skin cancer: weigh carefully; both are linked to thiopurines.", "hcImuran"],
+    ],
+    harm: [
+      ["Marrow suppression: low white cells and platelets, worst with low TPMT or NUDT15 activity; hair loss with NUDT15 variants.", "hcImuran"],
+      ["Pancreatitis: common in IBD, usually in the first weeks. Stop for good.", "hcPurinethol hcImuran"],
+      ["Early hypersensitivity, in the first weeks: severe nausea and vomiting, fever, rash and raised liver tests; it returns within hours of a rechallenge.", "hcImuran"],
+      ["Liver: cholestatic hepatitis, veno-occlusive disease, nodular regenerative hyperplasia and non-cirrhotic portal hypertension.", "hcImuran hcPurinethol"],
+      ["Lymphoma: lymphoproliferative disorders, more with age; hepatosplenic T-cell lymphoma, rare and usually fatal, mostly in young men also on an anti-TNF.", "hcImuran aga20old hcRemicade"],
+      ["Skin: non-melanoma skin cancer and melanoma. Also cervical carcinoma in situ and Kaposi sarcoma.", "hcImuran acg25p"],
+      ["Mercaptopurine label: myeloid leukemias (AML, CML) have been reported.", "hcPurinethol"],
+      ["Infections, including PML; macrophage activation syndrome, often set off by EBV or CMV.", "hcImuran"],
     ],
     preg: [["Continue through pregnancy and breastfeeding. Watch liver tests for cholestasis; consider split dosing.", "gc25"]],
     before: {base: ["cbc", "liver", "hbv", "vzv", "preg"], extra: [["TPMT (activity or genotype) and NUDT15 genotype", "aga17 cpic hcImuran"]]},
@@ -267,6 +303,14 @@ const IBD_DRUGS = [
       ["Alcohol use disorder or chronic liver disease; existing blood dyscrasia or immunodeficiency.", "hcMetoject"],
       ["Nitrous oxide anesthesia.", "hcMetoject"],
     ],
+    harm: [
+      ["Liver: fibrosis and cirrhosis, sometimes with normal liver tests.", "hcMetoject"],
+      ["Lung: pneumonitis at any dose, even low. Dry cough, fever or breathlessness: stop and investigate.", "hcMetoject"],
+      ["Marrow: cytopenias, occasionally severe aplastic anemia.", "hcMetoject"],
+      ["Mouth ulcers or diarrhea: hold it, or risk hemorrhagic enteritis and perforation.", "hcMetoject"],
+      ["Infections, including Pneumocystis pneumonia.", "hcMetoject"],
+      ["Lymphoma and other lymphoproliferative disorders; some regress once it is stopped.", "hcMetoject"],
+    ],
     preg: [
       ["Contraindicated. Stop 1 to 3 months before trying to conceive.", "gc25"],
       ["Label: avoid pregnancy if either partner is taking it.", "hcMetoject"],
@@ -291,6 +335,14 @@ const IBD_DRUGS = [
       ["Abnormal kidney function, uncontrolled hypertension, active cancer or uncontrolled infection (label, for its other uses).", "hcNeoral"],
       ["Bosentan; St. John's wort lowers levels. Many CYP3A4 interactions.", "hcNeoral"],
       ["Low cholesterol or magnesium raise the seizure risk; correct them first.", "ecco"],
+    ],
+    harm: [
+      ["Kidney: dose-related nephrotoxicity; high blood pressure.", "hcNeoral"],
+      ["Nerves: tremor, seizures and PRES (headache, confusion, visual loss).", "hcNeoral"],
+      ["High potassium, low magnesium and high uric acid.", "hcNeoral"],
+      ["Infections, including Pneumocystis.", "hcNeoral ecco"],
+      ["Lymphoma and skin cancers.", "hcNeoral"],
+      ["Gum overgrowth and excess hair growth.", "hcNeoral"],
     ],
     preg: [],
     before: {base: ["cbc", "liver", "renal", "hbv"], extra: [["Magnesium, potassium, cholesterol and blood pressure", "ecco"]]},
@@ -325,7 +377,18 @@ const IBD_DRUGS = [
       ["Serious or active infection: sepsis, abscess, TB, opportunistic infection.", "hcRemicade"],
       ["Moderate to severe heart failure (NYHA III or IV).", "hcRemicade"],
       ["Demyelinating disease (MS, optic neuritis, Guillain-Barré): great caution.", "hcRemicade"],
-      ["Past cancer: weigh carefully.", "hcRemicade"],
+      ["Past cancer: the label advises caution. The cancers linked to anti-TNFs are lymphoma, leukemia, melanoma, Merkel cell carcinoma and non-melanoma skin cancer.", "hcRemicade"],
+    ],
+    harm: [
+      ["Infections: TB, often disseminated or outside the lungs; invasive fungi (histoplasmosis, blastomycosis, coccidioidomycosis, aspergillosis, Pneumocystis); Listeria and Legionella.", "hcRemicade"],
+      ["Hepatosplenic T-cell lymphoma: rare and usually fatal; almost all on azathioprine or 6-MP as well; mostly teenage and young adult males with IBD.", "hcRemicade"],
+      ["Other lymphoma (Hodgkin and non-Hodgkin), and acute or chronic leukemia.", "hcRemicade"],
+      ["Skin: melanoma and Merkel cell carcinoma; non-melanoma skin cancer, more after phototherapy.", "hcRemicade"],
+      ["Cervical cancer: more common in women with RA on infliximab in a Swedish registry; keep screening, including after 60.", "hcRemicade"],
+      ["More cancers in heavy smokers with COPD, in a trial.", "hcRemicade"],
+      ["Liver: jaundice and hepatitis, some autoimmune; rarely liver failure.", "hcRemicade"],
+      ["Lupus-like syndrome; new psoriasis, often pustular on the palms and soles.", "hcRemicade"],
+      ["Infusion reactions. Restarted after a long gap: a delayed reaction 3 to 12 days later (muscle and joint pain, fever, rash).", "hcRemicade"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -361,11 +424,18 @@ const IBD_DRUGS = [
       ["UC: continue only if it worked within the first 8 weeks.", "hcHumira"],
       ["Trough target: at least 7.5 mg/L (weaker evidence than for infliximab).", "aga17"],
     ],
-    warn: ["Serious infections including TB; lymphoma and other cancers, including hepatosplenic T-cell lymphoma.", "hcHumira"],
+    warn: ["Serious infections, including TB and invasive fungal infections. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcHumira"],
     avoid: [
       ["Serious or active infection, including TB.", "hcHumira"],
       ["Moderate to severe heart failure.", "hcHumira"],
       ["Demyelinating disease: great caution.", "hcHumira"],
+      ["Past cancer: use with caution.", "hcHumira"],
+    ],
+    harm: [
+      ["Infections: TB and invasive fungi (histoplasmosis, aspergillosis, coccidioidomycosis), often disseminated; other opportunistic infections.", "hcHumira"],
+      ["Hepatosplenic T-cell lymphoma, mostly in teenage and young adult males also on a thiopurine; other lymphoma and leukemia.", "hcHumira"],
+      ["Skin: melanoma, Merkel cell carcinoma and non-melanoma skin cancer.", "hcHumira"],
+      ["Lupus-like syndrome, demyelination and worsening heart failure.", "hcHumira"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -392,10 +462,17 @@ const IBD_DRUGS = [
       ["200 mg SC at week 0, 100 mg at week 2, then 50 mg every 4 weeks.", "hcSimponi"],
       ["100 mg every 4 weeks at the physician's discretion; check levels before escalating.", "hcSimponi"],
     ],
-    warn: ["Serious infections including TB; lymphoma and other cancers.", "hcSimponi"],
+    warn: ["Serious infections, including TB. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcSimponi"],
     avoid: [
       ["Severe infection: sepsis, TB, opportunistic infection.", "hcSimponi"],
       ["Moderate to severe heart failure (NYHA III or IV).", "hcSimponi"],
+      ["Past cancer: use with caution.", "hcSimponi"],
+    ],
+    harm: [
+      ["Infections: TB and invasive fungi; other opportunistic infections.", "hcSimponi"],
+      ["Hepatosplenic T-cell lymphoma, mostly in teenage and young adult males also on a thiopurine; other lymphoma and leukemia.", "hcSimponi"],
+      ["Skin: melanoma, Merkel cell carcinoma and non-melanoma skin cancer.", "hcSimponi"],
+      ["Lupus-like syndrome, demyelination and worsening heart failure.", "hcSimponi"],
     ],
     preg: [["Continue through pregnancy and breastfeeding.", "gc25"]],
     before: {base: IBD_ADV, extra: []},
@@ -414,10 +491,16 @@ const IBD_DRUGS = [
       ["No Crohn's dose in the Canadian label.", "hcCimzia"],
       ["Trough target: at least 20 mg/L.", "aga17"],
     ],
-    warn: ["Serious infections including TB; lymphoma and other cancers.", "hcCimzia"],
+    warn: ["Serious infections, including TB and invasive fungal infections. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcCimzia"],
     avoid: [
       ["Moderate to severe heart failure.", "hcCimzia"],
       ["HBsAg-positive: reactivation, sometimes fatal.", "hcCimzia"],
+    ],
+    harm: [
+      ["Infections: TB and invasive fungi (histoplasmosis, aspergillosis, blastomycosis, candidiasis); other opportunistic infections.", "hcCimzia"],
+      ["Hepatosplenic T-cell lymphoma, mostly in teenage and young adult males with IBD also on a thiopurine; other lymphoma and leukemia.", "hcCimzia"],
+      ["Skin: melanoma, Merkel cell carcinoma and non-melanoma skin cancer.", "hcCimzia"],
+      ["Lupus-like syndrome, demyelination and worsening heart failure.", "hcCimzia"],
     ],
     preg: [["Continue through pregnancy and breastfeeding.", "gc25"]],
     before: {base: IBD_ADV, extra: []},
@@ -445,6 +528,13 @@ const IBD_DRUGS = [
       ["Active severe or opportunistic infection.", "hcEntyvio"],
       ["Do not combine with an anti-TNF or natalizumab.", "hcEntyvio"],
       ["Jaundice or other significant liver injury: stop.", "hcEntyvio"],
+    ],
+    harm: [
+      ["Infusion reactions and anaphylaxis, sometimes hours later.", "hcEntyvio"],
+      ["PML: no confirmed case, but the label cannot rule it out; check new neurologic symptoms.", "hcEntyvio"],
+      ["Liver: raised transaminases or bilirubin; hepatitis in 3 trial patients.", "hcEntyvio"],
+      ["Cancer: trial data do not suggest a higher risk, though long-term follow-up is limited.", "hcEntyvio"],
+      ["Common: nasopharyngitis, joint pain, headache, nausea and fever.", "hcEntyvio"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -476,7 +566,13 @@ const IBD_DRUGS = [
     ],
     avoid: [
       ["Severe infection: sepsis, active TB, opportunistic infection.", "hcStelara"],
-      ["Rare allergic alveolitis or eosinophilic pneumonia.", "hcStelara"],
+      ["Past cancer: not studied; use with caution.", "hcStelara"],
+    ],
+    harm: [
+      ["Serious infections, mostly common ones (pneumonia, abscess, sepsis); Listeria meningitis and eye herpes reported once each.", "hcStelara"],
+      ["Non-melanoma skin cancer: check the skin, especially over 60 or after long immunosuppression or PUVA. Other cancers matched the general population rate in trials.", "hcStelara"],
+      ["Lung: allergic alveolitis or eosinophilic pneumonia after 1 to 3 doses.", "hcStelara"],
+      ["Rare: anaphylaxis and angioedema; one case of PRES.", "hcStelara"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -506,7 +602,10 @@ const IBD_DRUGS = [
     avoid: [
       ["Active TB; treat latent TB first.", "hcSkyrizi"],
       ["Live vaccines during treatment; after a live vaccine, wait 4 weeks to start.", "hcSkyrizi"],
-      ["Liver enzymes rose during Crohn's induction in trials.", "hcSkyrizi"],
+    ],
+    harm: [
+      ["Liver enzymes can rise during induction, in Crohn's and in UC.", "hcSkyrizi"],
+      ["Infections. The label carries no cancer warning.", "hcSkyrizi"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -533,6 +632,10 @@ const IBD_DRUGS = [
     avoid: [
       ["Clinically important active infection. No data in hepatitis B, hepatitis C or HIV.", "hcOmvoh"],
       ["Live vaccines: avoid; if needed, give at least 4 weeks before starting.", "hcOmvoh"],
+    ],
+    harm: [
+      ["Liver: ALT or AST over 3 times normal in about 2% in UC trials, over 10 times in 0.2%.", "hcOmvoh"],
+      ["Infections and injection-site reactions. The label carries no cancer warning.", "hcOmvoh"],
     ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
@@ -561,6 +664,10 @@ const IBD_DRUGS = [
       ["Acute liver disease or cirrhosis: consider other options.", "hcTremfya"],
       ["Live vaccines: avoid.", "hcTremfya"],
     ],
+    harm: [
+      ["Liver: drug-induced liver injury in one Crohn's trial patient given more than the label's induction; interrupt it if suspected.", "hcTremfya"],
+      ["Infections. The label carries no cancer warning.", "hcTremfya"],
+    ],
     preg: [
       ["Continue through pregnancy and breastfeeding.", "gc25"],
       ["Label: contraception until 12 weeks after the last dose.", "hcTremfya"],
@@ -585,14 +692,22 @@ const IBD_DRUGS = [
       ["Maintenance 5 mg twice daily; 10 mg twice daily for some, at the lowest dose and shortest time that works.", "hcXeljanz"],
       ["Halve the dose for moderate or severe kidney impairment, moderate liver impairment, or ketoconazole or fluconazole.", "hcXeljanz"],
     ],
-    warn: ["Serious infections, cancer, blood clots, major cardiac events and death. The cardiac, clot and death signals came from RA patients with cardiac risk factors, most 50 or older.", "hcXeljanz"],
+    warn: ["Serious infections; lymphoma and other cancers, including lung cancer; blood clots; major cardiac events; death. The cancer, clot, cardiac and death signals came from RA patients 50 or older with a cardiac risk factor.", "hcXeljanz"],
     avoid: [
       ["Pregnancy and breastfeeding: contraindicated in Canada.", "hcXeljanz"],
       ["Severe liver impairment.", "hcXeljanz"],
       ["Raised clot risk: avoid; stop and assess any clot symptoms.", "hcXeljanz"],
       ["Care at 65 or older, in current or past smokers, and with other cardiac or cancer risk factors.", "hcXeljanz"],
+      ["Past cancer, other than treated non-melanoma skin cancer: weigh carefully.", "hcXeljanz"],
       ["Don't start if neutrophils are under 1.0 or lymphocytes under 0.5 ×10⁹/L, or hemoglobin under 90 g/L.", "hcXeljanz"],
       ["Rifampin and other strong inducers.", "hcXeljanz"],
+    ],
+    harm: [
+      ["Cancer: lymphoma and lung cancer, the excess seen in older RA patients with cardiac risk; non-melanoma skin cancer, dose-related, including squamous cell carcinoma.", "hcXeljanz"],
+      ["Clots: deep vein thrombosis, pulmonary embolism and arterial thrombosis.", "hcXeljanz"],
+      ["Shingles; serious and opportunistic infections, including TB, cryptococcus and Pneumocystis.", "hcXeljanz"],
+      ["Major cardiac events; GI perforation, mostly with NSAIDs or steroids; interstitial lung disease.", "hcXeljanz"],
+      ["Low lymphocytes, neutrophils or hemoglobin; higher lipids and liver enzymes.", "hcXeljanz"],
     ],
     preg: [
       ["Avoid unless essential for the mother; stop at least 4 weeks before conception; don't breastfeed.", "gc25"],
@@ -630,14 +745,22 @@ const IBD_DRUGS = [
       ["Severe kidney impairment or strong CYP3A4 inhibitors: 30 mg to induce, 15 mg to maintain.", "hcRinvoq"],
       ["Response not kept on 30 mg: stop.", "hcRinvoq"],
     ],
-    warn: ["Serious infections, cancer, blood clots, major cardiac events and death, as for the JAK class.", "hcRinvoq"],
+    warn: ["Serious infections; lymphoma and other cancers, with lung cancer seen in older RA patients on another JAK inhibitor; blood clots; major cardiac events; death.", "hcRinvoq"],
     avoid: [
       ["Severe liver impairment (Child-Pugh C).", "hcRinvoq"],
+      ["Past cancer, other than treated non-melanoma skin cancer: weigh carefully.", "hcRinvoq"],
       ["With other potent immunosuppressants, biologics or JAK inhibitors.", "hcRinvoq"],
       ["Don't start if lymphocytes are under 0.5 or neutrophils under 1.0 ×10⁹/L, or hemoglobin under 80 g/L.", "hcRinvoq"],
       ["Bowel perforation risk with diverticular disease, NSAIDs, steroids or opioids.", "hcRinvoq"],
       ["Strong CYP3A4 inducers.", "hcRinvoq"],
       ["Tablet shells can show up in stool or stoma output, mainly with short transit.", "hcRinvoq"],
+    ],
+    harm: [
+      ["Cancer: lymphoma and other cancers; non-melanoma skin cancer, more at 30 mg and more than with anti-TNFs.", "hcRinvoq"],
+      ["Clots: deep vein thrombosis, pulmonary embolism and arterial thrombosis.", "hcRinvoq"],
+      ["Shingles; serious and opportunistic infections, including TB, cryptococcus and Pneumocystis.", "hcRinvoq"],
+      ["GI perforation; anaphylaxis and angioedema.", "hcRinvoq"],
+      ["Low blood counts; higher lipids, liver enzymes and CK.", "hcRinvoq"],
     ],
     preg: [
       ["Avoid unless essential for the mother; stop at least 4 weeks before conception; don't breastfeed.", "gc25"],
@@ -680,7 +803,16 @@ const IBD_DRUGS = [
       ["MAO inhibitors; wait 3 months after stopping before starting one.", "hcZeposia"],
       ["Severe untreated sleep apnea, or QTc over 450 ms (men) or 470 ms (women): ask cardiology first.", "hcZeposia"],
       ["Severe liver impairment: not recommended.", "hcZeposia"],
+      ["Active cancer, except localized basal cell carcinoma of the skin.", "hcZeposia"],
       ["Pregnancy, or able to become pregnant without effective contraception.", "hcZeposia"],
+    ],
+    harm: [
+      ["Heart: slower heart rate and AV conduction at the start.", "hcZeposia"],
+      ["Liver: injury as early as 10 days after the first dose; rare acute liver failure needing a transplant.", "hcZeposia"],
+      ["Eyes: macular edema, more likely with diabetes or uveitis.", "hcZeposia"],
+      ["Infections: shingles; PML; fatal cryptococcal meningitis with S1P modulators.", "hcZeposia"],
+      ["Skin cancer: basal cell and squamous cell carcinoma, melanoma in situ.", "hcZeposia"],
+      ["Blood pressure rises a little; foods very high in tyramine can cause severe hypertension.", "hcZeposia"],
     ],
     preg: [
       ["Avoid unless essential for the mother; stop at least 3 months before conception; don't breastfeed.", "gc25"],
@@ -718,6 +850,14 @@ const IBD_DRUGS = [
       ["Immunocompromised; severe active or chronic infection; active cancer.", "hcVelsipity"],
       ["Pregnancy without effective contraception, and breastfeeding.", "hcVelsipity"],
       ["Fluconazole, or other drugs that block two of CYP2C8, 2C9 and 3A4; rifampin.", "hcVelsipity"],
+    ],
+    harm: [
+      ["Heart: slower heart rate and AV conduction at the start.", "hcVelsipity"],
+      ["Liver: raised transaminases; stop if significant injury is confirmed.", "hcVelsipity"],
+      ["Eyes: macular edema.", "hcVelsipity"],
+      ["Infections: serious herpes infections; PML; cryptococcal meningitis with S1P modulators.", "hcVelsipity"],
+      ["Skin cancers with S1P modulators: check the skin at the start and periodically.", "hcVelsipity"],
+      ["Blood pressure rises a little; PRES; lower FEV1 and FVC, so care in severe lung disease.", "hcVelsipity"],
     ],
     preg: [
       ["Avoid unless essential for the mother; stop 1 to 2 weeks before conception; don't breastfeed.", "gc25"],
@@ -836,7 +976,7 @@ const IBD_SITS = [
       etrasimod: ["avoid", "Do not breastfeed.", "gc25 hcVelsipity"],
     }},
   {id: "old", n: "65 and over", src: "aga20old",
-    sum: "Infection and cancer risks rise with age. The labels add specific cautions for JAK and S1P drugs.",
+    sum: "Infections and cancers (lymphoma on thiopurines, skin cancers) rise with age. The labels add specific cautions for JAK and S1P drugs.",
     r: {
       thiopurines: ["care", "Lymphoma risk rises with age.", "aga20old"],
       infliximab: ["care", "Higher infection risk with anti-TNF.", "aga20old"],
@@ -844,7 +984,7 @@ const IBD_SITS = [
       golimumab: ["care", "Higher infection risk with anti-TNF.", "aga20old"],
       certolizumab: ["care", "Higher infection risk with anti-TNF.", "aga20old"],
       vedolizumab: ["care", "Few trial patients over 65; interpret with care.", "hcEntyvio"],
-      tofacitinib: ["care", "More infections, cardiac events and cancer at 65 or older.", "hcXeljanz"],
+      tofacitinib: ["care", "At 65 or older: more serious infections, cardiac events, clots, lung cancer, lymphoma and skin cancer.", "hcXeljanz"],
       upadacitinib: ["care", "15 mg is the only maintenance dose at 65 or older.", "hcRinvoq"],
       ozanimod: ["care", "Use with care at 65 or older.", "hcZeposia"],
     }},
@@ -941,7 +1081,7 @@ function ibdKeys(line) { return String(line && line[1] || "").split(/\s+/).filte
 function ibdRefs(d) {
   const out = [];
   const add = line => { for (const k of ibdKeys(line)) if (!out.includes(k)) out.push(k); };
-  [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.preg, d.monitor, d.differ || []).forEach(add);
+  [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || []).forEach(add);
   for (const id of d.before.base) add(IBD_BASE[id]);
   d.before.extra.forEach(add);
   return out;
@@ -960,7 +1100,7 @@ function ibdWorkupText(d) {
 
 // What a drug is found by: names first, then brands and class, then the card.
 function ibdHay(d) {
-  const lines = [d.how].concat(d.use, d.dose, d.avoid, d.preg, d.monitor, d.differ || [], d.before.extra);
+  const lines = [d.how].concat(d.use, d.dose, d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra);
   return {
     name: " " + ibdNorm(d.n) + " ",
     k: " " + ibdNorm(d.brands + " " + d.k + " " + IBD_CLASS_BY_ID[d.cls].n) + " ",
