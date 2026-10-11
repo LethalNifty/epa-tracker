@@ -4,7 +4,8 @@
    gold for reading, a cool sky white for call and guidelines. Cards are glass
    over the glow; numbers are drawn thin and large. Outfit throughout. */
 
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@200..700&display=swap");
+@font-face { font-family: "Outfit"; font-style: normal; font-weight: 200 700; font-display: swap;
+  src: url("fonts/outfit-var.woff2") format("woff2"); }
 
 :root {
   color-scheme: dark;

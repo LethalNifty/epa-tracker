@@ -95,10 +95,10 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 
 ## Look
 
-- **Current look ("Lumen"):** dark, like an endoscopy tower.
-  - Each tab has its own imaging light: narrow-band cyan, fluorescein yellow-green for reading, white light for Guides.
+- **Current look ("Afterglow"):** a deep night background with a violet-to-peach sunset glow, glass cards, and a glowing arc for stage progress.
+  - One rounded typeface (Outfit) throughout, served from the app so it works offline.
   - Pages move like iOS pages, and sheets stack over the page.
-- **Being tried next ("Afterglow"):** a deep night background with a violet-to-peach sunset glow, glass cards, and a glowing arc for stage progress.
+- **Before it ("Lumen"):** dark, like an endoscopy tower, with an imaging light per tab. Kept at tag `v12-pre-afterglow`.
 
 ## Ideas on the list
 
