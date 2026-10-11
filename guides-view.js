@@ -43,7 +43,7 @@ function guidesLightHTML(D, today) {
   const ticks = [f.from, Math.round((f.from + f.to) / 2), f.to].map((y, i) =>
     `<span style="left:${((y - f.from + .5) / span * 100).toFixed(1)}%"${i === 2 ? ' class="now"' : ""}>${y}</span>`).join("");
   return `<section class="monitor guidemon" aria-label="The library by year">` +
-    `<div class="monitor-in"><div class="ov mono"><span>Reference · white light</span><span>Checked ${guidesDay(D.checked)}</span></div>` +
+    `<div class="monitor-in"><div class="ov mono"><span>Reference library</span><span>Checked ${guidesDay(D.checked)}</span></div>` +
     `<svg class="gl-beads" viewBox="0 0 ${W} ${H}" aria-hidden="true">${dots}</svg>` +
     `<div class="gl-years mono">${ticks}</div>` +
     `<p class="gl-sum"><b>${f.recent}</b> topics led by a guideline from the last 3 years · <b class="ca">${f.ca}</b> Canadian-led` +

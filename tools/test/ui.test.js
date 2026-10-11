@@ -13,17 +13,13 @@ test("EPAs tab: stage groups, done EPAs folded, pending shown as text", () => {
   assert.doesNotMatch(html, /[\u23F3\u{1F680}\u{1F3C5}\u{1F512}\u{1F389}]/u);
 });
 
-test("bottom bar: Week, EPAs, Study, Endo, Guides in a capsule, the log button beside it; current tab highlighted", () => {
+test("bottom bar: Week, EPAs, Study, Endo, Guides with the log button floating; current tab highlighted", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "study"});
   const nav = h.html().slice(h.html().indexOf('<nav class="bnav"'));
   assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "epas", "study", "endo", "guides"]);
-  // The log button sits after the capsule, not inside it, so the five tabs share its width evenly.
-  const bar = nav.slice(nav.indexOf('<div class="tabbar">'), nav.indexOf('class="fab"'));
-  assert.equal([...bar.matchAll(/class="nv/g)].length, 5);
-  assert.ok(nav.indexOf('class="fab"') < nav.indexOf('</nav>'));
-  // The lens sits under the third tab.
-  assert.match(nav, /<span class="lens" style="--at:2"/);
+  // The log button floats after the bar, not inside it, so the five tabs share the width evenly.
+  assert.ok(nav.indexOf('class="fab float"') > nav.indexOf('</nav>'));
   assert.match(nav, /class="nv on" data-action="tab" data-page="study"/);
 });
 
@@ -212,6 +208,14 @@ test("the dial has one tick per required observation, lit by status and stage", 
   assert.match(html, /<div class="dial-num" data-count="4">4<\/div><div class="dial-lbl">of 139 logged<\/div>/);
 });
 
+test("Week's arc: logged ticks run violet to apricot, and a sun marks how far the active stage has got", () => {
+  const h = load({today: "2026-09-24", state: state({f1b: [...many(3, "2026-09-10"), obs("2026-09-11", {status: "pending"})]})});
+  const html = h.html();
+  assert.match(html, /<svg class="dial arc" style="--n:4" viewBox="0 0 320 168"/);
+  assert.deepEqual([...html.matchAll(/--sun:(#[0-9a-f]{6})/g)].map(m => m[1]), ["#8b6cff", "#e063d3", "#ff8e6b"]);
+  assert.equal((html.match(/<circle class="orb"/g) || []).length, 1);
+});
+
 test("stage cards show where each stage stands", () => {
   const h = load({today: "2026-09-24"});
   assert.match(h.html(), /<button class="stg st-f now" data-action="tab" data-page="epas">/);
@@ -225,14 +229,14 @@ test("the monitor powers on from standby, and later draws show it finished", () 
   // Armed: every draw keeps it dark in standby until it switches on.
   h.run(`liveBootState = "wait"; render();`);
   assert.match(h.html(), /<section class="monitor boot standby"/);
-  assert.match(h.html(), /<svg class="dial intro"/);
+  assert.match(h.html(), /<svg class="dial intro arc"/);
   h.click("tab", {page: "plan"});
   h.click("tab", {page: "week"});
   assert.match(h.html(), /<section class="monitor boot standby"/);
   // Running: a redraw carries the animation on from how far it had got.
   h.run(`liveBootState = "run"; liveBootT0 = Date.now() - 700; render();`);
   assert.match(h.html(), /<section class="monitor boot" style="--boot-el:7\d\dms"/);
-  assert.match(h.html(), /<svg class="dial intro"/);
+  assert.match(h.html(), /<svg class="dial intro arc"/);
   // Done: plain.
   h.run(`liveBootState = "off"; render();`);
   assert.match(h.html(), /<section class="monitor"/);

@@ -19,7 +19,7 @@ function liveTap(act, el) { liveLastTap = el || null; }
 // ---- Page moves ---------------------------------------------------------------------------
 // Tabs cross-fade; opening an EPA or the call screen pushes in from the right
 // and Back slides it away, as on iOS. The bar, the title bar and the light
-// stay where they are; the bar's lens slides to the new tab.
+// stay where they are.
 const LIVE_DEEP = new Set(["epa", "call"]);
 function liveKind(from, to) {
   if (LIVE_DEEP.has(to) && !LIVE_DEEP.has(from)) return "push";

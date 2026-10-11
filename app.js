@@ -186,28 +186,45 @@ function stageState(st, cur) {
 }
 const STATE_LABEL = {done: "Done", now: "Now", locked: "Locked", behind: "Earlier"};
 
+// Sunset colours for the Week arc, first logged tick to latest: violet,
+// orchid, apricot. Worked out here rather than mixed in CSS, so the power-on
+// flash fades into a plain colour.
+const SUNSET = [[139, 108, 255], [224, 99, 211], [255, 142, 107]];
+function sunsetAt(t) {
+  const x = Math.min(1, Math.max(0, t)) * 2, k = Math.min(1, Math.floor(x)), u = x - k, a = SUNSET[k], b = SUNSET[k + 1];
+  return "#" + a.map((v, n) => Math.round(v + (b[n] - v) * u).toString(16).padStart(2, "0")).join("");
+}
 // A ring of ticks, one per required observation, grouped into segments in order.
 // segs: [{stage, total, approved, pending, next}]; next tints the unlogged ticks
-// of the stage being worked on.
+// of the stage being worked on. o.arc lays them over the top half instead, left
+// to right like the sun's path, with a sun where the active stage has got to.
 function dialSVG(segs, o) {
   const S = o.size, c = S / 2, gap = o.gap || 0;
-  const slots = segs.reduce((a, s) => a + s.total + gap, 0), step = 2 * Math.PI / slots;
+  const from = o.arc ? Math.PI : -Math.PI / 2, sweep = o.arc ? Math.PI : 2 * Math.PI;
+  const slots = segs.reduce((a, s) => a + s.total + gap, 0), step = sweep / slots;
   const f = v => Math.round(v * 10) / 10;
   // --i orders the lit ticks for the power-on sweep; --w the active stage's
   // open ticks, which a slow wave of light runs along.
-  let k = gap / 2, i = 0, w = 0, lines = "";
+  const lit = segs.reduce((a, s) => a + s.approved, 0);
+  let k = gap / 2, i = 0, w = 0, li = 0, lines = "", tip = null;
   for (const s of segs) {
     for (let j = 0; j < s.total; j++, k++) {
       const kind = j < s.approved ? "lit" : j < s.approved + s.pending ? "pend" : "off", next = kind === "off" && s.next;
-      const a = -Math.PI / 2 + (k + .5) * step, cs = Math.cos(a), sn = Math.sin(a);
+      const a = from + (k + .5) * step, cs = Math.cos(a), sn = Math.sin(a);
       const r1 = kind === "off" ? o.r1off : o.r1;
+      if (s.next && kind !== "off") tip = [cs, sn];
+      const sun = o.arc && kind === "lit" ? `;--sun:${sunsetAt(lit > 1 ? li++ / (lit - 1) : 1)}` : "";
       lines += `<line class="t ${kind}${next ? " next" : ""} st-${s.stage}" x1="${f(c + r1 * cs)}" y1="${f(c + r1 * sn)}"` +
-        ` x2="${f(c + o.r2 * cs)}" y2="${f(c + o.r2 * sn)}"` + (kind !== "off" ? ` style="--i:${i++}"` : next ? ` style="--w:${w++}"` : "") + `/>`;
+        ` x2="${f(c + o.r2 * cs)}" y2="${f(c + o.r2 * sn)}"` + (kind !== "off" ? ` style="--i:${i++}${sun}"` : next ? ` style="--w:${w++}"` : "") + `/>`;
     }
     k += gap;
   }
-  const rings = (o.rings || []).map(r => `<circle class="fold-ring" cx="${c}" cy="${c}" r="${r}"/>`).join("");
-  return `<svg class="dial${o.cls ? " " + o.cls : ""}" style="--n:${Math.max(1, i)}" viewBox="0 0 ${S} ${S}" aria-hidden="true">${rings}${lines}</svg>`;
+  const rings = (o.rings || []).map(r => o.arc
+    ? `<path class="fold-ring" d="M${c - r} ${c}A${r} ${r} 0 0 1 ${c + r} ${c}"/>`
+    : `<circle class="fold-ring" cx="${c}" cy="${c}" r="${r}"/>`).join("");
+  const orb = o.arc && tip ? `<circle class="orb" cx="${f(c + (o.r2 + 8) * tip[0])}" cy="${f(c + (o.r2 + 8) * tip[1])}" r="5.5"/>` : "";
+  return `<svg class="dial${o.cls ? " " + o.cls : ""}${o.arc ? " arc" : ""}" style="--n:${Math.max(1, i)}" viewBox="0 0 ${S} ${o.arc ? c + 8 : S}"` +
+    ` aria-hidden="true">${rings}${lines}${orb}</svg>`;
 }
 // The small version for one EPA: a ring of arcs, one per required observation,
 // with a wider gap between parts. Reads well even with only a handful.
@@ -242,14 +259,11 @@ function navHTML(active) {
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span>` +
     (dot(page) ? `<i class="nvdot" aria-label="New guidelines"></i>` : "") + `</button>`;
-  // A glass capsule of five tabs with a lens under the open one, and the log
-  // button beside it, as iOS lays out a tab bar and its action. The button
-  // steps aside while Endo's own save bar is up, where it would cover Clear.
+  // Five even tabs; the log button floats above the bar's right end. It steps
+  // aside while Endo's own save bar is up, where it would cover Clear.
   const busy = active === "endo" && scopeTab !== "progress" && scopeCap.cards.length;
-  const at = NAV.findIndex(n => n[0] === active);
-  return `<nav class="bnav" aria-label="Main"><div class="bnav-row"><div class="tabbar">` +
-    (at >= 0 ? `<span class="lens" style="--at:${at}" aria-hidden="true"></span>` : "") + NAV.map(item).join("") + `</div>` +
-    (busy ? "" : `<button class="fab" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`) + `</div></nav>`;
+  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.map(item).join("")}</div></nav>` +
+    (busy ? "" : `<button class="fab float" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`);
 }
 function warningsHTML(today) {
   let h = "";
@@ -281,9 +295,9 @@ function markSVG(size) {
   for (let i = 0; i < n; i++) {
     const a = -Math.PI / 2 + (i + .5) * step, on = i < lit, r1 = on ? 18.8 : 20.1;
     t += `<line x1="${(c + r1 * Math.cos(a)).toFixed(2)}" y1="${(c + r1 * Math.sin(a)).toFixed(2)}" x2="${(c + 23.3 * Math.cos(a)).toFixed(2)}"` +
-      ` y2="${(c + 23.3 * Math.sin(a)).toFixed(2)}" stroke="${on ? "#8ef1e0" : "#28474b"}" stroke-width="${on ? 1.1 : .9}" stroke-linecap="round"/>`;
+      ` y2="${(c + 23.3 * Math.sin(a)).toFixed(2)}" stroke="${on ? "#ebc9ff" : "#3a3460"}" stroke-width="${on ? 1.1 : .9}" stroke-linecap="round"/>`;
   }
-  return `<svg class="mark" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">${t}<circle cx="32" cy="32" r="3.4" fill="#8ef1e0"/></svg>`;
+  return `<svg class="mark" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">${t}<circle cx="32" cy="32" r="3.4" fill="#ebc9ff"/></svg>`;
 }
 function crashHTML() {
   return `<div class="crash card">${markSVG(64)}<h1>This screen hit a problem</h1>` +
@@ -300,7 +314,7 @@ function monitorHTML(today, cur) {
   // The first draw after launch powers the monitor on: light, ticks, overlay.
   return `<section class="monitor${liveBootClass()}"${liveBootStyle()} aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
     `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
-    `<div class="dial-wrap">${dialSVG(stageSegs(cur), {size: 300, r2: 140, r1: 114, r1off: 126, gap: 3, rings: [102, 78], cls: liveBootClass() ? "intro" : ""})}` +
+    `<div class="dial-wrap arc">${dialSVG(stageSegs(cur), {size: 320, r2: 138, r1: 114, r1off: 125, gap: 3, rings: [153], arc: true, cls: liveBootClass() ? "intro" : ""})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
     (cur ? `<div class="dial-sub mono st-${cur}">${STAGE_NAMES[cur]} ${curT.logged}/${curT.req}</div>` : `<div class="dial-sub mono">Every stage logged</div>`) +
     `</div></div><div class="ov mono"><span class="ok">${t.approved} approved</span><span class="pend">${t.pending} pending</span></div></div></section>`;
