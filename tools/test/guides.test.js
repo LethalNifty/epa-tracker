@@ -130,7 +130,7 @@ test("the tab: white-light monitor, new, search, chips and every topic", () => {
   const html = h.html();
   assert.match(html, /113 topics · Canadian first/);
   assert.match(html, /class="monitor guidemon"/);
-  assert.match(html, /Checked Oct 8/);
+  assert.match(html, /Checked [A-Z][a-z]{2} \d{1,2}</);
   assert.match(html, /New · last 30 days/);
   assert.match(html, /id="guidesq"/);
   assert.match(html, /data-chip="block">.*Block 4 · Motility/);
