@@ -1,8 +1,8 @@
 "use strict";
 // GI Hub landmark trials: the Trials view in Guides, the trial rows inside
 // each guideline topic, and trial matches in the guideline search. The hero
-// is the evidence timeline under white light: one bead per trial by year,
-// Canadian-led in NBI cyan. Loaded after guides-view.js and trials.js; uses
+// is the evidence timeline: one bead per trial by year,
+// Canadian-led in the NBI accent. Loaded after guides-view.js and trials.js; uses
 // app.js helpers when it runs. Its taps are named guidestr* so app.js routes
 // them through guidesDispatch.
 
@@ -48,7 +48,7 @@ function trialsMonitorHTML(today) {
   const ticks = early.slice(0, 1).map(y => `<span class="early">${y}</span>`).join("") +
     `<span style="left:${pct(x(2000))}">2000</span><span class="now">${now}</span>`;
   return `<section class="monitor guidemon ltmon${trialsIntro ? " intro" : ""}" aria-label="The trials by year">` +
-    `<div class="monitor-in"><div class="ov mono"><span>Evidence · white light</span><span>${TRIALS.length} trials</span></div>` +
+    `<div class="monitor-in"><div class="ov mono"><span>Trial library</span><span>${TRIALS.length} trials</span></div>` +
     `<svg class="gl-beads lt-beads" viewBox="0 0 ${W} ${H}" aria-hidden="true">` +
     (early.length ? `<path class="lt-break" d="M${x0 - 14} ${H - 1} l3 -7 M${x0 - 10} ${H - 1} l3 -7"/>` : "") + `${dots}</svg>` +
     `<div class="gl-years lt-years mono">${ticks}</div>` +
