@@ -1,10 +1,10 @@
 "use strict";
-// GI Hub guides: the Guides tab (the guideline library and the biopsy
-// protocols), and the guideline links on the Study tab. The motif is white
+// GI Hub guides: the Guides tab (the guideline library, landmark trials, the
+// biopsy protocols and IBD drugs), and the guideline links on the Study tab. The motif is white
 // light: the reference view every other image is read against. Loaded after
 // guides.js and before app.js; uses app.js helpers when it runs.
 
-let guidesTab = "g";          // "g": guidelines, "b": biopsy protocols, "d": IBD drugs
+let guidesTab = "g";          // "g": guidelines, "t": landmark trials, "b": biopsy protocols, "d": IBD drugs
 let guidesTerm = "";
 let guidesChip = "all";       // "all", "block", "pins", or a section id
 const guidesOpen = new Set();
@@ -20,7 +20,7 @@ function guidesDay(iso) {
 }
 function guidesSwitchHTML() {
   const b = (k, label) => `<button class="${guidesTab === k ? "on" : ""}" data-action="guidestab" data-tab="${k}"${guidesTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<div class="segtabs three" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("b", "Biopsy")}${b("d", "IBD drugs")}</div>`;
+  return `<div class="segtabs four" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("t", "Trials")}${b("b", "Biopsy")}${b("d", "IBD drugs")}</div>`;
 }
 function guidesState() { return Store.state.guides; }
 
@@ -98,6 +98,7 @@ function guidesTopicHTML(t, opts = {}) {
   if (t.a.length) h += `<div class="gt-sub mono">Also</div>` + t.a.map(d => guidesLinkHTML(d, true)).join("");
   if (t.c.length) h += `<div class="gt-sub mono">Scores and classifications</div><div class="gsc">` +
     t.c.map(c => `<a href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.t)}</a>`).join("") + `</div>`;
+  h += trialsTopicHTML(t);
   const read = guidesReadHTML(t);
   const bx = t.bx.filter(title => BIOPSY_DATA.some(b => b.title === title));
   if (read || bx.length) h += `<div class="gt-meta">${read}` + bx.map(title =>
@@ -122,6 +123,9 @@ function viewGuides() {
   if (guidesTab === "b")
     return head("Shared Health Manitoba · 2022", `<p class="ph-note">Biopsy protocols: Manitoba first; other sources where it's silent.</p>`) +
       guidesSwitchHTML() + viewBiopsy({embedded: true});
+  if (guidesTab === "t")
+    return head(`Landmark trials · checked ${guidesDay(TRIALS_CHECKED)}`, `<p class="ph-note">The trials staff ask about: what each asked, what it found, what it changed, and where Canada differs.</p>`) +
+      guidesSwitchHTML() + viewTrials();
   if (guidesTab === "d")
     return head("Health Canada · CAG · NACI", `<p class="ph-note">Every IBD drug sold in Canada: use, dose, work-up, monitoring and pregnancy, each line tagged with its source.</p>`) +
       guidesSwitchHTML() + viewIbd();
@@ -164,6 +168,7 @@ function viewGuides() {
   const list = q ? guidesSearch(pool, q) : pool;
   if (q && groups) groups = groups.map(([l, g, ts]) => [l, g, list.filter(t => ts.includes(t))]);
   h += `<p class="bcount mono">${q || guidesChip !== "all" ? list.length + " of " + D.topics.length + " topics" : D.topics.length + " topics · tap one for its guidelines"}</p>`;
+  if (q) h += trialsSearchHTML(q);
   if (!list.length) h += `<div class="bempty">No topic matches. Try a drug, a score or a society, like "ACG".</div>`;
   const opts = {newsKeys};
   if (groups) {
@@ -204,6 +209,7 @@ function guidesStudyHTML(item) {
 // Returns false when nothing needs redrawing.
 function guidesDispatch(act, d) {
   if (act.startsWith("guidesd")) return ibdDispatch(act, d);
+  if (act.startsWith("guidestr")) return trialsDispatch(act, d);
   if (act === "guidestab") { guidesTab = d.tab; if (route.page !== "guides") { go({page: "guides"}); return false; } route.keepScroll = false; enterNext = true; return true; }
   if (act === "guideschip") { guidesChip = d.chip; guidesOpen.clear(); route.keepScroll = false; return true; }
   if (act === "guidestoggle") { if (guidesOpen.has(d.id)) guidesOpen.delete(d.id); else guidesOpen.add(d.id); return true; }
@@ -218,7 +224,7 @@ function guidesDispatch(act, d) {
   return true;
 }
 function guidesField(el) {
-  if (ibdField(el)) return true;
+  if (ibdField(el) || trialsField(el)) return true;
   if (!el || el.id !== "guidesq") return false;
   const caret = el.selectionStart;
   guidesTerm = el.value;
@@ -231,6 +237,7 @@ function guidesField(el) {
 // After a draw: scroll a jumped-to topic into view, and mark today's news seen.
 function guidesAfterRender() {
   ibdAfterRender();
+  trialsAfterRender();
   guidesCatsAfterRender();
   if (route.page !== "guides") { guidesVisit = null; return; }
   if (guidesTab === "g" && Guides.data) {
@@ -239,11 +246,11 @@ function guidesAfterRender() {
   }
   if (!guidesJump) return;
   const sel = guidesJump; guidesJump = null;
-  if (sel === "#guidesq" || sel === "#ibdq") { const q = document.getElementById(sel.slice(1)); if (q) q.focus(); return; }
+  if (sel === "#guidesq" || sel === "#ibdq" || sel === "#trialsq") { const q = document.getElementById(sel.slice(1)); if (q) q.focus(); return; }
   const el = document.querySelector && document.querySelector(sel);
   if (el && el.scrollIntoView) el.scrollIntoView({block: "start", behavior: "smooth"});
 }
-// Chip rows scroll sideways (Guidelines, Biopsy, IBD drugs). Each keeps its
+// Chip rows scroll sideways (Guidelines, Trials, Biopsy, IBD drugs). Each keeps its
 // place across redraws, brings a newly picked chip clear of the faded edges,
 // and fades whichever edge has more chips past it.
 const guidesCats = {};

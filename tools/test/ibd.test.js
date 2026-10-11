@@ -163,10 +163,10 @@ test("search finds drugs by brand, test and class", () => {
 });
 
 // ---- The view -------------------------------------------------------------------------------
-test("Guides has a third view: IBD drugs, with the map, the shared card and every drug", () => {
+test("Guides has an IBD drugs view, with the map, the shared card and every drug", () => {
   const h = phone();
   const html = h.html();
-  assert.match(html, /class="segtabs three"/);
+  assert.match(html, /class="segtabs four"/);
   assert.match(html, /class="on" data-action="guidestab" data-tab="d" aria-current="page">IBD drugs</);
   assert.match(html, /class="monitor guidemon ibdmon intro"/);
   assert.equal((html.match(/data-action="guidesdmap"/g) || []).length, 7);
