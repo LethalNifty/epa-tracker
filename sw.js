@@ -1,5 +1,5 @@
 importScripts("notify.js");
-const CACHE = "epa-v31";
+const CACHE = "epa-v32";
 // Kept across updates: the brief remind.js saves for writing notifications.
 const BRIEF = "gi-brief";
 const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "studyq.js", "studyq.json", "guides.js", "guides.json", "guides-view.js", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js", "scope-view.js", "scope-report.js", "live.js", "app.js", "manifest.webmanifest", "icon.svg",

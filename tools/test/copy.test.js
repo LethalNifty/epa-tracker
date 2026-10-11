@@ -30,11 +30,25 @@ test("the power-on leaves nothing clipped: the typed overlay drops its clip when
   assert.match(css, /\.monitor-in, \.callnow-in \{[^}]*overflow: hidden;/);
 });
 
+test("off-label has its own colour, apart from every drug class", () => {
+  const css = read("app.css");
+  const off = css.match(/--offlabel: (#[0-9a-f]{6});/)[1];
+  const classes = css.match(/\.c-asa \{[^\n]*\n[^\n]*/)[0];
+  // The ring and its note use the off-label colour, never a class colour.
+  assert.match(css, /\.dr-off \{[^}]*var\(--offlabel\)/);
+  assert.match(css, /\.dr-offnote \{[^}]*var\(--offlabel-wash\)/);
+  assert.doesNotMatch(classes, /--offlabel/);
+  for (const [, tok] of classes.matchAll(/var\(--([a-z-]+)\)/g)) {
+    const v = (css.match(new RegExp(`--${tok}: (#[0-9a-f]{6});`)) || [])[1];
+    assert.notEqual(v, off, tok);
+  }
+});
+
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v31";/);
+  assert.match(sw, /const CACHE = "epa-v32";/);
   // The page shows the same version the service worker caches.
-  assert.match(read("app.js"), /const APP_VERSION = "epa-v31";/);
+  assert.match(read("app.js"), /const APP_VERSION = "epa-v32";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
     "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "app.js", "icon.svg", "fonts/plex-sans-var.woff2",
     "fonts/plex-mono-400.woff2", "fonts/plex-mono-500.woff2"]) {
