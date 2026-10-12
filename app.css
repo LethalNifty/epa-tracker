@@ -410,12 +410,8 @@ a.btn.callbtn .ic { color: inherit; }
 .cnote { margin: 12px 2px 14px; font-size: 13px; line-height: 1.5; color: var(--dim); }
 .cnote b { color: var(--light); font-weight: 520; overflow-wrap: anywhere; }
 
-/* Reminders: set up on Week, managed on the EPAs tab */
-.remindcard { margin-top: 28px; padding: 14px 16px 16px; border-color: color-mix(in srgb, var(--nbi) 30%, var(--fold)); }
-.rc-head { display: flex; align-items: center; gap: 10px; margin: -4px -8px 0 0; }
-.rc-head > .ic { color: var(--nbi-ink); }
-.rc-head b { flex: 1; font-size: 16px; font-weight: 540; }
-.remindcard p, .rnote { margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: var(--dim); }
+/* Reminders: offered on Week, set up and managed in Settings */
+.rnote { margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: var(--dim); }
 .rlist { list-style: none; margin: 10px 0 14px; padding: 0; }
 .rlist li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--fold); font-size: 14px; }
 .rlist li:first-child { border-top: 0; }
@@ -1055,6 +1051,34 @@ a.src:active { background: var(--wall-3); }
 .gf-list { margin-bottom: 4px; }
 .gmore { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 42px; margin: 2px 0 8px;
   color: var(--nbi-ink); font-size: 14px; font-weight: 500; }
+
+/* Settings: one sheet from the gear on Week. The version row says whether this
+   phone has the live app's version; backup and reminders sit under it. */
+.ph.has-gear { position: relative; }
+.phgear { position: absolute; right: -8px; top: calc(env(safe-area-inset-top) + 12px); color: var(--dim); }
+.phgear .ic { width: 23px; height: 23px; }
+.setsheet { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+.setgrp { margin-top: 18px; }
+.set-h { display: flex; justify-content: space-between; gap: 10px; margin: 0 2px 8px; color: var(--dim); }
+.set-h .ok { color: var(--nbi-ink); }
+.sv-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sv-name { font-size: 16px; color: var(--dim); }
+.sv-name b { color: var(--light); font-weight: 520; }
+.svpill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 99px; font-size: 13px; font-weight: 520; white-space: nowrap; }
+.svpill.ok { background: var(--offlabel-wash); color: var(--offlabel); }
+.svpill.ready { background: var(--flu-wash); color: var(--flu-ink); }
+.svpill.off { background: var(--wall-2); color: var(--dim); }
+.setver .rnote { margin: 8px 0 0; }
+.setver .btn { margin-top: 12px; }
+.setver .textbtn { margin-top: 4px; }
+/* Week, until reminders are on: one row that opens Settings. */
+.setnudge { display: flex; align-items: center; margin-top: 22px; }
+.sn-main { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 13px 4px 13px 16px; }
+.sn-main > .ic { color: var(--nbi-ink); }
+.sn-tx b { display: block; font-weight: 520; }
+.sn-tx span { display: block; font-size: 13px; color: var(--dim); }
+.sn-go { color: var(--nbi-ink); font-weight: 500; font-size: 14px; }
+.setnudge .iconbtn { margin-right: 6px; color: var(--faint); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }

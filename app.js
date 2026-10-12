@@ -124,10 +124,6 @@ const Store = {
 };
 
 let nudgeDismissed = false, backupError = null;
-// Which version this phone is running, and whether iOS has motion turned down.
-function versionHTML() {
-  return `<p class="bfoot mono appver">GI Hub ${APP_VERSION}${liveCalm() ? " · Reduce Motion on: gentle animations" : ""}</p>`;
-}
 function needsNudge(today) {
   if (!Store.hasData()) return false;
   const lb = Store.state.lastBackup;
@@ -418,14 +414,15 @@ function finishHTML(pace, plan, today) {
 function viewWeek() {
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs, cur = currentStage();
   const now = callNow(), cs = callStatus(CallStore.list(), now);
-  let h = `<header class="ph">` + (blk
+  // The gear opens Settings: version, backup and reminders.
+  let h = `<header class="ph has-gear"><button class="iconbtn phgear" data-action="setopen" aria-label="Settings">${ic("gear")}</button>` + (blk
     ? `<p class="eyebrow mono">Block ${blk.num} · ${esc(blk.name)}</p><h1 class="title">Week ${blk.week} of 4</h1>`
     : `<p class="eyebrow mono">GI Hub</p><h1 class="title">${dayIndex(today) < 0 ? "Almost time" : "Year 1 done"}</h1>`) + `</header>`;
   h += warningsHTML(today) + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
   if (!blk) {
     return h + `<div class="card pad empty spaced">${dayIndex(today) < 0 ? "Fellowship starts July 2, 2026." :
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
-      (cs.cur ? "" : callCardHTML(cs, now)) + remindCardHTML();
+      (cs.cur ? "" : callCardHTML(cs, now)) + remindRowHTML();
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
   h += thisWeekHTML(rows, cp.active) + studyCardHTML();
@@ -434,7 +431,7 @@ function viewWeek() {
     if (rc) h += recapHTML(rc, rows);
   }
   if (!cs.cur) h += callCardHTML(cs, now);
-  h += remindCardHTML();
+  h += remindRowHTML();
   const look = lookFor(rows, id => Store.lineVal(id));
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
@@ -452,15 +449,6 @@ function epaRowHTML(e, focus) {
     `<span class="epa-tags">${focus.includes(e.code) ? `<span class="tag">this block</span>` : ""}` +
     `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span></span>` +
     `<span class="epa-count${t.logged >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
-}
-function backupHTML() {
-  const lb = Store.state.lastBackup;
-  return `<section class="sec"><div class="sec-head"><h2>Backup</h2><span class="mono">Last backup: ${lb ? esc(lb.slice(0, 10)) : "never"}</span></div>` +
-    `<div class="card pad"><button class="btn" data-action="export">${ic("share")}Export backup</button>` +
-    `<button class="btn" data-action="importpick">${ic("download")}Import backup</button>` +
-    `<input type="file" id="importfile" accept=".json,application/json" hidden>` +
-    `<p class="bnote mono">Saved on this phone only</p>` +
-    (backupError ? `<div class="err">${esc(backupError)}</div>` : "") + `</div></section>`;
 }
 // EPAs and the year plan share a tab, with a switch under the header.
 function epaSwitchHTML(on) {
@@ -489,7 +477,7 @@ function viewEpas() {
     if (done.length) h += `<details class="donegrp"><summary>${ic("chev")}Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
     h += `</section>`;
   }
-  return h + backupHTML() + remindSectionHTML() + versionHTML();
+  return h;
 }
 
 // ---- EPA detail --------------------------------------------------------------
@@ -781,7 +769,7 @@ function render() {
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
       (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
-      (scopePick ? scopePickHTML() : "") + (pearlSheet ? pearlSheetHTML() : "") + (toast ? toastHTML() : "");
+      (scopePick ? scopePickHTML() : "") + (pearlSheet ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -802,8 +790,11 @@ function render() {
   remindAfterRender();
   guidesAfterRender();
   pearlsAfterRender();
+  setAfterRender();
   liveAfterRender(p);
 }
+// Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet);
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -835,6 +826,7 @@ function go(next, restore) {
 }
 function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
   if (act.startsWith("scope")) {
@@ -966,7 +958,7 @@ function sheetDragEnd(ev) {
   if (!close) { s.sh.style.transform = ""; if (s.scrim) s.scrim.style.opacity = ""; liveLift(0, true); return; }
   s.sh.style.transform = "translateY(105%)";
   if (s.scrim) s.scrim.style.opacity = "0";
-  const x = s.sh.querySelector(".shead [data-action]");
+  const x = s.sh.querySelector(".shead .iconbtn[data-action]");
   setTimeout(() => { if (x && x.isConnected) dispatch(x.dataset.action, x.dataset); }, 190);
 }
 for (const [type, fn] of [["pointerdown", sheetDragStart], ["pointermove", sheetDragMove], ["pointerup", sheetDragEnd], ["pointercancel", sheetDragEnd]])
@@ -997,7 +989,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
   if (document.visibilityState === "visible") updateCheck();
-  if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick && !pearlSheet &&
+  if (document.visibilityState === "visible" && !anySheet() &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
     if (updateNow()) return;
     if (route.page === "week" && hiddenAt && Date.now() - hiddenAt > 5000) introDone = false;
@@ -1008,7 +1000,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
 const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, pearls: {page: "pearls", from: "study"}};
 function appOpenFromLink(name) {
   if (!APP_LINKS[name]) return;
-  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null;
+  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null;
   go({...APP_LINKS[name]});
 }
 if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)]) {
@@ -1048,8 +1040,10 @@ if ("serviceWorker" in navigator) {
     if (!hadWorker) return;   // the first install: this page is already the newest
     updateReady = true;
     const a = document.activeElement;
-    if (Date.now() - openedAt < 15000 && !sheet && !studySheet && !scopeSheet && !scopePick && !pearlSheet &&
+    if (Date.now() - openedAt < 15000 && !anySheet() &&
         !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) updateNow();
+    // Settings open: its version row now offers the restart.
+    else if (setSheet) { route.keepScroll = true; render(); }
   });
 }
 try {

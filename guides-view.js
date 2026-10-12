@@ -324,7 +324,7 @@ function guidesCatsAfterRender() {
 // the keyboard.
 function guidesRedraw() {
   const a = typeof document !== "undefined" && document.activeElement;
-  if (sheet || studySheet || scopeSheet || scopePick || (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) return;
+  if (anySheet() || (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) return;
   route.keepScroll = true;
   render();
 }

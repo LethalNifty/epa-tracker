@@ -39,7 +39,7 @@ test("biopsy Notes rows are not restyled by the backup note", () => {
   const html = require("node:fs").readFileSync(require("node:path").join(require("./harness").ROOT, "index.html"), "utf8");
   assert.doesNotMatch(html, /^\.note\{/m);
   const h = load({today: "2026-09-24"});
-  h.click("tab", {page: "epas"});
-  assert.match(h.html(), /Last backup: never/);
+  h.click("setopen");
+  assert.match(h.html(), /Last: never/);
   assert.match(h.html(), /<p class="bnote mono">/);
 });

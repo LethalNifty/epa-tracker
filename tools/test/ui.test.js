@@ -277,10 +277,10 @@ test("Back returns to where the list was scrolled", () => {
   assert.equal(pos.at(-1), 640);      // and Back lands where you were
 });
 
-test("the foot of EPAs says which version this phone is running", () => {
+test("Settings says which version this phone is running", () => {
   const h = load({today: "2026-09-24"});
-  h.click("tab", {page: "epas"});
-  assert.match(h.html(), /<p class="bfoot mono appver">GI Hub epa-v\d+<\/p>/);
+  h.click("setopen");
+  assert.match(h.html(), /<span class="sv-name">GI Hub <b>epa-v\d+<\/b><\/span>/);
 });
 
 test("dates read as the rest of the app writes them: weekday, day, month, and the year only when it isn't this one", () => {

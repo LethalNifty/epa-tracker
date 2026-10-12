@@ -58,7 +58,7 @@ async function remindInit() {
   } catch (e) {}
   remindLast = await remindRead("__gi-push.json");
   remindReady = true;
-  if (remindState() !== before && (route.page === "week" || route.page === "epas") && !sheet) { route.keepScroll = true; render(); }
+  if (remindState() !== before && ((route.page === "week" && !anySheet()) || setSheet)) { route.keepScroll = true; render(); }
 }
 async function remindEnable() {
   remindErr = null;
@@ -161,20 +161,19 @@ function remindCodeHTML() {
     `<div class="rbtns"><button class="btn primary" data-action="remindshare">${ic("share")}Share code</button>` +
     `<button class="btn" data-action="remindcopy">${remindCopied ? ic("check") + "Copied" : "Copy"}</button></div>`;
 }
-// Week: until reminders are on, a card that sets them up (dismissible).
-function remindCardHTML() {
+// Week: until reminders are on, one row that opens Settings (dismissible).
+function remindRowHTML() {
   if (!remindReady || RemindStore.state.dismissed) return "";
   const st = remindState();
   if (st !== "off" && st !== "pending") return "";
-  const x = `<button class="iconbtn" data-action="reminddismiss" aria-label="Not now">${ic("x")}</button>`;
-  return `<section class="card remindcard"><div class="rc-head">${ic("bell")}<b>${st === "off" ? "Reminders on this phone" : "One step left"}</b>${x}</div>` +
-    (st === "off" ? `<p>GI Hub can remind you instead of your calendar:</p>${REMIND_WHAT}` +
-      `<button class="btn primary" data-action="remindon">${ic("bell")}Turn on reminders</button>`
-      : `<p>Send this code to Claude to connect your phone. Claude will send a test reminder.</p>${remindCodeHTML()}`) +
-    (remindErr ? `<div class="err" role="alert">${esc(remindErr)}</div>` : "") + `</section>`;
+  return `<div class="card setnudge"><button class="sn-main" data-action="setopen">${ic("bell")}` +
+    `<span class="sn-tx"><b>${st === "off" ? "Reminders are off" : "One step left"}</b>` +
+    `<span>${st === "off" ? "EPAs, call and reading nights, on this phone" : "Send the connection code to Claude"}</span></span>` +
+    `<span class="sn-go">Set up</span></button>` +
+    `<button class="iconbtn" data-action="reminddismiss" aria-label="Not now">${ic("x")}</button></div>`;
 }
-// EPAs tab, under Backup: status and controls.
-function remindSectionHTML() {
+// Settings: status and controls.
+function remindGroupHTML() {
   const st = remindState();
   if (st === "none") return "";
   const label = {install: "Home screen only", denied: "Blocked", off: "Off", pending: "Not connected", on: "On"}[st];
@@ -183,7 +182,7 @@ function remindSectionHTML() {
   else if (st === "denied") body = `<p class="rnote">Notifications are blocked for GI Hub. Turn them on in iPhone Settings, Notifications, GI Hub, then come back.</p>`;
   else if (!remindReady) body = `<p class="rnote">Checking this phone…</p>`;
   else if (st === "off") body = REMIND_WHAT + `<button class="btn primary" data-action="remindon">${ic("bell")}Turn on reminders</button>`;
-  else if (st === "pending") body = `<p class="rnote">Almost done: send this code to Claude to connect your phone. Nothing has arrived yet.</p>` + remindCodeHTML() +
+  else if (st === "pending") body = `<p class="rnote">Send this code to Claude to connect your phone. Claude will send a test reminder.</p>` + remindCodeHTML() +
     `<button class="textbtn" data-action="remindoff">Turn off</button>`;
   else {
     const nx = remindNext(callNow()), when = t => `${DAYS[new Date(t).getDay()]} ${new Date(t).getDate()} ${MONTHS[new Date(t).getMonth()]}, ${callHM(t)}`;
@@ -192,6 +191,6 @@ function remindSectionHTML() {
       `<div class="rbtns"><button class="btn" data-action="remindshare">${ic("share")}Share code again</button>` +
       `<button class="btn danger" data-action="remindoff">Turn off</button></div>`;
   }
-  return `<section class="sec"><div class="sec-head"><h2>Reminders</h2><span class="mono${st === "on" ? " ok" : ""}">${label}</span></div>` +
-    `<div class="card pad remind">${body}${remindErr ? `<div class="err" role="alert">${esc(remindErr)}</div>` : ""}</div></section>`;
+  return `<div class="setgrp"><div class="set-h mono"><span>Reminders</span><span${st === "on" ? ` class="ok"` : ""}>${label}</span></div>` +
+    `<div class="card pad remind">${body}${remindErr ? `<div class="err" role="alert">${esc(remindErr)}</div>` : ""}</div></div>`;
 }

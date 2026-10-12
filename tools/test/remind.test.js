@@ -113,19 +113,22 @@ test("the brief: this week and the next two, shifts to come with who's on, nothi
 
 test("in a browser without push, reminders don't appear at all", () => {
   const h = withBlock("2026-10-27T12:00");
-  h.click("tab", {page: "epas"});
+  h.click("setopen");
   assert.doesNotMatch(h.html(), /Reminders/);
-  h.click("tab", {page: "week"});
-  assert.doesNotMatch(h.html(), /remindcard/);
+  h.click("setclose");
+  assert.doesNotMatch(h.html(), /setnudge/);
 });
 
-test("Week offers to turn reminders on; Not now hides the card for good", () => {
+test("Week offers reminders in one row that opens Settings; Not now hides it for good", () => {
   const h = withBlock("2026-10-27T12:00");
   pushPhone(h);
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
-  assert.match(h.html(), /class="card remindcard"[\s\S]*?Reminders on this phone[\s\S]*?Mon 08:00[\s\S]*?Wed 08:00[\s\S]*?data-action="remindon"/);
+  assert.match(h.html(), /class="card setnudge"><button class="sn-main" data-action="setopen">[\s\S]*?Reminders are off/);
+  h.click("setopen");
+  assert.match(h.html(), /<span>Reminders<\/span><span>Off<\/span>[\s\S]*?Mon 08:00[\s\S]*?Wed 08:00[\s\S]*?data-action="remindon"/);
+  h.click("setclose");
   h.click("reminddismiss");
-  assert.doesNotMatch(h.html(), /remindcard/);
+  assert.doesNotMatch(h.html(), /setnudge/);
   assert.deepEqual(JSON.parse(h.store.get("gi-remind-v1")), {dismissed: true});
 });
 
@@ -136,6 +139,7 @@ test("turning on asks permission, subscribes with the sender's key, then shows t
   h.ctx.navigator.serviceWorker = {ready: Promise.resolve({pushManager: {getSubscription: async () => null,
     subscribe: async o => { opts = o; return fakeSub; }}})};
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
+  h.click("setopen");
   h.click("remindon");
   await new Promise(r => setTimeout(r, 20));
   assert.equal(opts.userVisibleOnly, true);
@@ -155,12 +159,12 @@ test("Share code hands the code to the share sheet", async () => {
   assert.deepEqual(shared, ['GI Hub reminders code:\n{"endpoint":"https://web.push.apple.com/QAbc123","keys":{"p256dh":"BPub","auth":"Auth"}}']);
 });
 
-test("EPAs tab: once a reminder has arrived, status On, the next reminder and the last one", () => {
+test("Settings: once a reminder has arrived, status On, the next reminder and the last one", () => {
   const h = withBlock("2026-10-27T12:00");
   pushPhone(h, {perm: "granted", sub: fakeSub, last: {at: at(2026, 10, 22, 8), kind: "week"}});
-  h.click("tab", {page: "epas"});
+  h.click("setopen");
   const html = h.html();
-  assert.match(html, /<h2>Reminders<\/h2><span class="mono ok">On<\/span>/);
+  assert.match(html, /<span>Reminders<\/span><span class="ok">On<\/span>/);
   // Tuesday evening: tonight's reading comes first.
   assert.match(html, /<span class="mono">Next<\/span><span><b>Tue 27 Oct, 20:00<\/b> · Tonight: pp\. 35–44<\/span>/);
   assert.match(html, /<span class="mono">Last<\/span><span>Thu 22 Oct, 08:00<\/span>/);
@@ -178,12 +182,12 @@ test("EPAs tab: once a reminder has arrived, status On, the next reminder and th
 test("blocked notifications, and Safari outside the home-screen app, each say what to do", () => {
   const h = withBlock("2026-10-27T12:00");
   pushPhone(h, {perm: "denied"});
-  h.click("tab", {page: "epas"});
+  h.click("setopen");
   assert.match(h.html(), /Blocked[\s\S]*?Turn them on in iPhone Settings, Notifications, GI Hub/);
   const s = withBlock("2026-10-27T12:00");
   s.run(`window.__vapid = "BKey"`);
   s.ctx.navigator.standalone = false;
-  s.click("tab", {page: "epas"});
+  s.click("setopen");
   assert.match(s.html(), /Home screen only[\s\S]*?Open GI Hub from your home screen/);
 });
 

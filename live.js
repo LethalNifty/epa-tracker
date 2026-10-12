@@ -75,7 +75,7 @@ function liveSwap(fn, kind) {
 // While a sheet is up the page sinks back behind it; when the sheet goes, a
 // copy of it slides away so the close is as smooth as the open.
 let liveStacked = false;
-const liveStackNow = () => !!(sheet || studySheet || scopeSheet || pearlSheet);
+const liveStackNow = () => !!(sheet || studySheet || scopeSheet || pearlSheet || setSheet);
 function liveStackClass() {
   const now = liveStackNow();
   return now ? (liveStacked ? " under" : " under sink") : liveStacked ? " rise" : "";
