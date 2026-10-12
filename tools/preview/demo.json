@@ -1,0 +1,1237 @@
+{
+ "today": "2026-10-09",
+ "state": {
+  "v": 1,
+  "obs": {
+   "d1": [
+    {
+     "d": "2026-07-06",
+     "a": "Chen",
+     "n": "Upper GI bleed",
+     "status": "approved",
+     "ts": "2026-07-06T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-09",
+     "a": "Patel",
+     "n": "Cholangitis",
+     "status": "approved",
+     "ts": "2026-07-09T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-20",
+     "a": "Chen",
+     "n": "Food bolus",
+     "status": "approved",
+     "ts": "2026-07-20T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-27",
+     "a": "Okafor",
+     "n": "Acute severe UC",
+     "status": "approved",
+     "ts": "2026-07-27T18:00:00.000Z"
+    }
+   ],
+   "d2a": [
+    {
+     "d": "2026-07-08",
+     "a": "Patel",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-08T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-16",
+     "a": "Lindqvist",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-16T18:00:00.000Z"
+    }
+   ],
+   "d2b": [
+    {
+     "d": "2026-07-08",
+     "a": "Patel",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-08T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-14",
+     "a": "Chen",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-14T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-30",
+     "a": "Okafor",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-30T18:00:00.000Z"
+    },
+    {
+     "d": "2026-08-04",
+     "a": "Patel",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-08-04T18:00:00.000Z"
+    }
+   ],
+   "f1a": [
+    {
+     "d": "2026-07-10",
+     "a": "Chen",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-10T18:00:00.000Z"
+    },
+    {
+     "d": "2026-07-15",
+     "a": "Okafor",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-07-15T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-29",
+     "a": "Marsh",
+     "n": "",
+     "status": "approved",
+     "ts": "2026-09-29T18:00:00.000Z"
+    }
+   ],
+   "f1b": [
+    {
+     "d": "2026-07-22",
+     "a": "Lindqvist",
+     "n": "Iron deficiency",
+     "status": "approved",
+     "ts": "2026-07-22T18:00:00.000Z"
+    },
+    {
+     "d": "2026-08-05",
+     "a": "Patel",
+     "n": "Dysphagia",
+     "status": "approved",
+     "ts": "2026-08-05T18:00:00.000Z"
+    },
+    {
+     "d": "2026-08-19",
+     "a": "Chen",
+     "n": "Abnormal LFTs",
+     "status": "approved",
+     "ts": "2026-08-19T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-02",
+     "a": "Okafor",
+     "n": "Pancreatitis",
+     "status": "approved",
+     "ts": "2026-09-02T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-10",
+     "a": "Patel",
+     "n": "Chronic diarrhea",
+     "status": "pending",
+     "ts": "2026-09-10T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-17",
+     "a": "Lindqvist",
+     "n": "GERD",
+     "status": "pending",
+     "ts": "2026-09-17T18:00:00.000Z"
+    }
+   ],
+   "f2": [
+    {
+     "d": "2026-08-12",
+     "a": "Okafor",
+     "n": "Short bowel review",
+     "status": "approved",
+     "ts": "2026-08-12T18:00:00.000Z"
+    },
+    {
+     "d": "2026-10-06",
+     "a": "Marsh",
+     "n": "PN start",
+     "status": "approved",
+     "ts": "2026-10-06T18:00:00.000Z"
+    }
+   ],
+   "f3a": [
+    {
+     "d": "2026-09-03",
+     "a": "Chen",
+     "n": "From scope log: EGD",
+     "status": "pending",
+     "ts": "2026-09-03T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-24",
+     "a": "Marsh",
+     "n": "From scope log: EGD · biopsy",
+     "status": "approved",
+     "ts": "2026-09-24T18:00:00.000Z"
+    }
+   ],
+   "c2": [
+    {
+     "d": "2026-09-01",
+     "a": "Lindqvist",
+     "n": "Compensated cirrhosis",
+     "status": "approved",
+     "ts": "2026-09-01T18:00:00.000Z"
+    },
+    {
+     "d": "2026-09-15",
+     "a": "Lindqvist",
+     "n": "PBC follow-up",
+     "status": "approved",
+     "ts": "2026-09-15T18:00:00.000Z"
+    }
+   ],
+   "c3": [
+    {
+     "d": "2026-09-08",
+     "a": "Patel",
+     "n": "Decompensation, ascites",
+     "status": "pending",
+     "ts": "2026-09-08T18:00:00.000Z"
+    }
+   ]
+  },
+  "lines": {
+   "d1-1": {
+    "v": 1
+   },
+   "d1-2": {
+    "v": 1
+   },
+   "d1-3": {
+    "v": 1
+   },
+   "d1-4": {
+    "v": 1
+   },
+   "d1-7": {
+    "v": 1
+   },
+   "f1b-1": {
+    "v": 1
+   },
+   "f1b-3": {
+    "v": 1
+   },
+   "f1b-4": {
+    "v": 1
+   },
+   "f1b-5": {
+    "v": 1
+   },
+   "f1b-6": {
+    "v": 1
+   },
+   "c2-6": {
+    "v": 1
+   }
+  },
+  "lastBackup": "2026-10-01T15:00:00.000Z",
+  "recapSeen": null,
+  "study": {
+   "log": {
+    "2026-09-30": 4,
+    "2026-10-02": 8,
+    "2026-10-05": 12,
+    "2026-10-06": 16,
+    "2026-10-07": 20
+   },
+   "q": {},
+   "pauses": [],
+   "qa": {}
+  },
+  "scopes": {
+   "cases": [
+    {
+     "id": "c0",
+     "d": "2026-08-31",
+     "staff": "s4",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dyspepsia"
+     ],
+     "found": [
+      "gastritis"
+     ],
+     "ts": "2026-08-31T10:00:00.000Z"
+    },
+    {
+     "id": "c1",
+     "d": "2026-08-31",
+     "staff": "s1",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.band"
+     ],
+     "why": [
+      "ugib"
+     ],
+     "found": [
+      "ev"
+     ],
+     "ts": "2026-08-31T11:00:00.000Z"
+    },
+    {
+     "id": "c2",
+     "d": "2026-09-01",
+     "staff": "s1",
+     "site": "stb",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-09-01T10:00:00.000Z"
+    },
+    {
+     "id": "c3",
+     "d": "2026-09-02",
+     "staff": "s5",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-09-02T10:00:00.000Z"
+    },
+    {
+     "id": "c4",
+     "d": "2026-09-04",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-09-04T10:00:00.000Z"
+    },
+    {
+     "id": "c5",
+     "d": "2026-09-07",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-09-07T10:00:00.000Z"
+    },
+    {
+     "id": "c6",
+     "d": "2026-09-08",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.band"
+     ],
+     "why": [
+      "ugib"
+     ],
+     "found": [
+      "ev"
+     ],
+     "ts": "2026-09-08T10:00:00.000Z"
+    },
+    {
+     "id": "c7",
+     "d": "2026-09-09",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-09-09T10:00:00.000Z"
+    },
+    {
+     "id": "c8",
+     "d": "2026-09-11",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-09-11T10:00:00.000Z"
+    },
+    {
+     "id": "c9",
+     "d": "2026-09-11",
+     "staff": "s4",
+     "site": "stb",
+     "loc": "icu",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.band"
+     ],
+     "why": [
+      "ugib"
+     ],
+     "found": [
+      "ev"
+     ],
+     "ts": "2026-09-11T11:00:00.000Z"
+    },
+    {
+     "id": "c10",
+     "d": "2026-09-11",
+     "staff": "s3",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "fs.dx"
+     ],
+     "why": [
+      "hematochezia"
+     ],
+     "found": [
+      "rectal"
+     ],
+     "ts": "2026-09-11T12:00:00.000Z"
+    },
+    {
+     "id": "c11",
+     "d": "2026-09-14",
+     "staff": "s5",
+     "site": "stb",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-09-14T10:00:00.000Z"
+    },
+    {
+     "id": "c12",
+     "d": "2026-09-15",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "urgent",
+     "procs": [
+      "colo.screen",
+      "colo.poly"
+     ],
+     "why": [
+      "crc"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-09-15T10:00:00.000Z",
+     "reach": "cecum"
+    },
+    {
+     "id": "c13",
+     "d": "2026-09-15",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dyspepsia"
+     ],
+     "found": [
+      "gastritis"
+     ],
+     "ts": "2026-09-15T11:00:00.000Z"
+    },
+    {
+     "id": "c14",
+     "d": "2026-09-18",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "urgent",
+     "procs": [
+      "colo.dx",
+      "colo.bx"
+     ],
+     "why": [
+      "diarrhea"
+     ],
+     "found": [
+      "colitis"
+     ],
+     "ts": "2026-09-18T10:00:00.000Z",
+     "reach": "ti"
+    },
+    {
+     "id": "c15",
+     "d": "2026-09-18",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "fs.dx"
+     ],
+     "why": [
+      "hematochezia"
+     ],
+     "found": [
+      "rectal"
+     ],
+     "ts": "2026-09-18T11:00:00.000Z"
+    },
+    {
+     "id": "c16",
+     "d": "2026-09-18",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-09-18T12:00:00.000Z"
+    },
+    {
+     "id": "c17",
+     "d": "2026-09-21",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "urgent",
+     "procs": [
+      "fs.dx"
+     ],
+     "why": [
+      "hematochezia"
+     ],
+     "found": [
+      "rectal"
+     ],
+     "ts": "2026-09-21T10:00:00.000Z"
+    },
+    {
+     "id": "c18",
+     "d": "2026-09-21",
+     "staff": "s1",
+     "site": "stb",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "colo.dx",
+      "colo.bx"
+     ],
+     "why": [
+      "diarrhea"
+     ],
+     "found": [
+      "colitis"
+     ],
+     "ts": "2026-09-21T11:00:00.000Z",
+     "reach": "desc"
+    },
+    {
+     "id": "c19",
+     "d": "2026-09-21",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "fs.dx"
+     ],
+     "why": [
+      "hematochezia"
+     ],
+     "found": [
+      "rectal"
+     ],
+     "ts": "2026-09-21T12:00:00.000Z"
+    },
+    {
+     "id": "c20",
+     "d": "2026-09-22",
+     "staff": "s4",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.nv.clip"
+     ],
+     "why": [
+      "melena"
+     ],
+     "found": [
+      "du",
+      "active"
+     ],
+     "ts": "2026-09-22T10:00:00.000Z"
+    },
+    {
+     "id": "c21",
+     "d": "2026-09-23",
+     "staff": "s5",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.nv.clip"
+     ],
+     "why": [
+      "melena"
+     ],
+     "found": [
+      "du",
+      "active"
+     ],
+     "ts": "2026-09-23T10:00:00.000Z"
+    },
+    {
+     "id": "c22",
+     "d": "2026-09-23",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.band"
+     ],
+     "why": [
+      "ugib"
+     ],
+     "found": [
+      "ev"
+     ],
+     "ts": "2026-09-23T11:00:00.000Z"
+    },
+    {
+     "id": "c23",
+     "d": "2026-09-24",
+     "staff": "s2",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "colo.dx"
+     ],
+     "why": [
+      "ida"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-09-24T10:00:00.000Z",
+     "reach": "tverse"
+    },
+    {
+     "id": "c24",
+     "d": "2026-09-24",
+     "staff": "s1",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "colo.dx"
+     ],
+     "why": [
+      "ida"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-09-24T11:00:00.000Z",
+     "reach": "hf"
+    },
+    {
+     "id": "c25",
+     "d": "2026-09-28",
+     "staff": "s5",
+     "site": "stb",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.nv.clip"
+     ],
+     "why": [
+      "melena"
+     ],
+     "found": [
+      "du",
+      "active"
+     ],
+     "ts": "2026-09-28T10:00:00.000Z"
+    },
+    {
+     "id": "c26",
+     "d": "2026-09-29",
+     "staff": "s4",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-09-29T10:00:00.000Z"
+    },
+    {
+     "id": "c27",
+     "d": "2026-09-29",
+     "staff": "s4",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.nv.clip"
+     ],
+     "why": [
+      "melena"
+     ],
+     "found": [
+      "du",
+      "active"
+     ],
+     "ts": "2026-09-29T11:00:00.000Z"
+    },
+    {
+     "id": "c28",
+     "d": "2026-09-29",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.nv.clip"
+     ],
+     "why": [
+      "melena"
+     ],
+     "found": [
+      "du",
+      "active"
+     ],
+     "ts": "2026-09-29T12:00:00.000Z"
+    },
+    {
+     "id": "c29",
+     "d": "2026-09-30",
+     "staff": "s1",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dyspepsia"
+     ],
+     "found": [
+      "gastritis"
+     ],
+     "ts": "2026-09-30T10:00:00.000Z"
+    },
+    {
+     "id": "c30",
+     "d": "2026-09-30",
+     "staff": "s5",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-09-30T11:00:00.000Z"
+    },
+    {
+     "id": "c31",
+     "d": "2026-10-01",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx"
+     ],
+     "why": [],
+     "found": [
+      "normal"
+     ],
+     "ts": "2026-10-01T10:00:00.000Z"
+    },
+    {
+     "id": "c32",
+     "d": "2026-10-01",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "colo.screen",
+      "colo.poly"
+     ],
+     "why": [
+      "crc"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-10-01T11:00:00.000Z",
+     "reach": "desc"
+    },
+    {
+     "id": "c33",
+     "d": "2026-10-01",
+     "staff": "s4",
+     "site": "stb",
+     "loc": "icu",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-10-01T12:00:00.000Z"
+    },
+    {
+     "id": "c34",
+     "d": "2026-10-02",
+     "staff": "s2",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-10-02T10:00:00.000Z"
+    },
+    {
+     "id": "c35",
+     "d": "2026-10-02",
+     "staff": "s4",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "urgent",
+     "procs": [
+      "colo.screen",
+      "colo.poly"
+     ],
+     "why": [
+      "crc"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-10-02T11:00:00.000Z",
+     "reach": "sig"
+    },
+    {
+     "id": "c36",
+     "d": "2026-10-05",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "urgent",
+     "procs": [
+      "egd.dx",
+      "egd.band"
+     ],
+     "why": [
+      "ugib"
+     ],
+     "found": [
+      "ev"
+     ],
+     "ts": "2026-10-05T10:00:00.000Z"
+    },
+    {
+     "id": "c37",
+     "d": "2026-10-06",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-10-06T10:00:00.000Z"
+    },
+    {
+     "id": "c38",
+     "d": "2026-10-06",
+     "staff": "s2",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "urgent",
+     "procs": [
+      "colo.dx",
+      "colo.bx"
+     ],
+     "why": [
+      "diarrhea"
+     ],
+     "found": [
+      "colitis"
+     ],
+     "ts": "2026-10-06T11:00:00.000Z",
+     "reach": "tverse"
+    },
+    {
+     "id": "c39",
+     "d": "2026-10-07",
+     "staff": "s2",
+     "site": "stb",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "colo.dx"
+     ],
+     "why": [
+      "ida"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-10-07T10:00:00.000Z",
+     "reach": "ti"
+    },
+    {
+     "id": "c40",
+     "d": "2026-10-07",
+     "staff": "s1",
+     "site": "hsc",
+     "loc": "ed",
+     "urg": "elective",
+     "procs": [
+      "colo.dx",
+      "colo.bx"
+     ],
+     "why": [
+      "diarrhea"
+     ],
+     "found": [
+      "colitis"
+     ],
+     "ts": "2026-10-07T11:00:00.000Z",
+     "reach": "hf"
+    },
+    {
+     "id": "c41",
+     "d": "2026-10-07",
+     "staff": "s5",
+     "site": "stb",
+     "loc": "icu",
+     "urg": "urgent",
+     "procs": [
+      "colo.dx"
+     ],
+     "why": [
+      "ida"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-10-07T12:00:00.000Z",
+     "reach": "cecum"
+    },
+    {
+     "id": "c42",
+     "d": "2026-10-08",
+     "staff": "s2",
+     "site": "hsc",
+     "loc": "suite",
+     "urg": "elective",
+     "procs": [
+      "egd.dx",
+      "egd.bx"
+     ],
+     "why": [
+      "dysphagia"
+     ],
+     "found": [
+      "eoe"
+     ],
+     "ts": "2026-10-08T10:00:00.000Z"
+    },
+    {
+     "id": "c43",
+     "d": "2026-10-08",
+     "staff": "s3",
+     "site": "hsc",
+     "loc": "icu",
+     "urg": "urgent",
+     "procs": [
+      "colo.dx"
+     ],
+     "why": [
+      "ida"
+     ],
+     "found": [
+      "polyp"
+     ],
+     "ts": "2026-10-08T11:00:00.000Z",
+     "reach": "sig"
+    }
+   ],
+   "staff": [
+    {
+     "id": "s1",
+     "name": "Chen, Ada",
+     "aliases": [],
+     "hidden": false
+    },
+    {
+     "id": "s2",
+     "name": "Patel, Ravi",
+     "aliases": [],
+     "hidden": false
+    },
+    {
+     "id": "s3",
+     "name": "Okafor, Ngozi",
+     "aliases": [],
+     "hidden": false
+    },
+    {
+     "id": "s4",
+     "name": "Lindqvist, Erik",
+     "aliases": [],
+     "hidden": false
+    },
+    {
+     "id": "s5",
+     "name": "Marsh, Tom",
+     "aliases": [],
+     "hidden": false
+    }
+   ],
+   "learned": [],
+   "lastReport": null,
+   "reportName": "",
+   "hintOff": null,
+   "sitesFilled": true
+  },
+  "guides": {
+   "pins": [],
+   "seen": []
+  },
+  "pearls": [
+   {
+    "id": "p1",
+    "d": "2026-10-08",
+    "t": "In acute severe UC, check a stool C diff before escalating steroids, every time.",
+    "who": "Okafor",
+    "topic": "",
+    "sent": null,
+    "ts": "2026-10-08T15:00:00Z"
+   },
+   {
+    "id": "p2",
+    "d": "2026-10-07",
+    "t": "Refeeding: start thiamine before the first feed, not with it.",
+    "who": "Marsh",
+    "topic": "",
+    "sent": null,
+    "ts": "2026-10-07T15:00:00Z"
+   },
+   {
+    "id": "p3",
+    "d": "2026-10-02",
+    "t": "Variceal bleed: ceftriaxone 1 g IV daily for 7 days, start before the scope.",
+    "who": "",
+    "topic": "",
+    "sent": "2026-10-04",
+    "ts": "2026-10-02T15:00:00Z"
+   }
+  ]
+ },
+ "call": {
+  "v": 1,
+  "shifts": {
+   "gi-call-20261013@demo": {
+    "uid": "gi-call-20261013@demo",
+    "s": 1791928800000,
+    "e": 1791982800000,
+    "so": "Day Fellow (HSC) + Day Fellow (St B)",
+    "hsc": {
+     "att": "Okafor",
+     "res": "Resident G"
+    },
+    "stb": {
+     "att": "Lindqvist",
+     "res": "none"
+    }
+   },
+   "gi-call-20261016@demo": {
+    "uid": "gi-call-20261016@demo",
+    "s": 1792188000000,
+    "e": 1792242000000,
+    "so": "Day Fellow (HSC) + Day Fellow (St B)",
+    "hsc": {
+     "att": "Okafor",
+     "res": "Resident G"
+    },
+    "stb": {
+     "att": "Lindqvist",
+     "res": "none"
+    }
+   },
+   "gi-call-20261017@demo": {
+    "uid": "gi-call-20261017@demo",
+    "s": 1792274400000,
+    "e": 1792328400000,
+    "so": "Day Fellow (HSC) + Day Fellow (St B)",
+    "hsc": {
+     "att": "Okafor",
+     "res": "Resident G"
+    },
+    "stb": {
+     "att": "Lindqvist",
+     "res": "none"
+    }
+   },
+   "gi-call-20261018@demo": {
+    "uid": "gi-call-20261018@demo",
+    "s": 1792360800000,
+    "e": 1792414800000,
+    "so": "Day Fellow (HSC) + Day Fellow (St B)",
+    "hsc": {
+     "att": "Okafor",
+     "res": "Resident G"
+    },
+    "stb": {
+     "att": "Lindqvist",
+     "res": "none"
+    }
+   },
+   "gi-call-20261021@demo": {
+    "uid": "gi-call-20261021@demo",
+    "s": 1792620000000,
+    "e": 1792674000000,
+    "so": "Day Fellow (HSC) + Day Fellow (St B)",
+    "hsc": {
+     "att": "Okafor",
+     "res": "Resident G"
+    },
+    "stb": {
+     "att": "Lindqvist",
+     "res": "none"
+    }
+   }
+  },
+  "nums": {
+   "hsc": "204-555-0101",
+   "stb": "204-555-0202"
+  },
+  "last": "2026-10-09"
+ }
+}

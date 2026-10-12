@@ -1,0 +1,21 @@
+[
+  {"name": "tour", "demo": true, "settle": 300, "steps": [
+    {"wait": 3500, "shot": "01_week", "full": true},
+    {"click": "[data-action=tab][data-page=epas]", "wait": 1200, "shot": "02_epas", "full": true},
+    {"click": ".epa", "wait": 1200, "shot": "03_epa_detail", "full": true},
+    {"click": "[data-action=tab][data-page=study]", "wait": 1200, "shot": "04_study", "full": true},
+    {"click": "[data-action=pearlsopen]", "wait": 1200, "shot": "05_pearls", "full": true},
+    {"click": "[data-action=tab][data-page=endo]", "wait": 1200, "shot": "06_endo", "full": true},
+    {"click": "[data-action=tab][data-page=guides]", "wait": 900},
+    {"click": "[data-action=guidestab][data-tab=g]", "wait": 1200, "shot": "07_guides", "full": true},
+    {"click": "[data-action=guidestab][data-tab=t]", "wait": 1500, "shot": "08_trials"},
+    {"click": "[data-action=guidestab][data-tab=d]", "wait": 2500, "shot": "09_ibd"},
+    {"click": "[data-action=guidestab][data-tab=b]", "wait": 1200, "shot": "10_biopsy"},
+    {"click": "[data-action=tab][data-page=week]", "wait": 1500},
+    {"click": ".fab", "wait": 900, "shot": "11_plus"},
+    {"eval": "innerWidth + '/' + document.documentElement.scrollWidth", "log": "width/scrollWidth"}
+  ]},
+  {"name": "empty", "steps": [
+    {"wait": 1500, "shot": "12_empty"}
+  ]}
+]
