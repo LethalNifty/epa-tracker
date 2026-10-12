@@ -7,7 +7,7 @@
 
 // The light each page is seen in: NBI cyan, fluorescein for reading, white
 // light for the library and call.
-const LIVE_MODE = {week: "nbi", epas: "nbi", epa: "nbi", plan: "nbi", endo: "nbi", study: "flu", guides: "wli", call: "wli"};
+const LIVE_MODE = {week: "nbi", epas: "nbi", epa: "nbi", plan: "nbi", endo: "nbi", study: "flu", pearls: "flu", guides: "wli", call: "wli"};
 const LIVE_DOC = typeof document !== "undefined" && document.documentElement && document.documentElement.style ? document : null;
 const liveCalm = () => !!(typeof window !== "undefined" && window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -20,7 +20,7 @@ function liveTap(act, el) { liveLastTap = el || null; }
 // Tabs cross-fade; opening an EPA or the call screen pushes in from the right
 // and Back slides it away, as on iOS. The bar, the title bar and the light
 // stay where they are.
-const LIVE_DEEP = new Set(["epa", "call"]);
+const LIVE_DEEP = new Set(["epa", "call", "pearls"]);
 function liveKind(from, to) {
   if (LIVE_DEEP.has(to) && !LIVE_DEEP.has(from)) return "push";
   if (LIVE_DEEP.has(from) && !LIVE_DEEP.has(to)) return "pop";
@@ -75,7 +75,7 @@ function liveSwap(fn, kind) {
 // While a sheet is up the page sinks back behind it; when the sheet goes, a
 // copy of it slides away so the close is as smooth as the open.
 let liveStacked = false;
-const liveStackNow = () => !!(sheet || studySheet || scopeSheet);
+const liveStackNow = () => !!(sheet || studySheet || scopeSheet || pearlSheet);
 function liveStackClass() {
   const now = liveStackNow();
   return now ? (liveStacked ? " under" : " under sink") : liveStacked ? " rise" : "";

@@ -98,7 +98,7 @@ function guidesTopicHTML(t, opts = {}) {
   if (t.a.length) h += `<div class="gt-sub mono">Also</div>` + t.a.map(d => guidesLinkHTML(d, true)).join("");
   if (t.c.length) h += `<div class="gt-sub mono">Scores and classifications</div><div class="gsc">` +
     t.c.map(c => `<a href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.t)}</a>`).join("") + `</div>`;
-  h += trialsTopicHTML(t);
+  h += trialsTopicHTML(t) + pearlsTopicHTML(t);
   const read = guidesReadHTML(t);
   const bx = t.bx.filter(title => BIOPSY_DATA.some(b => b.title === title));
   if (read || bx.length) h += `<div class="gt-meta">${read}` + bx.map(title =>

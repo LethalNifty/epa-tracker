@@ -5,7 +5,7 @@
 
 const KEY = "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
-const APP_VERSION = "epa-v35";
+const APP_VERSION = "epa-v36";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
@@ -26,6 +26,7 @@ const Store = {
     if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; }
     const gd = this.state.guides;
     this.state.guides = {pins: arr(gd && gd.pins).filter(x => typeof x === "string"), seen: arr(gd && gd.seen).filter(x => typeof x === "string")};
+    this.state.pearls = pearlsClean(this.state.pearls);
     scopeLinkEpas(this.state.scopes.cases, this.state.obs, this.state.scopes.staff); },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -67,13 +68,14 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
   hasData() {
     return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
-      Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0 || this.state.scopes.cases.length > 0;
+      Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0 || this.state.scopes.cases.length > 0 ||
+      this.state.pearls.length > 0;
   },
   // Study: the bookmark is saved against the day it was set.
   setStudyCursor(c, day) {
@@ -110,7 +112,15 @@ const Store = {
     const h = String(heard || "").trim().toLowerCase();
     if (!h) return;
     this.state.scopes.learned = this.state.scopes.learned.filter(l => l.heard !== h).concat({kind, heard: h, code}).slice(-200); this.save(); },
-  markReport(iso) { this.state.scopes.lastReport = iso; this.save(); }
+  markReport(iso) { this.state.scopes.lastReport = iso; this.save(); },
+  // Pearls (pearls.js): who said it lives only here and in backups.
+  addPearl(f) { const p = pearlClean({...f, id: pearlId(new Set(this.state.pearls.map(x => x.id))), sent: null, ts: new Date().toISOString()});
+    this.state.pearls.push(p); this.save(); return p.id; },
+  updatePearl(id, f) { const p = this.state.pearls.find(x => x.id === id); if (p) { Object.assign(p, f); this.save(); } },
+  removePearl(id) { this.state.pearls = this.state.pearls.filter(x => x.id !== id); this.save(); },
+  markPearlsSent(ids, day) { for (const p of this.state.pearls) if (ids.includes(p.id)) p.sent = day; this.save(); },
+  pearlsSnapshot() { return JSON.parse(JSON.stringify(this.state.pearls)); },
+  restorePearls(snap) { this.state.pearls = JSON.parse(JSON.stringify(snap)); this.save(); }
 };
 
 let nudgeDismissed = false, backupError = null;
@@ -252,7 +262,7 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
 const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
 // Pages that light up another tab in the bar: the year plan sits inside EPAs.
-const NAV_HOME = {plan: "epas"};
+const NAV_HOME = {plan: "epas", pearls: "study"};
 function navHTML(active) {
   active = NAV_HOME[active] || active;
   const dot = page => page === "guides" && active !== "guides" && guidesUnseenCount() > 0;
@@ -759,10 +769,10 @@ function render() {
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "guides" ? viewGuides() : viewEpa(route.code);
+      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
       (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
-      (scopePick ? scopePickHTML() : "") + (toast ? toastHTML() : "");
+      (scopePick ? scopePickHTML() : "") + (pearlSheet ? pearlSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -782,6 +792,7 @@ function render() {
   scopeAfterRender();
   remindAfterRender();
   guidesAfterRender();
+  pearlsAfterRender();
   liveAfterRender(p);
 }
 // The dial's number counts up once, the first time Week is drawn.
@@ -814,6 +825,7 @@ function go(next, restore) {
   liveSwap(render, kind);
 }
 function dispatch(act, d) {
+  if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
   if (act.startsWith("scope")) {
@@ -882,7 +894,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target)) return;
+  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -893,7 +905,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (sheetField(t) || studyField(t) || scopeFieldChange(t)) return;
+  if (sheetField(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {
@@ -976,7 +988,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
   if (document.visibilityState === "visible") updateCheck();
-  if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick &&
+  if (document.visibilityState === "visible" && !sheet && !studySheet && !scopeSheet && !scopePick && !pearlSheet &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
     if (updateNow()) return;
     if (route.page === "week" && hiddenAt && Date.now() - hiddenAt > 5000) introDone = false;
@@ -990,8 +1002,8 @@ if (typeof location !== "undefined" && (location.hash === "#call" || location.ha
 }
 if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
   navigator.serviceWorker.addEventListener("message", ev => {
-    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; go({page: "call", from: "week"}); }
-    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; go({page: "study"}); }
+    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; go({page: "call", from: "week"}); }
+    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; go({page: "study"}); }
   });
 Store.load();
 CallStore.load();
@@ -1024,7 +1036,7 @@ if ("serviceWorker" in navigator) {
     if (!hadWorker) return;   // the first install: this page is already the newest
     updateReady = true;
     const a = document.activeElement;
-    if (Date.now() - openedAt < 15000 && !sheet && !studySheet && !scopeSheet && !scopePick &&
+    if (Date.now() - openedAt < 15000 && !sheet && !studySheet && !scopeSheet && !scopePick && !pearlSheet &&
         !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) updateNow();
   });
 }

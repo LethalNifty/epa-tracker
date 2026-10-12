@@ -8,7 +8,7 @@ const {ROOT} = require("./harness");
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8");
 // Everything we wrote: the page minus the verbatim Royal College EPA_DATA, plus the scripts and styles.
 const ownText = () => read("index.html").replace(/\/\*EPA_DATA_START\*\/[\s\S]*?\/\*EPA_DATA_END\*\//, "") +
-  ["coach.js", "call.js", "study.js", "studyq.js", "guides.js", "guides-view.js", "trials.js", "trials-view.js", "notify.js", "remind.js", "study-view.js", "app.js", "app.css", "sw.js", "guides.json"].map(f => "\n" + read(f)).join("");
+  ["coach.js", "call.js", "study.js", "studyq.js", "guides.js", "guides-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "notify.js", "remind.js", "study-view.js", "app.js", "app.css", "sw.js", "guides.json"].map(f => "\n" + read(f)).join("");
 
 test("no em-dashes in anything we wrote", () => {
   assert.deepEqual(ownText().split("\n").filter(l => l.includes("\u2014")).map(l => l.trim().slice(0, 80)), []);
@@ -56,11 +56,11 @@ test("an update saves fresh files, never the browser's cached copies of the last
 
 test("the service worker caches every file the app needs, under a new cache name", () => {
   const sw = read("sw.js");
-  assert.match(sw, /const CACHE = "epa-v35";/);
+  assert.match(sw, /const CACHE = "epa-v36";/);
   // The page shows the same version the service worker caches.
-  assert.match(read("app.js"), /const APP_VERSION = "epa-v35";/);
+  assert.match(read("app.js"), /const APP_VERSION = "epa-v36";/);
   for (const f of ["index.html", "app.css", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js",
-    "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
+    "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), "missing file " + f);
   }

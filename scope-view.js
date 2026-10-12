@@ -394,7 +394,8 @@ function scopeSheetHTML() {
     `<div class="grab"></div><div class="shead"><b>${esc(t)}</b><button class="iconbtn" data-action="scopeclose" aria-label="Close">${ic("x")}</button></div>` + (extra || "");
   if (sh.kind === "capture")
     // Above the box, so the keyboard and its toolbar can never cover it.
-    return head("Log a case", `<button class="btn epalink" data-action="sheet">${ic("epas")}Log an EPA observation instead</button>`) +
+    return head("Log a case", `<div class="altrow"><button class="btn epalink" data-action="sheet">${ic("epas")}EPA observation</button>` +
+      `<button class="btn epalink" data-action="pearlnew">${ic("pearl")}Catch a pearl</button></div>`) +
       scopeBoxHTML("sheet") + scopeCardsHTML() + `</div>`;
   if (sh.kind === "edit") {
     const c = sh.card;

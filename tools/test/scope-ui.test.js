@@ -409,8 +409,8 @@ test("the EPA link sits above the capture box, clear of the keyboard", () => {
   const h = endo("2026-09-28", withScopes());
   h.click("scopeopen");
   const sheet = h.html().slice(h.html().indexOf('class="sheet scopesheet'));
-  assert.ok(sheet.indexOf("Log an EPA observation instead") > 0);
-  assert.ok(sheet.indexOf("Log an EPA observation instead") < sheet.indexOf('id="scopebox-sheet"'));
+  assert.ok(sheet.indexOf('data-action="sheet">') > 0);
+  assert.ok(sheet.indexOf('data-action="sheet">') < sheet.indexOf('id="scopebox-sheet"'));
   h.click("sheet");
   assert.equal(h.val("scopeSheet"), null);
   assert.match(h.html(), /Log observation/);
