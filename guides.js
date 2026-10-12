@@ -1,8 +1,9 @@
 "use strict";
 // GI Hub guides: the guideline library and the logic behind the Guides tab.
 // guides.json is built from private sources by a script outside this
-// repository and holds only titles, years, links and our own one-line notes;
-// a weekly check adds new guidelines to it without an app update. Pure: no
+// repository and holds only titles, years, links and our own one-line notes
+// (and the trials the weekly watch kept: journal, date, name, our own gist
+// and note, link); a weekly check adds to it without an app update. Pure: no
 // DOM and no Store. Loaded after study.js (blocks and Mayo chapters) and
 // before guides-view.js.
 
@@ -37,7 +38,13 @@ function guidesAccept(json) {
     topics.push(x);
   }
   if (!topics.length) return false;
-  Guides.data = {checked: json.checked || null, sections: json.sections.filter(s => secs[s.id]), topics, secs};
+  // Trials kept by the weekly watch, newest first; one with no topic here still shows.
+  const trials = (Array.isArray(json.tr) ? json.tr : [])
+    .filter(r => r && r.k && r.w && r.t && /^\d{4}-\d{2}-\d{2}$/.test(r.d || "") && /^https:\/\//.test(r.u || ""))
+    .map(r => ({k: String(r.k), w: r.w, d: r.d, y: +r.d.slice(0, 4), n: r.n || "", t: r.t, x: r.x || "", u: r.u,
+      tp: byId[r.tp] ? r.tp : null}))
+    .sort((a, b) => (b.d > a.d ? 1 : b.d < a.d ? -1 : 0));
+  Guides.data = {checked: json.checked || null, sections: json.sections.filter(s => secs[s.id]), topics, secs, trials};
   Guides.byId = byId;
   Guides.status = "ready";
   return true;

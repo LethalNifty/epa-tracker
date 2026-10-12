@@ -716,3 +716,27 @@ function trialsYears(list, today) {
   const years = list.map(t => t.y);
   return {by, ca, recent, from: Math.min(...years), to: Math.max(...years)};
 }
+
+// ---- The weekly watch ---------------------------------------------------------------------
+// Trials the Sunday watch kept (guides.json `tr`, loaded into Guides.data.trials),
+// newest first, less any that has a landmark card above. Seen keys share the
+// guideline list's store, as "tr:" and the PubMed id.
+const TRIALS_WATCH_SHOW = 4;
+const TRIALS_PMIDS = new Set(TRIALS.map(t => t.pmid));
+function trialsWatch(data) {
+  return data && Array.isArray(data.trials) ? data.trials.filter(r => !TRIALS_PMIDS.has(r.k)) : [];
+}
+function trialsWatchKey(r) { return "tr:" + r.k; }
+function trialsWatchUnseen(list, seen) {
+  const s = new Set(seen || []);
+  return list.filter(r => !s.has(trialsWatchKey(r)));
+}
+// Every word must match the journal, name, gist, note or topic.
+function trialsWatchSearch(list, q, byId) {
+  const words = guidesNorm(q).split(" ").filter(Boolean);
+  if (!words.length) return [];
+  return list.filter(r => {
+    const hay = " " + guidesNorm([r.w, r.n, r.t, r.x, r.y, r.tp && byId && byId[r.tp] ? byId[r.tp].n : ""].join(" ")) + " ";
+    return words.every(w => hay.includes(w));
+  });
+}

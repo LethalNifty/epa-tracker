@@ -11,6 +11,11 @@ let trialsChip = "all";        // "all", "block", or a section id
 const trialsOpen = new Set();
 let trialsFresh = null;        // the card just opened, so only it slides open on the redraw
 let trialsIntro = true;        // the beads light up once, the first time the view is drawn
+const trialsWatchOpen = new Set();
+let trialsWatchAll = false;    // the weekly watch list shows every trial, not just the newest
+// The watch trials not yet seen when this visit to Guides began: their dots
+// stay until the next visit, though the bar's dot clears at once.
+let trialsVisit = null;
 
 // Search words lit in names and bottom lines.
 function trialsHi(html) {
@@ -95,11 +100,39 @@ function trialsMiniHTML(t) {
     `<span class="tx"><b>${esc(t.n)}</b><span class="yr mono">${t.y}</span><span class="ln">${esc(t.line)}</span></span>${ic("forward", "sm")}</button>`;
 }
 
+// ---- New from the weekly watch ------------------------------------------------------------------
+// A running list: each trial the Sunday watch keeps joins the top, with our
+// one-line gist; a tap shows our note, its guideline topic and the paper.
+function trialsWatchRowHTML(r, fresh) {
+  const open = trialsWatchOpen.has(r.k), topic = r.tp && Guides.byId[r.tp];
+  let h = `<article class="ltw${open ? " open" : ""}" id="tw-${esc(r.k)}">` +
+    `<button class="gnew-row" data-action="guidestrwtoggle" data-id="${esc(r.k)}" aria-expanded="${open}">` +
+    `<span class="d mono">${guidesDay(r.d)}</span><span class="tx"><b>${esc(trialsJournal(r.w))}${r.n ? " · " + trialsHi(esc(r.n)) : ""}</b> ` +
+    `${trialsHi(esc(r.t))}${topic ? `<span class="tp">${esc(topic.n)}</span>` : ""}</span>` +
+    `${fresh ? '<i class="gdot" aria-label="Not seen yet"></i>' : ""}${ic("chev", "sm chev")}</button>`;
+  if (!open) return h + `</article>`;
+  h += `<div class="ltw-body">${r.x ? `<p>${trialsHi(esc(r.x))}</p>` : ""}`;
+  if (topic) h += `<div class="lt-chips"><button class="chip" data-action="guidesopen" data-id="${esc(topic.id)}">${ic("guides")}<span class="nm">${esc(topic.n)}</span></button></div>`;
+  h += `<div class="lt-src">` +
+    `<a class="glink alt" href="https://pubmed.ncbi.nlm.nih.gov/${esc(r.k)}/" target="_blank" rel="noopener"><span class="who mono">PubMed<span class="yr">${esc(r.k)}</span></span><span class="tt">The abstract</span>${ic("external", "sm")}</a>` +
+    `<a class="glink alt" href="${esc(r.u)}" target="_blank" rel="noopener"><span class="who mono">${esc(trialsJournal(r.w))}<span class="yr">${r.y}</span></span><span class="tt">The paper</span>${ic("external", "sm")}</a></div>`;
+  return h + `</div></article>`;
+}
+function trialsWatchHTML(list) {
+  if (!list.length) return "";
+  const shown = trialsWatchAll ? list : list.slice(0, TRIALS_WATCH_SHOW);
+  return `<section class="gnew ltnew" aria-label="New from the weekly watch"><div class="gnew-h mono"><span>New from the weekly watch</span><span>${list.length}</span></div>` +
+    shown.map(r => trialsWatchRowHTML(r, trialsVisit.has(r.k))).join("") +
+    (list.length > shown.length ? `<button class="ltw-more" data-action="guidestrwmore">Show all ${list.length}</button>` : "") + `</section>`;
+}
+
 // ---- The view ---------------------------------------------------------------------------------
 function viewTrials() {
   const today = getToday(), blk = blockFor(today), q = trialsTerm.trim();
+  const watch = trialsWatch(Guides.data);
+  if (!trialsVisit) trialsVisit = new Set(trialsWatchUnseen(watch, Store.state.guides.seen).map(r => r.k));
   let h = "";
-  if (!q && trialsChip === "all") h += trialsMonitorHTML(today);
+  if (!q && trialsChip === "all") h += trialsMonitorHTML(today) + trialsWatchHTML(watch);
   h += `<div class="qwrap">${ic("search")}<input id="trialsq" type="search" placeholder="Search: PREDESCI, albumin, Villanueva" aria-label="Search trials" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(trialsTerm)}">` +
     (trialsTerm ? `<button class="qclear" data-action="guidestrclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
@@ -114,7 +147,10 @@ function viewTrials() {
   else if (trialsChip !== "all") pool = TRIALS.filter(t => t.s === trialsChip);
   const list = q ? trialsSearch(pool, q) : pool;
   h += `<p class="bcount mono">${q || trialsChip !== "all" ? list.length + " of " + TRIALS.length + " trials" : TRIALS.length + " trials · tap one for its card"}</p>`;
-  if (!list.length) h += `<div class="bempty">No trial matches. Try a drug, a disease or a name, like "albumin" or "VARSITY".</div>`;
+  const found = q ? trialsWatchSearch(watch, q, Guides.byId) : [];
+  if (found.length) h += `<div class="bgrp">${ic("trial")}<span class="mono">From the weekly watch</span><span class="mono n">${found.length}</span></div>` +
+    `<div class="gnew ltnew found">${found.map(r => trialsWatchRowHTML(r, false)).join("")}</div>`;
+  if (!list.length && !found.length) h += `<div class="bempty">No trial matches. Try a drug, a disease or a name, like "albumin" or "VARSITY".</div>`;
   if (q) {
     // One match: it opens by itself.
     h += list.map(t => trialsCardHTML(t, {sec: TRIALS_SEC_BY_ID[t.s].n, only: list.length === 1})).join("");
@@ -156,6 +192,8 @@ function trialsSearchHTML(q) {
 // Called from guidesDispatch for guidestr* actions. Returns false when nothing needs redrawing.
 function trialsDispatch(act, d) {
   if (act === "guidestrtoggle") { if (trialsOpen.has(d.id)) trialsOpen.delete(d.id); else { trialsOpen.add(d.id); trialsFresh = d.id; } return true; }
+  if (act === "guidestrwtoggle") { if (trialsWatchOpen.has(d.id)) trialsWatchOpen.delete(d.id); else trialsWatchOpen.add(d.id); return true; }
+  if (act === "guidestrwmore") { trialsWatchAll = true; return true; }
   if (act === "guidestrchip") { trialsChip = d.chip; trialsOpen.clear(); route.keepScroll = false; return true; }
   if (act === "guidestrclear") { trialsTerm = ""; guidesJump = "#trialsq"; return true; }
   if (act === "guidestropen") {
@@ -176,7 +214,16 @@ function trialsField(el) {
   if (q) { q.focus(); try { q.setSelectionRange(caret, caret); } catch (e) {} }
   return true;
 }
+// After a draw: on Trials, the weekly watch's trials count as seen.
 function trialsAfterRender() {
   trialsFresh = null;
   trialsIntro = !(route.page === "guides" && guidesTab === "t");
+  if (route.page !== "guides") { trialsVisit = null; return; }
+  if (guidesTab !== "t") return;
+  const watch = trialsWatch(Guides.data);
+  if (trialsWatchUnseen(watch, Store.state.guides.seen).length) Store.markGuidesSeen(watch.map(trialsWatchKey));
+}
+// The watch trials this phone hasn't shown: a dot on the bar and on Trials.
+function trialsWatchUnseenCount() {
+  return trialsWatchUnseen(trialsWatch(Guides.data), Store.state.guides.seen).length;
 }

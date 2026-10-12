@@ -20,7 +20,9 @@ function guidesDay(iso) {
 }
 function guidesSwitchHTML() {
   const b = (k, label) => `<button class="${guidesTab === k ? "on" : ""}" data-action="guidestab" data-tab="${k}"${guidesTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<div class="segtabs four" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("t", "Trials")}${b("d", "IBD drugs")}${b("b", "Biopsy")}</div>`;
+  // Trials carries a dot while the weekly watch has a trial this phone hasn't shown.
+  const tdot = guidesTab !== "t" && Guides.data && trialsWatchUnseenCount() ? '<i class="gdot" aria-label="New trials"></i>' : "";
+  return `<div class="segtabs four" role="group" aria-label="Guides views">${b("g", "Guidelines")}${b("t", "Trials" + tdot)}${b("d", "IBD drugs")}${b("b", "Biopsy")}</div>`;
 }
 function guidesState() { return Store.state.guides; }
 
@@ -285,8 +287,9 @@ function guidesRedraw() {
   route.keepScroll = true;
   render();
 }
-// The bar's dot: guidelines published this month that this phone hasn't shown.
+// The bar's dot: guidelines published this month, and trials the weekly watch
+// kept, that this phone hasn't shown.
 function guidesUnseenCount() {
   if (!Guides.data) return 0;
-  return guidesUnseen(guidesNews(Guides.data.topics, getToday()), Store.state.guides.seen).length;
+  return guidesUnseen(guidesNews(Guides.data.topics, getToday()), Store.state.guides.seen).length + trialsWatchUnseenCount();
 }

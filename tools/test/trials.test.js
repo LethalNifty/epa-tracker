@@ -209,3 +209,115 @@ test("searching the guideline library also finds trials by name", () => {
   h.run(`guidesTerm = "zzqx"; render();`);
   assert.doesNotMatch(h.html(), /data-action="guidestropen"/);
 });
+
+// ---- New from the weekly watch ---------------------------------------------------------------
+const WATCH = LIB.tr || [];
+// A phone whose guideline news is already seen, so only the watch's trials can light a dot.
+function watchPhone(page = "week") {
+  const h = load({today: "2026-10-12"});
+  h.run(`guidesAccept(${JSON.stringify(LIB)}); Store.markGuidesSeen(guidesNews(Guides.data.topics, getToday()).map(n => n.k)); guidesRedraw();`);
+  if (page) h.click("tab", {page});
+  return h;
+}
+const rows = html => (html.match(/<article class="ltw[ "]/g) || []).length;
+
+test("the watch's trials in guides.json: our own gist, a real topic, a link, newest first", () => {
+  assert.ok(WATCH.length >= 8);
+  const topics = new Set(LIB.topics.map(t => t.id));
+  for (const r of WATCH) {
+    assert.match(r.k, /^\d+$/);
+    assert.match(r.d, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(r.u, /^https:\/\//);
+    assert.ok(["NEJM", "Lancet", "JAMA"].includes(r.w), r.w);
+    assert.ok(r.t && r.t.length <= 80, r.k + " gist");
+    assert.ok(topics.has(r.tp), r.k + " topic " + r.tp);
+    assert.deepEqual([r.n, r.t, r.x].filter(s => /[—–]/.test(s)), [], r.k + " has a long dash");
+  }
+  assert.deepEqual(WATCH.map(r => r.d), WATCH.map(r => r.d).slice().sort().reverse());
+});
+
+test("Trials opens with the running list from the weekly watch, newest first, four then all", () => {
+  const h = watchPhone("guides");
+  h.click("guidestab", {tab: "t"});
+  let html = h.html();
+  assert.match(html, /New from the weekly watch<\/span><span>8<\/span>/);
+  assert.equal(rows(html), 4);
+  assert.ok(html.indexOf("RESOLVE") < html.indexOf("REFIT2"), "newest first");
+  assert.ok(html.indexOf("New from the weekly watch") < html.indexOf('id="trialsq"'), "above the search");
+  assert.match(html, /data-action="guidestrwmore">Show all 8</);
+  h.click("guidestrwmore");
+  html = h.html();
+  assert.equal(rows(html), 8);
+  assert.doesNotMatch(html, /guidestrwmore/);
+  // A section chip or a search hides the running list.
+  h.click("guidestrchip", {chip: "liver"});
+  assert.doesNotMatch(h.html(), /New from the weekly watch/);
+});
+
+test("a watch trial opens to our note, its guideline topic and the paper", () => {
+  const h = watchPhone("guides");
+  h.click("guidestab", {tab: "t"});
+  assert.doesNotMatch(h.html(), /class="ltw-body"/);
+  h.click("guidestrwtoggle", {id: "42815507"});
+  const html = h.html();
+  assert.match(html, /<article class="ltw open" id="tw-42815507">/);
+  assert.match(html, /SVR12 was 98.8%/);
+  assert.match(html, /data-action="guidesopen" data-id="hcv"/);
+  assert.match(html, /href="https:\/\/doi.org\/10.1016\/S0140-6736\(26\)01380-2"/);
+  assert.match(html, /href="https:\/\/pubmed.ncbi.nlm.nih.gov\/42815507\/"/);
+  h.click("guidesopen", {id: "hcv"});
+  assert.equal(h.val("guidesTab"), "g");
+});
+
+test("new watch trials light the bar and the Trials switch until Trials is opened; the rows keep their dots that visit", () => {
+  const h = watchPhone("week");
+  assert.equal(h.val("trialsWatchUnseenCount()"), 8);
+  assert.match(h.html(), /data-page="guides">.*class="nvdot"/);
+  h.click("tab", {page: "guides"});
+  assert.match(h.html(), /data-tab="t">Trials<i class="gdot"/);
+  h.click("guidestab", {tab: "t"});
+  assert.ok(h.saved().guides.seen.includes("tr:42815507"));
+  assert.equal(h.val("trialsWatchUnseenCount()"), 0);
+  assert.equal((h.html().match(/class="gdot"/g) || []).length, 4);
+  h.click("guidestab", {tab: "g"});
+  assert.doesNotMatch(h.html(), /data-tab="t">Trials<i class="gdot"/);
+  h.click("tab", {page: "week"});
+  assert.doesNotMatch(h.html(), /class="nvdot"/);
+  h.click("tab", {page: "guides"});
+  h.click("guidestab", {tab: "t"});
+  assert.doesNotMatch(h.html(), /class="gdot"/);
+});
+
+test("searching Trials finds the watch's trials too", () => {
+  const h = watchPhone("guides");
+  h.click("guidestab", {tab: "t"});
+  h.run(`trialsTerm = "bepirovirsen"; render();`);
+  let html = h.html();
+  assert.match(html, /From the weekly watch<\/span><span class="mono n">1</);
+  assert.match(html, /id="tw-42206582"/);
+  assert.doesNotMatch(html, /No trial matches/);
+  h.run(`trialsTerm = "hepatitis b"; render();`);   // by its topic's name
+  assert.match(h.html(), /id="tw-42206582"/);
+  h.run(`trialsTerm = "zzqx"; render();`);
+  html = h.html();
+  assert.doesNotMatch(html, /From the weekly watch/);
+  assert.match(html, /No trial matches/);
+});
+
+test("the library takes only well-formed watch trials, and one with a landmark card is left to the card", () => {
+  const h = load({today: "2026-10-12"});
+  const lib = {...LIB, tr: [
+    {k: "1", w: "NEJM", d: "2026-10-01", n: "OK", t: "Kept", x: "", u: "https://doi.org/x", tp: "hcv"},
+    {k: "2", w: "NEJM", d: "2026-10-02", n: "Bad link", t: "Dropped", u: "javascript:alert(1)", tp: "hcv"},
+    {k: "3", w: "NEJM", d: "Oct 2026", n: "Bad date", t: "Dropped", u: "https://doi.org/y", tp: "hcv"},
+    {k: "4", w: "Lancet", d: "2026-09-01", n: "No topic", t: "Kept, no topic", u: "https://doi.org/z", tp: "nowhere"},
+    {k: "19474425", w: "NEJM", d: "2026-09-02", n: "AIM", t: "Has a landmark card", u: "https://doi.org/w", tp: "barretts"}]};
+  h.run(`guidesAccept(${JSON.stringify(lib)});`);
+  assert.deepEqual(h.val("Guides.data.trials.map(r => r.k)"), ["1", "19474425", "4"]);
+  assert.equal(h.val("Guides.data.trials[2].tp"), null);
+  assert.deepEqual(h.val("trialsWatch(Guides.data).map(r => r.k)"), ["1", "4"]);
+  const old = {...LIB};
+  delete old.tr;
+  h.run(`guidesAccept(${JSON.stringify(old)});`);
+  assert.deepEqual(h.val("Guides.data.trials"), []);
+});

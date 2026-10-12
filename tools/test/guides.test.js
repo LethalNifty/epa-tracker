@@ -213,6 +213,8 @@ test("an old backup without Guides still imports", () => {
 
 test("the bar's dot shows new guidelines until Guides is opened; the list keeps its dots for that visit", () => {
   const h = phone("2026-10-08", undefined, "week");
+  // The weekly watch's trials light it too, until Trials is opened (trials.test.js).
+  h.run("Store.markGuidesSeen(trialsWatch(Guides.data).map(trialsWatchKey)); render();");
   assert.match(h.html(), /data-page="guides">.*class="nvdot"/);
   h.click("tab", {page: "guides"});
   assert.ok(h.saved().guides.seen.includes("42831646"));
