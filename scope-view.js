@@ -387,16 +387,16 @@ function viewEndo() {
 }
 
 // ---- Sheets: capture (the + button), edit, staff ---------------------------------------------------
-function scopeOpenCapture() { scopeSheet = {kind: "capture"}; scopeSheetFresh = true; scopeErr = null; }
+// The case sheet belongs to the + (app.js plusOn): it opens on Case.
+function scopeOpenCapture() { scopeSheet = {kind: "capture"}; scopeSheetFresh = true; scopeErr = null; plusOn = "c"; }
 function scopeSheetHTML() {
   const sh = scopeSheet, fresh = scopeSheetFresh ? " fresh" : "";
   const head = (t, extra) => `<div class="scrim${fresh}" data-action="scopeclose"></div><div class="sheet scopesheet${fresh}" role="dialog" aria-modal="true" aria-label="${esc(t)}">` +
     `<div class="grab"></div><div class="shead"><b>${esc(t)}</b><button class="iconbtn" data-action="scopeclose" aria-label="Close">${ic("x")}</button></div>` + (extra || "");
   if (sh.kind === "capture")
-    // Above the box, so the keyboard and its toolbar can never cover it.
-    return head("Log a case", `<div class="altrow"><button class="btn epalink" data-action="sheet">${ic("epas")}EPA observation</button>` +
-      `<button class="btn epalink" data-action="pearlnew">${ic("pearl")}Catch a pearl</button></div>`) +
-      scopeBoxHTML("sheet") + scopeCardsHTML() + `</div>`;
+    // The Case | EPA | Pearl switch sits above the box, so the keyboard and its toolbar can never cover it.
+    return `<div class="scrim${fresh}" data-action="scopeclose"></div><div class="sheet scopesheet${fresh}" role="dialog" aria-modal="true" aria-label="Log a case">` +
+      plusHeadHTML("scopeclose") + scopeBoxHTML("sheet") + scopeCardsHTML() + `</div>`;
   if (sh.kind === "edit") {
     const c = sh.card;
     return head(sh.copy ? "Another like that" : "Edit case") + `<div class="scards">${scopeCardHTML(c, 0, {noClose: true, still: true})}</div>` +

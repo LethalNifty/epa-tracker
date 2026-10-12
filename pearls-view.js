@@ -56,8 +56,8 @@ function pearlSheetHTML() {
         `data-pearl="tq" placeholder="Search topics" autocomplete="off" autocapitalize="off" aria-label="Search topics"></div>` : "") +
       `<div class="pickrow" id="pearltopics">${pearlTopicsHTML()}</div>` : "";
   return `<div class="scrim${fresh}" data-action="pearlclose"></div>` +
-    `<div class="sheet pearlsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}"><div class="grab"></div>` +
-    `<div class="shead"><b>${title}</b><button class="iconbtn" data-action="pearlclose" aria-label="Close">${ic("x")}</button></div>` +
+    `<div class="sheet pearlsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
+    (plusOn ? plusHeadHTML("pearlclose") : `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="pearlclose" aria-label="Close">${ic("x")}</button></div>`) +
     `<p class="ssub">Teaching point only. No patient details.</p>` +
     `<section class="monitor capmon prlmon" aria-label="Say the pearl"><div class="monitor-in">` +
     `<div class="ov mono"><span id="pearlday">${pearlDay(s.d)}</span><span>Pearl</span></div>` +
@@ -210,7 +210,7 @@ function pearlDispatch(act, d) {
 function pearlsAfterRender() {
   const s = pearlSheet, byId = id => document.getElementById && document.getElementById(id);
   // A new pearl opens with the keyboard up, one tap from the mic.
-  if (s && pearlSheetFresh && s.mode === "new") { const box = byId("pearlbox"); if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {} }
+  if (s && (pearlSheetFresh || s.focusBox) && s.mode === "new") { s.focusBox = false; const box = byId("pearlbox"); if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {} }
   if (s && s.focusTq) { s.focusTq = false; const q = byId("pearltq"); if (q && q.focus) try { q.focus({preventScroll: true}); } catch (e) {} }
   pearlSheetFresh = false;
   if (s) scopeGrow(byId("pearlbox"));

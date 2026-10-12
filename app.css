@@ -1003,8 +1003,6 @@ a.src:active { background: var(--wall-3); }
 .segtabs .gdot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: 2px; }
 
 /* Pearls: the + sheet's two links, the catch sheet, the Pearls page, Study's card */
-.altrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-.altrow .btn.epalink { margin-top: 0; padding: 0 8px; }
 .pearlsheet { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 .pearlsheet .capmon { margin-top: 12px; }
 .prlmon .ov span:first-child { color: var(--flu-ink); }
@@ -1082,6 +1080,14 @@ a.src:active { background: var(--wall-3); }
 .sn-tx span { display: block; font-size: 13px; color: var(--dim); }
 .sn-go { color: var(--nbi-ink); font-weight: 500; font-size: 14px; }
 .setnudge .iconbtn { margin-right: 6px; color: var(--faint); }
+
+/* The + : Case | EPA | Pearl across the top of each of its sheets, where the
+   title was. The close button stays at the end of the row. */
+.plushead { gap: 8px; }
+.plusseg { flex: 1; min-width: 0; margin-top: 2px; }
+.plusseg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.plusseg button .ic { color: var(--faint); }
+.plusseg button.on .ic { color: var(--nbi-ink); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
@@ -1575,7 +1581,6 @@ html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .savebar .btn { margin: 0; }
 .savebar .btn.primary { flex: 1; }
 .btn.ghostbtn { flex: 0 0 auto; width: auto; padding: 0 16px; background: transparent; color: var(--dim); }
-.btn.epalink { min-height: 42px; margin-top: 8px; background: transparent; border-style: dashed; color: var(--dim); font-size: 14px; font-weight: 520; }
 
 /* Rows: today and earlier. */
 .slist { padding: 0; overflow: hidden; }

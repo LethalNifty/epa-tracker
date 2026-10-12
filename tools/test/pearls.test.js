@@ -87,16 +87,16 @@ test("the patient-detail check: long numbers, ID words and Mr/Mrs names, never d
 });
 
 // ---- Catching one ----------------------------------------------------------------------------
-test("the + sheet offers a pearl beside the EPA link, both above the case box", () => {
+test("the + sheet's switch offers a pearl above the case box", () => {
   const h = phone("2026-10-12", state(), "week");
   h.click("scopeopen");
   const sheet = h.html().slice(h.html().indexOf('class="sheet scopesheet'));
-  assert.ok(sheet.indexOf('data-action="pearlnew"') > 0);
-  assert.ok(sheet.indexOf('data-action="pearlnew"') < sheet.indexOf('id="scopebox-sheet"'));
-  h.click("pearlnew");
-  assert.equal(h.val("scopeSheet"), null);
+  assert.ok(sheet.indexOf('data-action="plusto" data-to="p"') > 0);
+  assert.ok(sheet.indexOf('data-action="plusto" data-to="p"') < sheet.indexOf('id="scopebox-sheet"'));
+  h.click("plusto", {to: "p"});
   const html = h.html();
-  assert.match(html, /<div class="sheet pearlsheet fresh" role="dialog" aria-modal="true" aria-label="Catch a pearl">/);
+  assert.doesNotMatch(html, /class="sheet scopesheet/);
+  assert.match(html, /<div class="sheet pearlsheet" role="dialog" aria-modal="true" aria-label="Catch a pearl">/);
   assert.match(html, /<textarea id="pearlbox"/);
   assert.match(html, /Teaching point only\. No patient details\./);
   assert.match(html, /<input type="date" value="2026-10-12" data-pearl="d"/);

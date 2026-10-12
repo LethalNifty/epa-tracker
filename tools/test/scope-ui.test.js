@@ -42,7 +42,7 @@ test("the + button opens the capture sheet with a way to the EPA sheet", () => {
   h.click("scopeopen");
   assert.match(h.html(), /aria-label="Log a case"/);
   assert.match(h.html(), /id="scopebox-sheet"/);
-  h.click("sheet");
+  h.click("plusto", {to: "e"});
   assert.match(h.html(), /Log observation/);
   assert.doesNotMatch(h.html(), /id="scopebox-sheet"/);
 });
@@ -418,16 +418,16 @@ test("an EPA added from a case before cases were linked is matched on load", () 
 test("every sheet has a handle and a close button the handle can use", () => {
   const h = endo("2026-09-28", withScopes());
   h.click("scopeopen");
-  assert.match(h.html(), /<div class="grab"><\/div><div class="shead"><b>Log a case<\/b><button class="iconbtn" data-action="scopeclose"/);
+  assert.match(h.html(), /<div class="grab"><\/div><div class="shead plushead"><div class="segtabs three plusseg"[\s\S]*?<\/div><button class="iconbtn" data-action="scopeclose"/);
 });
 
-test("the EPA link sits above the capture box, clear of the keyboard", () => {
+test("the switch sits above the capture box, clear of the keyboard", () => {
   const h = endo("2026-09-28", withScopes());
   h.click("scopeopen");
   const sheet = h.html().slice(h.html().indexOf('class="sheet scopesheet'));
-  assert.ok(sheet.indexOf('data-action="sheet">') > 0);
-  assert.ok(sheet.indexOf('data-action="sheet">') < sheet.indexOf('id="scopebox-sheet"'));
-  h.click("sheet");
-  assert.equal(h.val("scopeSheet"), null);
+  assert.ok(sheet.indexOf('data-action="plusto" data-to="e"') > 0);
+  assert.ok(sheet.indexOf('data-action="plusto" data-to="e"') < sheet.indexOf('id="scopebox-sheet"'));
+  h.click("plusto", {to: "e"});
+  assert.doesNotMatch(h.html(), /class="sheet scopesheet/);
   assert.match(h.html(), /Log observation/);
 });

@@ -641,6 +641,32 @@ function viewBiopsy(opts = {}) {
     `Reference tool: check the current guideline and use clinical judgment.</p>`;
 }
 
+// ---- The + : Case | EPA | Pearl --------------------------------------------------
+// The + opens the case sheet with a switch across its top. The switch moves
+// between the case, EPA observation and pearl sheets, one shown at a time, and
+// each keeps what was typed until the + flow ends: closing, saving or deleting
+// the sheet in view ends it (render checks).
+let plusOn = null;    // "c", "e" or "p" while the + flow is open
+const PLUS = [["c", "Case", "scope"], ["e", "EPA", "epas"], ["p", "Pearl", "pearl"]];
+function plusHeadHTML(close) {
+  return `<div class="grab"></div><div class="shead plushead"><div class="segtabs three plusseg" role="group" aria-label="Log">` +
+    PLUS.map(([k, label, icon]) => `<button class="${plusOn === k ? "on" : ""}" data-action="plusto" data-to="${k}"` +
+      (plusOn === k ? ` aria-current="true"` : "") + `>${ic(icon, "sm")}${label}</button>`).join("") +
+    `</div><button class="iconbtn" data-action="${close}" aria-label="Close">${ic("x")}</button></div>`;
+}
+// Switching shows the other sheet in place: it doesn't slide up again.
+function plusTo(k) {
+  if (k === "c" && !scopeSheet) scopeOpenCapture();
+  if (k === "e" && !sheet) openSheet();
+  if (k === "p" && !pearlSheet) { pearlOpen(null); pearlSheet.focusBox = true; }
+  plusOn = k; sheetFresh = false; scopeSheetFresh = false; pearlSheetFresh = false;
+}
+function plusEnd() {
+  plusOn = null; sheet = null; sheetError = null; pearlSheet = null;
+  if (scopeSheet && scopeSheet.kind === "capture") scopeSheet = null;
+}
+const plusShows = k => !plusOn || plusOn === k;
+
 // ---- Log sheet -----------------------------------------------------------------
 let sheet = null, sheetError = null, sheetFresh = false;
 function openSheet(pid, i) {
@@ -700,9 +726,9 @@ function sheetHTML() {
   const iso = fmtDate(today), yest = fmtDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
   const dchip = (d, label) => `<button class="pick ghost${s.d === d ? " on" : ""}" data-action="sheetdate" data-date="${d}">${label}</button>`;
   return `<div class="scrim${sheetFresh ? " fresh" : ""}" data-action="closesheet"></div>` +
-    `<div class="sheet${sheetFresh ? " fresh" : ""}" role="dialog" aria-modal="true" aria-label="${edit ? "Edit" : "Log"} observation"><div class="grab"></div>` +
-    `<div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
-    `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>` + picker +
+    `<div class="sheet${sheetFresh ? " fresh" : ""}" role="dialog" aria-modal="true" aria-label="${edit ? "Edit" : "Log"} observation">` +
+    (plusOn ? plusHeadHTML("closesheet") : `<div class="grab"></div><div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
+      `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>`) + picker +
     `<label class="lbl mono">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
@@ -764,13 +790,15 @@ function render() {
   const p = route.page;
   // Opening the app (or coming back to it) on Week powers the monitor on.
   if (p === "week" && !introDone) { introDone = true; liveBootArm(); }
+  // The sheet in view on the + closed (a save, a delete, Close): the + flow ends.
+  if (plusOn && !{c: scopeSheet, e: sheet, p: pearlSheet}[plusOn]) plusEnd();
   let html;
   try {
     const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
-      (sheet ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet ? scopeSheetHTML() : "") +
-      (scopePick ? scopePickHTML() : "") + (pearlSheet ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") + (toast ? toastHTML() : "");
+      (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
+      (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -826,6 +854,7 @@ function go(next, restore) {
   liveSwap(render, kind);
 }
 function dispatch(act, d) {
+  if (act === "plusto") { plusTo(d.to); route.keepScroll = true; render(); return; }
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
