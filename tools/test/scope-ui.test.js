@@ -88,6 +88,22 @@ test("say a case, read it, confirm, save; undo takes it back", () => {
   assert.equal(h.saved().scopes.cases.length, 0);
 });
 
+test("a new date relabels the card's chip in place, so a tap that closes the picker still lands", () => {
+  const h = endo("2026-09-28", withScopes());
+  h.say("EGD with Brook at HSC, biopsies for dysphagia, EoE");
+  const key = h.card().key;
+  assert.match(h.html(), new RegExp(`<span id="cdate-${key}">Today</span>`));
+  // The change event can fire as the picker closes to a tap elsewhere on the page.
+  h.els.app.innerHTML = "the page being tapped";
+  h.els["cdate-" + key] = {innerHTML: "Today"};
+  h.fire("change", {dataset: {scopedate: key}, value: "2026-09-27"});
+  assert.equal(h.els.app.innerHTML, "the page being tapped");
+  assert.equal(h.els["cdate-" + key].innerHTML, "Yesterday");
+  assert.equal(h.card().d, "2026-09-27");
+  h.click("scopesave");
+  assert.equal(h.saved().scopes.cases[0].d, "2026-09-27");
+});
+
 test("a whole day becomes several cards; three EGDs save three cases", () => {
   const h = endo("2026-09-28", withScopes());
   h.say("Three EGDs with Alpha. Then a colonoscopy to the hepatic flexure.");

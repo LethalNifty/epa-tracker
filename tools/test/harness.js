@@ -38,7 +38,9 @@ function load(opts = {}) {
   const els = {
     app: {
       innerHTML: "",
-      addEventListener() {},
+      // The app's own listeners, kept so a test can fire the real event path.
+      on: {},
+      addEventListener(type, fn) { (this.on[type] = this.on[type] || []).push(fn); },
       insertAdjacentHTML(pos, html) { this.innerHTML += html; },
     },
   };
@@ -78,6 +80,8 @@ function load(opts = {}) {
       run(`window.__now = new Date(${y}, ${m - 1}, ${dd}, ${hh}, ${mm});`); },
     saved: () => JSON.parse(store.get(KEY)),
     click: (action, data = {}) => run(`dispatch(${JSON.stringify(action)}, ${JSON.stringify(data)})`),
+    // Fires the app's listener for an event (input, change) on a field.
+    fire: (type, target) => { for (const fn of els.app.on[type] || []) fn({target}); },
   };
 }
 

@@ -234,6 +234,20 @@ test("Week on call: the panel leads the page with both sites, the off time and s
   assert.doesNotMatch(html, /class="card callcard"/);
 });
 
+test("leaving a number box redraws the page only after the tap that left it has landed", async () => {
+  const h = withBlock("2026-10-27T12:00");
+  h.click("callopen");
+  // The browser's change event fires as the box loses focus to a tapped button.
+  h.els.app.innerHTML = "the button being tapped";
+  h.els["numstat-hsc"] = {innerHTML: "", className: "numstat"};
+  h.fire("change", {dataset: {callnum: "hsc"}, value: "204 555 0100"});
+  assert.equal(h.els.app.innerHTML, "the button being tapped");
+  assert.match(h.els["numstat-hsc"].innerHTML, /Saved/);
+  assert.equal(h.val(`CallStore.state.nums.hsc`), "204 555 0100");
+  await new Promise(r => setTimeout(r, 5));
+  assert.match(h.html(), /data-callnum="hsc" value="204 555 0100"/);
+});
+
 test("saved numbers become tap-to-call buttons; they stay out of the EPA backup", () => {
   const h = withBlock("2026-10-31T20:00");
   h.run(`callNumDone({dataset: {callnum: "hsc"}, value: " (204) 555-0100 "})`);

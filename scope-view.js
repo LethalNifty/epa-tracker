@@ -161,7 +161,7 @@ function scopeCardHTML(card, i, o = {}) {
   return `<article class="scard${miss.length ? " need" : ""}${scopeCardsFresh && !o.still ? " fresh" : ""}" style="--i:${i}" id="card-${card.key}">` +
     `<div class="sc-top">${scopeGlyph(card, {cls: "big", anim: scopeCardsFresh && !o.still})}<div class="sc-title">` +
     `<b>${esc(scopeSummary(card, {heads: true}))}</b><span class="scd-sub">${card.n > 1 ? `<span class="tag">×${card.n}</span>` : ""}` +
-    `<label class="datechip mono">${esc(scopeDayLabel(card.d || fmtDate(getToday())))}${ic("chev", "sm")}<input type="date" value="${dateVal}" max="${fmtDate(getToday())}" data-scopedate="${card.key}" aria-label="Date"></label></span></div>` +
+    `<label class="datechip mono"><span id="cdate-${card.key}">${esc(scopeDayLabel(card.d || fmtDate(getToday())))}</span>${ic("chev", "sm")}<input type="date" value="${dateVal}" max="${fmtDate(getToday())}" data-scopedate="${card.key}" aria-label="Date"></label></span></div>` +
     (o.noClose ? "" : `<button class="iconbtn" data-action="scopecardx" data-key="${card.key}" aria-label="Remove this case">${ic("x")}</button>`) + `</div>` +
     `<div class="sc-who">${staff}${scopeChip(card.urg === "urgent" ? "Urgent" : "Elective", "scopeurg", {key: card.key}, card.urg === "urgent" ? "urg on" : "ghost")}</div>` +
     `<div class="sc-where">${scopeSegHTML(card, "site", SCOPE_SITES)}${scopeSegHTML(card, "loc", SCOPE_LOCS)}</div>` +
@@ -639,10 +639,14 @@ function scopeField(t) {
   if (d.staffname) return true;
   return false;
 }
-// Changes that commit: a card's date, a staff rename, the import file.
+// Changes that commit: a card's date, a staff rename, the import file. The
+// change event can fire as the date picker closes to a tap elsewhere: a redraw
+// then would swap the tapped button out and lose the tap, so a new date only
+// relabels its chip.
 function scopeFieldChange(t) {
   const d = t.dataset || {};
-  if (d.scopedate) { const c = scopeCardByKey(d.scopedate); if (c && /^\d{4}-\d{2}-\d{2}$/.test(t.value)) { c.d = t.value; scopeCardsFresh = false; } route.keepScroll = true; render(); return true; }
+  if (d.scopedate) { const c = scopeCardByKey(d.scopedate); if (c && /^\d{4}-\d{2}-\d{2}$/.test(t.value)) { c.d = t.value; scopeCardsFresh = false;
+    const el = document.getElementById("cdate-" + c.key); if (el) el.innerHTML = esc(scopeDayLabel(c.d)); } return true; }
   if (d.staffname) { const p = scopeStaffOf(d.staffname), v = t.value.trim(); if (p && v) { p.name = v.slice(0, 60); Store.save(); } return true; }
   if (t.id === "scopefile") { scopeReadImport(t.files && t.files[0]); t.value = ""; return true; }
   return false;

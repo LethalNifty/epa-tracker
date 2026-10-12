@@ -104,6 +104,18 @@ test("approving from the chase list can be undone", () => {
   assert.equal(h.saved().obs.c2[0].status, "pending");
 });
 
+test("leaving the assessor box keeps the suggestions in place, so the tap that left it still lands", () => {
+  const h = load({today: "2026-09-24", state: state({c2: [obs("2026-09-10", {a: "Bravo"})]})});
+  h.click("sheet", {part: "c2"});
+  h.fire("input", {dataset: {sheet: "a"}, value: "Br"});
+  assert.equal(h.val("sheet.a"), "Br");
+  // The browser's change event fires as the box loses focus to a tapped suggestion.
+  h.els.sugg = {innerHTML: "the suggestion being tapped"};
+  h.fire("change", {dataset: {sheet: "a"}, value: "Bra"});
+  assert.equal(h.els.sugg.innerHTML, "the suggestion being tapped");
+  assert.equal(h.val("sheet.a"), "Bra");
+});
+
 test("date shortcuts: Today is picked by default, Yesterday sets the day before", () => {
   const h = load({today: "2026-09-24"});
   h.click("sheet");

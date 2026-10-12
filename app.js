@@ -5,7 +5,7 @@
 
 const KEY = "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
-const APP_VERSION = "epa-v37";
+const APP_VERSION = "epa-v38";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
@@ -734,6 +734,15 @@ function sheetField(t) {
   if (f === "a") { const box = document.getElementById("sugg"); if (box) box.innerHTML = suggHTML(t.value); }
   return true;
 }
+// The change event fires as a field loses focus, often to a suggestion being
+// tapped: redrawing the suggestions then would swap that one out mid-tap and
+// lose the tap. So it only keeps the value.
+function sheetFieldChange(t) {
+  const f = t.dataset && t.dataset.sheet;
+  if (!f || !sheet) return false;
+  sheet[f] = t.value;
+  return true;
+}
 
 // ---- Backup --------------------------------------------------------------------
 // Hands the backup to the iPhone share sheet when it can take a file,
@@ -905,7 +914,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (sheetField(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
+  if (sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {
