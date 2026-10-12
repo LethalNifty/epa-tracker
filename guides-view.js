@@ -113,6 +113,42 @@ function guidesTopicHTML(t, opts = {}) {
 // Search words lit in topic names.
 const guidesHi = html => searchHi(html, guidesTerm);
 
+// ---- One search across Guides ----------------------------------------------------------------------
+// The Guidelines box searches every part of Guides the way each part's own box
+// does, so a count here is what that tab shows for the same words.
+const GUIDES_KINDS = [["g", "Guidelines", "guides", "Guidelines"], ["t", "Trials", "trial", "Landmark trials"], ["d", "IBD drugs", "shield", "IBD drugs"],
+  ["b", "Biopsy", "jar", "Biopsy"], ["p", "Pearls", "pearl", "Your pearls"]];
+function guidesFind(q) {
+  const found = {g: guidesScored(Guides.data.topics, q), t: trialsScored(TRIALS, q), d: ibdScored(IBD_DRUGS, q),
+    b: biopsyScored(q), p: pearlsScored(Store.state.pearls, q)};
+  return GUIDES_KINDS.map(([k, chip, icon, head], i) => ({k, chip, icon, head, i, list: found[k].map(x => x.item),
+    top: Math.max(0, ...found[k].map(x => x.score))}));
+}
+// A count for each kind, then each kind's matches, the best-matching kind first.
+// Trials, drugs, protocols and pearls show their best three; the count opens the rest.
+function guidesFindHTML(q, D, opts) {
+  const kinds = guidesFind(q), total = kinds.reduce((a, x) => a + x.list.length, 0);
+  let h = `<div class="bcats gfind" data-key="find">` + kinds.map(x => `<button class="bcat${x.k === "g" ? " on" : ""}" data-action="guidesfind" data-tab="${x.k}"` +
+    (x.list.length ? "" : " disabled") + `>${ic(x.icon)}${x.chip} <b>${x.list.length}</b></button>`).join("") + `</div>`;
+  if (!total) return h + `<div class="bempty">Nothing in Guides matches. Try a drug, a score or a society, like "ACG".</div>`;
+  h += `<p class="bcount mono">${total} found across Guides</p>`;
+  const row = (act, attr, title, sub) => `<button class="gf-row" data-action="${act}" ${attr}><span class="gf-t">${searchHi(esc(title), q)}</span>` +
+    `<span class="gf-s">${searchHi(esc(sub), q)}</span></button>`;
+  const rows = (x, fn) => `<div class="card list gf-list">${x.list.slice(0, 3).map(fn).join("")}</div>`;
+  const more = x => x.list.length > 3 ? `<button class="gmore" data-action="guidesfind" data-tab="${x.k}">All ${x.list.length} in ${x.chip}${ic("forward", "sm")}</button>` : "";
+  const body = {
+    // One topic: it opens by itself.
+    g: x => x.list.map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name, only: x.list.length === 1})).join(""),
+    t: x => `<div class="lt-minis lt-found">${x.list.slice(0, 3).map(trialsMiniHTML).join("")}</div>` + more(x),
+    d: x => rows(x, d => row("guidesdopen", `data-id="${esc(d.id)}"`, d.n, d.brands + " · " + IBD_CLASS_BY_ID[d.cls].n)) + more(x),
+    b: x => rows(x, b => row("guidesbx", `data-q="${esc(b.title)}"`, b.title, b.cat + " · " + (b.src === "mb" ? "Manitoba" : b.ref.short))) + more(x),
+    p: x => rows(x, p => row("pearledit", `data-id="${esc(p.id)}"`, p.t, pearlDay(p.d) + (p.who ? " · " + p.who : ""))) + more(x),
+  };
+  for (const x of kinds.filter(x => x.list.length).sort((a, b) => b.top - a.top || a.i - b.i))
+    h += `<div class="bgrp">${ic(x.icon)}<span class="mono">${x.head}</span><span class="mono n">${x.list.length}</span></div>` + body[x.k](x);
+  return h;
+}
+
 // ---- The tab ------------------------------------------------------------------------------------
 function viewGuides() {
   const today = getToday(), blk = blockFor(today), D = Guides.data;
@@ -136,9 +172,10 @@ function viewGuides() {
   const q = guidesTerm.trim();
   let h = head(`${D.topics.length} topics · Canadian first`, `<p class="ph-note">Current guidelines by topic, best one first. Links open the publisher's page.</p>`) + guidesSwitchHTML();
   if (!q && guidesChip === "all") h += guidesLightHTML(D, today) + guidesNewsHTML(news, unseen);
-  h += `<div class="qwrap">${ic("search")}<input id="guidesq" type="search" placeholder="Search: C diff, Baveno, ACG" aria-label="Search guidelines" ` +
+  h += `<div class="qwrap">${ic("search")}<input id="guidesq" type="search" placeholder="Search guidelines, trials, drugs, biopsy, pearls" aria-label="Search Guides" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(guidesTerm)}">` +
     (guidesTerm ? `<button class="qclear" data-action="guidesclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
+  if (q) return h + guidesFindHTML(q, D, {newsKeys}) + guidesFootHTML();
   const blockTopics = blk ? guidesForBlock(D.topics, blk.num) : [];
   const chips = [["all", "All", null]];
   if (blk) chips.push(["block", `Block ${blk.num} · ${GUIDES_FAMILY_LABEL[BLOCK_FAMILY[blk.num]] || esc(blk.name)}`, "week"]);
@@ -162,11 +199,9 @@ function viewGuides() {
     pool = st.pins.map(id => Guides.byId[id]).filter(Boolean);
     groups = [["Pinned", "star", pool]];
   } else if (guidesChip !== "all") pool = D.topics.filter(t => t.s === guidesChip);
-  const list = q ? guidesSearch(pool, q) : pool;
-  if (q && groups) groups = groups.map(([l, g, ts]) => [l, g, list.filter(t => ts.includes(t))]);
-  h += `<p class="bcount mono">${q || guidesChip !== "all" ? list.length + " of " + D.topics.length + " topics" : D.topics.length + " topics · tap one for its guidelines"}</p>`;
-  if (q) h += trialsSearchHTML(q);
-  if (!list.length) h += `<div class="bempty">No topic matches. Try a drug, a score or a society, like "ACG".</div>`;
+  const list = pool;
+  h += `<p class="bcount mono">${guidesChip !== "all" ? list.length + " of " + D.topics.length + " topics" : D.topics.length + " topics · tap one for its guidelines"}</p>`;
+  if (!list.length) h += `<div class="bempty">Nothing pinned yet.</div>`;
   const opts = {newsKeys};
   if (groups) {
     for (const [label, glyph, ts] of groups) {
@@ -174,9 +209,6 @@ function viewGuides() {
       h += `<div class="bgrp">${ic(glyph)}<span class="mono">${label}</span><span class="mono n">${ts.length}</span></div>`;
       h += ts.map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name})).join("");
     }
-  } else if (q) {
-    // One match: it opens by itself.
-    h += list.map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name, only: list.length === 1})).join("");
   } else {
     let sec = "";
     for (const t of list) {
@@ -188,7 +220,10 @@ function viewGuides() {
       h += guidesTopicHTML(t, opts);
     }
   }
-  return h + `<p class="bfoot">Canadian guidance comes first and is marked CA; where it is older than the American, both are linked. ` +
+  return h + guidesFootHTML();
+}
+function guidesFootHTML() {
+  return `<p class="bfoot">Canadian guidance comes first and is marked CA; where it is older than the American, both are linked. ` +
     `European guidelines are not added yet. The library is checked weekly. ` +
     `Reference tool: check the guideline itself and use clinical judgment.</p>`;
 }
@@ -209,6 +244,16 @@ function guidesDispatch(act, d) {
   if (act.startsWith("guidestr")) return trialsDispatch(act, d);
   if (act === "guidestab") { guidesTab = d.tab; if (route.page !== "guides") { go({page: "guides"}); return false; } route.keepScroll = false; enterNext = true; return true; }
   if (act === "guideschip") { guidesChip = d.chip; guidesOpen.clear(); route.keepScroll = false; return true; }
+  // From the search's counts: that part of Guides, searching the same words.
+  if (act === "guidesfind") {
+    const q = guidesTerm.trim();
+    if (d.tab === "p") { pearlsQ = q; go({page: "pearls", from: "guides"}); return false; }
+    if (d.tab === "t") { trialsTerm = q; trialsChip = "all"; }
+    else if (d.tab === "d") { ibdTerm = q; ibdChip = "all"; }
+    else if (d.tab === "b") { biopsyTerm = q; biopsyCat = "all"; }
+    else return false;
+    guidesTab = d.tab; route.keepScroll = false; enterNext = true; return true;
+  }
   if (act === "guidestoggle") { if (guidesOpen.has(d.id)) guidesOpen.delete(d.id); else guidesOpen.add(d.id); return true; }
   if (act === "guidespin") { Store.toggleGuidePin(d.id); return true; }
   if (act === "guidesclear") { guidesTerm = ""; guidesJump = "#guidesq"; return true; }
@@ -254,7 +299,8 @@ const guidesCats = {};
 function guidesCatsAfterRender() {
   if (route.page !== "guides" || typeof document === "undefined" || !document.querySelectorAll) return;
   document.querySelectorAll(".bcats").forEach((row, i) => {
-    const st = guidesCats[guidesTab + i] || (guidesCats[guidesTab + i] = {x: 0, on: null});
+    const key = guidesTab + ((row.dataset && row.dataset.key) || i);
+    const st = guidesCats[key] || (guidesCats[key] = {x: 0, on: null});
     row.scrollLeft = st.x;
     const on = row.querySelector(".bcat.on");
     const id = on ? on.getAttribute("data-chip") || on.getAttribute("data-cat") : null;

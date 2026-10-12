@@ -89,7 +89,7 @@ function trialsCardHTML(t, opts = {}) {
     `<a class="glink alt" href="https://doi.org/${esc(t.doi)}" target="_blank" rel="noopener"><span class="who mono">${esc(trialsJournal(t.j))}<span class="yr">${t.y}</span></span><span class="tt">The paper</span>${ic("external", "sm")}</a></div>`;
   return h + `</div></article>`;
 }
-// A trial as one line: inside a guideline topic and in the guideline search.
+// A trial as one line: inside a guideline topic and in the Guides search.
 function trialsMiniHTML(t) {
   return `<button class="lt-mini" data-action="guidestropen" data-id="${esc(t.id)}">` +
     `<span class="tx"><b>${esc(t.n)}</b><span class="yr mono">${t.y}</span><span class="ln">${esc(t.line)}</span></span>${ic("forward", "sm")}</button>`;
@@ -174,13 +174,6 @@ function trialsTopicHTML(t) {
   const ts = trialsForTopic(t.id);
   if (!ts.length) return "";
   return `<div class="gt-sub mono">Landmark trials</div><div class="lt-minis">${ts.map(trialsMiniHTML).join("")}</div>`;
-}
-// Trials whose name, author or alias matches the guideline search.
-function trialsSearchHTML(q) {
-  const ts = trialsSearch(TRIALS, q, true).slice(0, 4);
-  if (!ts.length) return "";
-  return `<div class="bgrp">${ic("trial")}<span class="mono">Landmark trials</span><span class="mono n">${ts.length}</span></div>` +
-    `<div class="lt-minis lt-found">${ts.map(trialsMiniHTML).join("")}</div>`;
 }
 
 // ---- Taps and typing ------------------------------------------------------------------------------

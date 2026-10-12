@@ -1041,6 +1041,21 @@ a.src:active { background: var(--wall-3); }
 .prlcard .sc-main b { font-size: 15.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* Guides: one search across guidelines, trials, drugs, biopsy and pearls. Each
+   count is a chip; a kind with nothing found stays in place, dimmed. */
+.gfind .bcat b { font-weight: 600; }
+.gfind .bcat:disabled { opacity: .42; }
+.gf-row { display: grid; gap: 3px; width: 100%; padding: 12px 14px; border-top: 1px solid var(--fold); }
+.gf-row:first-child { border-top: 0; }
+.gf-row:active { background: var(--wall-2); }
+.gf-t { font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gf-s { font-size: 13px; line-height: 1.4; color: var(--dim); overflow-wrap: anywhere; }
+.gf-row mark { background: rgba(217, 232, 255, .2); color: inherit; border-radius: 3px; padding: 0 1px; }
+.gf-list { margin-bottom: 4px; }
+.gmore { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 42px; margin: 2px 0 8px;
+  color: var(--nbi-ink); font-size: 14px; font-weight: 500; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

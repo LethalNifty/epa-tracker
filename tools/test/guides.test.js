@@ -183,7 +183,7 @@ test("search from the box ranks the list flat, with each topic's section", () =>
   h.run(`guidesTerm = "diverticulitis"; render();`);
   assert.match(h.html(), /id="g-diverticulitis"><button class="gt-head"[^>]*aria-expanded="true"/);
   h.run(`guidesTerm = "baveno"; render();`);
-  assert.match(h.html(), /of 113 topics/);
+  assert.match(h.html(), /found across Guides/);
   assert.match(h.html(), /<span class="gt-sec mono">Bleeding<\/span>/);
   h.click("guidesclear");
   assert.equal(h.val("guidesTerm"), "");
