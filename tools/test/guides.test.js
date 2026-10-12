@@ -17,6 +17,8 @@ function phone(today = "2026-10-08", st, page = "guides") {
   return h;
 }
 const ids = (h, expr) => h.val(`${expr}.map(t => t.id)`);
+// Unfolds the section a topic sits in.
+const unfold = (h, id) => h.click("guidessec", {id: LIB.topics.find(t => t.id === id).s});
 
 // ---- The file -----------------------------------------------------------------------------
 test("the library file: shape, links and years", () => {
@@ -134,13 +136,35 @@ test("the tab: white-light monitor, new, search, chips and every topic", () => {
   assert.match(html, /New · last 30 days/);
   assert.match(html, /id="guidesq"/);
   assert.match(html, /data-chip="block">.*Block 4 · Motility/);
-  assert.equal((html.match(/class="gt"/g) || []).length, 113);
   assert.match(html, /class="nv on" data-action="tab" data-page="guides"/);
+});
+
+test("the list opens on this block's topics, then every section folded to one row", () => {
+  const h = phone();
+  let html = h.html();
+  const n = h.val("guidesForBlock(Guides.data.topics, 4).length");
+  assert.ok(n > 6, "this block has more than six topics");
+  assert.match(html, /<span class="mono">Block 4 · Motility\/Nutrition<\/span><span class="mono n">\d+<\/span>/);
+  assert.equal((html.match(/class="gt"/g) || []).length, 6);
+  assert.match(html, new RegExp(`data-action="guideschip" data-chip="block">${n - 6} more for this block`));
+  assert.match(html, /Every topic<\/span><span class="mono n">113<\/span>/);
+  assert.equal((html.match(/class="gsec"/g) || []).length, LIB.sections.length);
+  // A section unfolds in place, and folds again.
+  const liver = LIB.topics.filter(t => t.s === "liver").length;
+  h.click("guidessec", {id: "liver"});
+  html = h.html();
+  assert.match(html, /class="gsec open" data-action="guidessec" data-id="liver" aria-expanded="true"/);
+  assert.equal((html.match(/class="gt"/g) || []).length, 6 + liver);
+  h.click("guidessec", {id: "liver"});
+  assert.equal((h.html().match(/class="gt"/g) || []).length, 6);
+  // The block's own copies carry their own ids, so a topic is never on the page twice under one id.
+  assert.doesNotMatch(h.html(), /(id="g-[^"]+")[\s\S]*/);
 });
 
 test("a topic opens to its links, chapter and note; links open the publisher's page", () => {
   const h = phone();
   h.click("guidestoggle", {id: "diverticulitis"});
+  // Opening a topic unfolds its section.
   const art = h.html().slice(h.html().indexOf('id="g-diverticulitis"'));
   const body = art.slice(0, art.indexOf("</article>"));
   assert.match(body, /class="glink" href="https:\/\/doi\.org\/[^"]+" target="_blank" rel="noopener"><span class="who mono">ACG<span class="yr">2026<\/span>/);
@@ -148,11 +172,12 @@ test("a topic opens to its links, chapter and note; links open the publisher's p
   assert.match(body, /ASCRS<span class="yr">2026/);
   assert.match(body, /Mayo ch\. 18 · Intestinal Infections · pp\. 207–220 · Block 5/);
   h.click("guidestoggle", {id: "diverticulitis"});
-  assert.doesNotMatch(h.html(), /aria-expanded="true"/);
+  assert.doesNotMatch(h.html(), /<button class="gt-head"[^>]*aria-expanded="true"/);
 });
 
 test("a topic's row shows its lead guideline's own society and year", () => {
   const h = phone();
+  unfold(h, "barretts"); unfold(h, "diverticulitis");
   assert.match(h.html(), /id="g-barretts"><button[^>]*>.*?<span class="gt-lead mono">ACG 2022<span class="more">\+1<\/span><\/span>/);
   assert.match(h.html(), /id="g-diverticulitis"><button[^>]*>.*?<span class="gt-lead mono">ACG 2026<\/span>/);
 });
@@ -175,7 +200,7 @@ test("chips: a section, this block, then all", () => {
   assert.match(h.html(), /This block's reading/);
   assert.match(h.html(), /On Motility\/Nutrition/);
   h.click("guideschip", {chip: "all"});
-  assert.equal((h.html().match(/class="gt"/g) || []).length, 113);
+  assert.equal((h.html().match(/class="gsec"/g) || []).length, LIB.sections.length);
 });
 
 test("search from the box ranks the list flat, with each topic's section", () => {

@@ -657,6 +657,18 @@ a.srcrow:active { background: var(--wall-2); }
 #guidesq::placeholder { color: var(--faint); }
 #guidesq:focus { border-color: var(--wli); box-shadow: 0 0 0 4px var(--wli-wash); outline: none; }
 .gcats .bcat.on { background: var(--wli); border-color: var(--wli); color: #0f1f38; }
+/* Every topic, folded: one row per section that unfolds in place, its topics
+   below it. The row sits in a card with its neighbours until one is open. */
+.gsecs { margin-bottom: 6px; }
+.gsec { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; width: 100%; min-height: 52px;
+  padding: 0 12px 0 15px; border-top: 1px solid var(--fold); color: var(--light); }
+.gsec:first-child { border-top: 0; }
+.gsec:active { background: var(--wall-2); }
+.gsec > .ic:first-child { color: var(--wli); }
+.gsec .gs-n { font-size: 15.5px; font-weight: 520; }
+.gsec .mono { color: var(--faint); }
+.gsec .ic.chev { width: 16px; height: 16px; color: var(--dim); transition: transform .2s var(--ease); }
+.gsec.open .ic.chev { transform: rotate(180deg); color: var(--wli); }
 .gt-off { display: flex; align-items: center; gap: 8px; margin: 12px 2px 0; color: var(--capillary); font-size: 12.5px; }
 
 .gt { scroll-margin-top: 14px; margin-bottom: 6px; background: var(--wall); border: 1px solid var(--fold); border-radius: 14px; transition: border-color .15s, background .15s; }

@@ -8,6 +8,7 @@ let guidesTab = "g";          // "g": guidelines, "t": landmark trials, "b": bio
 let guidesTerm = "";
 let guidesChip = "all";       // "all", "block", "pins", or a section id
 const guidesOpen = new Set();
+const guidesSecs = new Set();  // sections unfolded in the full list
 let guidesJump = null;        // a topic to scroll to after the next draw
 // The news not yet seen when this visit to Guides began: its dots stay
 // until the next visit, though the bar's dot clears at once.
@@ -85,7 +86,7 @@ function guidesTopicHTML(t, opts = {}) {
   const lead = t.p[0], newsKeys = opts.newsKeys || new Set();
   const isNew = t.p.concat(t.a).some(d => newsKeys.has(d.k));
   const year = lead ? guidesLeadYear(t) : null, old = year && today.getFullYear() - year >= GUIDES_OLD_YEARS;
-  let h = `<article class="gt${open ? " open" : ""}" id="g-${esc(t.id)}">` +
+  let h = `<article class="gt${open ? " open" : ""}" id="${opts.idp || "g-"}${esc(t.id)}">` +
     `<button class="gt-head" data-action="guidestoggle" data-id="${esc(t.id)}" aria-expanded="${open}">` +
     `<span class="gt-name">${opts.sec ? `<span class="gt-sec mono">${esc(opts.sec)}</span>` : ""}${guidesHi(esc(t.n))}</span>` +
     (lead ? `<span class="gt-lead mono${lead.ca ? " ca" : ""}${old ? " old" : ""}">${esc(lead.w)} ${lead.y}${t.p.length > 1 ? `<span class="more">+${t.p.length - 1}</span>` : ""}</span>` :
@@ -172,7 +173,7 @@ function viewGuides() {
   const q = guidesTerm.trim();
   let h = head(`${D.topics.length} topics · Canadian first`, `<p class="ph-note">Current guidelines by topic, best one first. Links open the publisher's page.</p>`) + guidesSwitchHTML();
   if (!q && guidesChip === "all") h += guidesLightHTML(D, today) + guidesNewsHTML(news, unseen);
-  h += `<div class="qwrap">${ic("search")}<input id="guidesq" type="search" placeholder="Search guidelines, trials, drugs, biopsy, pearls" aria-label="Search Guides" ` +
+  h += `<div class="qwrap">${ic("search")}<input id="guidesq" type="search" placeholder="Search: Baveno, vedolizumab, celiac" aria-label="Search Guides" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(guidesTerm)}">` +
     (guidesTerm ? `<button class="qclear" data-action="guidesclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
   if (q) return h + guidesFindHTML(q, D, {newsKeys}) + guidesFootHTML();
@@ -209,6 +210,24 @@ function viewGuides() {
       h += `<div class="bgrp">${ic(glyph)}<span class="mono">${label}</span><span class="mono n">${ts.length}</span></div>`;
       h += ts.map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name})).join("");
     }
+  } else if (guidesChip === "all") {
+    // This block's first six topics (the Block chip has the rest), then every
+    // section folded to one row that unfolds in place.
+    if (blockTopics.length) {
+      h += `<div class="bgrp">${ic("week")}<span class="mono">Block ${blk.num} · ${esc(blk.name)}</span><span class="mono n">${blockTopics.length}</span></div>` +
+        blockTopics.slice(0, 6).map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name, idp: "gb-"})).join("") +
+        (blockTopics.length > 6 ? `<button class="gmore" data-action="guideschip" data-chip="block">${blockTopics.length - 6} more for this block${ic("forward", "sm")}</button>` : "") +
+        `<div class="bgrp">${ic("guides")}<span class="mono">Every topic</span><span class="mono n">${D.topics.length}</span></div>`;
+    }
+    let rows = [];
+    const flush = () => { if (rows.length) h += `<div class="card list gsecs">${rows.join("")}</div>`; rows = []; };
+    for (const S of D.sections) {
+      const ts = D.topics.filter(t => t.s === S.id), open = guidesSecs.has(S.id);
+      rows.push(`<button class="gsec${open ? " open" : ""}" data-action="guidessec" data-id="${esc(S.id)}" aria-expanded="${open}">` +
+        `${ic(S.glyph || "guides")}<span class="gs-n">${esc(S.name)}</span><span class="mono">${ts.length}</span>${ic("chev", "sm chev")}</button>`);
+      if (open) { flush(); h += ts.map(t => guidesTopicHTML(t, opts)).join(""); }
+    }
+    flush();
   } else {
     let sec = "";
     for (const t of list) {
@@ -238,6 +257,7 @@ function guidesStudyHTML(item) {
 }
 
 // ---- Taps and typing ---------------------------------------------------------------------------
+function guidesUnfold(id) { const t = Guides.byId[id]; if (t) guidesSecs.add(t.s); }
 // Returns false when nothing needs redrawing.
 function guidesDispatch(act, d) {
   if (act.startsWith("guidesd")) return ibdDispatch(act, d);
@@ -254,11 +274,13 @@ function guidesDispatch(act, d) {
     else return false;
     guidesTab = d.tab; route.keepScroll = false; enterNext = true; return true;
   }
-  if (act === "guidestoggle") { if (guidesOpen.has(d.id)) guidesOpen.delete(d.id); else guidesOpen.add(d.id); return true; }
+  // Opening a topic unfolds its section, so it is on the page wherever it was opened from.
+  if (act === "guidestoggle") { if (guidesOpen.has(d.id)) guidesOpen.delete(d.id); else { guidesOpen.add(d.id); guidesUnfold(d.id); } return true; }
+  if (act === "guidessec") { if (guidesSecs.has(d.id)) guidesSecs.delete(d.id); else guidesSecs.add(d.id); return true; }
   if (act === "guidespin") { Store.toggleGuidePin(d.id); return true; }
   if (act === "guidesclear") { guidesTerm = ""; guidesJump = "#guidesq"; return true; }
   if (act === "guidesopen") {
-    guidesTab = "g"; guidesTerm = ""; guidesChip = "all"; guidesOpen.add(d.id); guidesJump = "#g-" + d.id;
+    guidesTab = "g"; guidesTerm = ""; guidesChip = "all"; guidesOpen.add(d.id); guidesUnfold(d.id); guidesJump = "#g-" + d.id;
     if (route.page !== "guides") { go({page: "guides"}); return false; }
     return true;
   }
