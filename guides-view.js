@@ -122,8 +122,11 @@ const GUIDES_KINDS = [["g", "Guidelines", "guides", "Guidelines"], ["t", "Trials
 function guidesFind(q) {
   const found = {g: guidesScored(Guides.data.topics, q), t: trialsScored(TRIALS, q), d: ibdScored(IBD_DRUGS, q),
     b: biopsyScored(q), p: pearlsScored(Store.state.pearls, q)};
-  return GUIDES_KINDS.map(([k, chip, icon, head], i) => ({k, chip, icon, head, i, list: found[k].map(x => x.item),
-    top: Math.max(0, ...found[k].map(x => x.score))}));
+  // Trials, like the Trials tab, also lists what the weekly watch kept, after the landmark ones.
+  const watch = trialsWatchSearch(trialsWatch(Guides.data), q, Guides.byId);
+  return GUIDES_KINDS.map(([k, chip, icon, head], i) => ({k, chip, icon, head, i,
+    list: found[k].map(x => x.item).concat(k === "t" ? watch : []),
+    top: Math.max(k === "t" && watch.length ? 1 : 0, ...found[k].map(x => x.score))}));
 }
 // A count for each kind, then each kind's matches, the best-matching kind first.
 // Trials, drugs, protocols and pearls show their best three; the count opens the rest.
@@ -140,7 +143,11 @@ function guidesFindHTML(q, D, opts) {
   const body = {
     // One topic: it opens by itself.
     g: x => x.list.map(t => guidesTopicHTML(t, {...opts, sec: D.secs[t.s].name, only: x.list.length === 1})).join(""),
-    t: x => `<div class="lt-minis lt-found">${x.list.slice(0, 3).map(trialsMiniHTML).join("")}</div>` + more(x),
+    t: x => {
+      const top = x.list.slice(0, 3), lt = top.filter(t => TRIALS_BY_ID[t.id] === t), wk = top.filter(t => !lt.includes(t));
+      return (lt.length ? `<div class="lt-minis lt-found">${lt.map(trialsMiniHTML).join("")}</div>` : "") +
+        (wk.length ? rows({list: wk}, r => row("guidesfind", `data-tab="t"`, (r.n ? r.n + " · " : "") + trialsJournal(r.w), "Weekly watch · " + r.t)) : "") + more(x);
+    },
     d: x => rows(x, d => row("guidesdopen", `data-id="${esc(d.id)}"`, d.n, d.brands + " · " + IBD_CLASS_BY_ID[d.cls].n)) + more(x),
     b: x => rows(x, b => row("guidesbx", `data-q="${esc(b.title)}"`, b.title, b.cat + " · " + (b.src === "mb" ? "Manitoba" : b.ref.short))) + more(x),
     p: x => rows(x, p => row("pearledit", `data-id="${esc(p.id)}"`, p.t, pearlDay(p.d) + (p.who ? " · " + p.who : ""))) + more(x),

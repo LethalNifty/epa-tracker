@@ -66,7 +66,21 @@ test("long lists show their best three and an All link", () => {
   const h = phone(), html = search(h, "cirrhosis");
   const n = h.val(`trialsSearch(TRIALS, "cirrhosis").length`);
   assert.ok(n > 3, "cirrhosis finds more than three trials");
-  assert.match(html, new RegExp(`data-action="guidesfind" data-tab="t">All ${n} in Trials`));
+  assert.match(html, /data-action="guidesfind" data-tab="t">All \d+ in Trials/);
+});
+
+test("Trials counts the weekly watch's trials too, as the Trials tab shows them", () => {
+  const h = phone(), q = "cirrhosis";
+  const landmark = h.val(`trialsSearch(TRIALS, "${q}").length`);
+  const watch = h.val(`trialsWatchSearch(trialsWatch(Guides.data), "${q}", Guides.byId).length`);
+  assert.ok(watch > 0, "the watch has a cirrhosis trial");
+  const html = search(h, q);
+  assert.match(html, new RegExp(`data-tab="t"[^>]*>[\\s\\S]*?Trials <b>${landmark + watch}</b>`));
+  assert.match(html, new RegExp(`All ${landmark + watch} in Trials`));
+  // A watch trial alone in the top three still shows, and opens Trials with the words.
+  const k = h.val(`trialsWatchSearch(trialsWatch(Guides.data), "${q}", Guides.byId)[0].n`);
+  h.run(`TRIALS.splice(0, TRIALS.length)`);
+  assert.match(search(h, q), new RegExp(`<button class="gf-row" data-action="guidesfind" data-tab="t"><span class="gf-t">[^<]*${k}`));
 });
 
 test("nothing found says so once", () => {
