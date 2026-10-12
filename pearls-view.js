@@ -132,7 +132,7 @@ function viewPearls() {
     (all.length ? `<div class="ph-meta mono"><b>${all.length}</b> pearl${all.length === 1 ? "" : "s"} · <b>${un}</b> to send</div>` : "") + `</header>`;
   h += `<section class="card pad prl-send">` + (un
     ? `<button class="btn primary" data-action="pearlssend">${ic("share")}Send ${pearlCount(un)}</button>` +
-      `<p class="prl-how">Save the file to Drive › Fellowship › GI Anki › pearls, then tell Claude "pearl cards" to turn them into Anki cards.</p>`
+      `<p class="prl-how">Save the file to Drive › Fellowship › GI Anki › pearls. Sunday night they become cards, waiting for you in the GI Studio.</p>`
     : `<p class="prl-how">${all.length ? "All sent. New pearls wait here until you send them." : "Nothing to send yet."}</p>`) +
     (pearlsError ? `<div class="err" role="alert">${esc(pearlsError)}</div>` : "") +
     `<button class="btn" data-action="pearlnew">${ic("plus")}Catch a pearl</button></section>`;

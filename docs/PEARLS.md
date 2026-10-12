@@ -48,8 +48,9 @@ over several lines.
 
 ## On the computer
 
-Say "pearl cards". The cards runbook (`tools/anki/CARDS.md` in the Claude Code
-repository) takes it from there: new pearl files in the Drive folder become a
-pearls batch, checked against current Canadian then American guidelines,
-through the two reviewers and the GI Studio, and banked into GI Boards with the
-tag `pearl`.
+Every Sunday at 20:00 the scheduled task `gi-hub-pearl-cards` follows the cards
+runbook (`tools/anki/CARDS.md` in the Claude Code repository): new pearl files
+in the Drive folder become a pearls batch, checked against current Canadian
+then American guidelines and by the two reviewers, and wait in the GI Studio.
+Holding Bank there sends them to GI Boards with the tag `pearl`. Saying "pearl
+cards" runs the same steps on any other day.
