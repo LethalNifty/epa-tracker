@@ -70,6 +70,8 @@ seed = f"""<script>
     var u = String(url);
     if (/guides\\.json$/.test(u)) return Promise.resolve(new Response(JSON.stringify(GUIDES), {{status: 200, headers: {{"Content-Type": "application/json"}}}}));
     if (/studyq\\.json$/.test(u)) return Promise.resolve(new Response("", {{status: 404}}));
+    // Settings' update check: the preview is the version it was built from.
+    if (/sw\\.js$/.test(u)) return Promise.resolve(new Response('const CACHE = "' + APP_VERSION + '";', {{status: 200}}));
     return real ? real(url, o) : Promise.reject(new Error("offline"));
   }};
 }})();
