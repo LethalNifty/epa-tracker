@@ -140,26 +140,18 @@ let biopsyTerm = "", biopsyCat = "all";
 // [category, chip label, tract-map glyph]
 const BIOPSY_CATS = [["all", "All", null], ["Esophagus", "Esophagus", "esoph"], ["Stomach", "Stomach", "stomach"],
   ["Duodenum / Small bowel", "Duodenum", "duod"], ["Colon", "Colon", "colon"]];
-function biopsyFilter(term, cat) {
-  term = (term || "").trim().toLowerCase();
-  return BIOPSY_DATA.filter(d => {
-    if (cat !== "all" && d.cat !== cat) return false;
-    if (!term) return true;
-    const hay = (d.title + " " + d.cat + " " + (d.kw || "") + " " + d.rows.map(r => r.join(" ")).join(" ") + " " +
-      (d.sec ? "Shared Health " + d.sec[1] : "") + " " + (d.ref ? d.ref.short + " " + d.ref.label : "")).toLowerCase();
-    return hay.includes(term);
-  });
-}
+// A protocol's words: its title counts most, then its keywords, then the card
+// and its source. Matches keep the protocol order, so each tract stays together.
+const BIOPSY_HAY = new Map(BIOPSY_DATA.map(d => [d, {t: searchHay(d.title), k: searchHay(d.cat + " " + (d.kw || "")),
+  body: searchHay(d.rows.map(r => r.join(" ")).join(" ") + " " + (d.sec ? "Shared Health " + d.sec[1] : "") + " " + (d.ref ? d.ref.short + " " + d.ref.label : ""))}]));
+const biopsyScored = term => searchScored(BIOPSY_DATA, term, d => { const h = BIOPSY_HAY.get(d); return [[h.t, 6], [h.k, 4], [h.body, 1]]; }, {keep: true});
+const biopsyFilter = (term, cat) => biopsyScored(term).map(x => x.item).filter(d => cat === "all" || d.cat === cat);
 let biopsyBold;
 try {
   const bre = new RegExp("(?<![A-Za-z0-9/])(?:[≥≤<>~]\\s?)?\\d+(?:[–-]\\d+)?(?:\\s?(?:cm|mm|wk|%)|\\s?eos/hpf)?", "g");
   biopsyBold = s => s.replace(bre, m => "<b>" + m + "</b>");
 } catch(e) { biopsyBold = s => s; }
-function biopsyHi(html, term) {
-  if (!term) return html;
-  const t = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return html.replace(new RegExp("(" + t + ")(?![^<]*>)", "ig"), "<mark>$1</mark>");
-}
+const biopsyHi = (html, term) => searchHi(html, term);
 
 // ---- Shared helpers ----------------------------------------------------------
 const STAGE_NAMES = {ttd:"Transition to Discipline", f:"Foundations", core:"Core", ttp:"Transition to Practice"};

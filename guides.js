@@ -66,42 +66,22 @@ async function guidesInit() {
 }
 
 // ---- Search -------------------------------------------------------------------------
-// Lower case, accents and punctuation off: "H. pylori" finds "h pylori",
-// "Crohn's" finds "crohns".
-function guidesNorm(s) {
-  return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/['\u2019]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-}
-// Each topic's words, by how much a match there should count.
+// Matching itself is search.js. Each topic's words, by how much a match there should count.
 function guidesHay(t) {
   const docs = t.p.concat(t.a);
   return {
-    name: " " + guidesNorm(t.n) + " ",
-    k: " " + guidesNorm(t.k) + " ",
-    docs: " " + guidesNorm(docs.map(d => d.w + " " + d.y + " " + d.t).join(" ") + " " + t.c.map(c => c.t).join(" ")) + " ",
-    lead: " " + guidesNorm(t.p.map(d => d.w + " " + d.y).join(" ")) + " ",
-    note: " " + guidesNorm(t.note) + " ",
+    name: searchHay(t.n),
+    k: searchHay(t.k),
+    docs: searchHay(docs.map(d => d.w + " " + d.y + " " + d.t).join(" ") + " " + t.c.map(c => c.t).join(" ")),
+    lead: searchHay(t.p.map(d => d.w + " " + d.y).join(" ")),
+    note: searchHay(t.note),
   };
 }
-// Every word must match somewhere; a word at the start of a name or alias
-// counts most. Ties keep the library's own order (section by section).
-function guidesSearch(topics, q) {
-  const words = guidesNorm(q).split(" ").filter(Boolean);
-  if (!words.length) return topics.slice();
-  const scored = [];
-  topics.forEach((t, i) => {
-    let score = 0;
-    for (const w of words) {
-      const at = (hay, weight) => hay.includes(" " + w) ? weight * 2 : hay.includes(w) ? weight : 0;
-      const s = Math.max(at(t.hay.name, 6), at(t.hay.k, 4), at(t.hay.lead, 3), at(t.hay.docs, 1.5), at(t.hay.note, 1));
-      if (!s) return;
-      score += s;
-    }
-    if (t.hay.name.startsWith(" " + words.join(" "))) score += 20;
-    scored.push({t, score, i});
-  });
-  return scored.sort((a, b) => b.score - a.score || a.i - b.i).map(x => x.t);
-}
+// A word at the start of a name or alias counts most, and a name that starts
+// with the whole search most of all. Ties keep the library's own order (section by section).
+const guidesScored = (topics, q) => searchScored(topics, q, t => [[t.hay.name, 6], [t.hay.k, 4], [t.hay.lead, 3], [t.hay.docs, 1.5], [t.hay.note, 1]],
+  {bonus: (t, words) => t.hay.name.startsWith(" " + words.join(" ")) ? 20 : 0});
+const guidesSearch = (topics, q) => guidesScored(topics, q).map(x => x.item);
 
 // ---- This block --------------------------------------------------------------------------
 // The Mayo chapters (and Yamada readings) the study plan puts in this block.

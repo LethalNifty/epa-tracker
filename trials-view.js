@@ -18,12 +18,7 @@ let trialsWatchAll = false;    // the weekly watch list shows every trial, not j
 let trialsVisit = null;
 
 // Search words lit in names and bottom lines.
-function trialsHi(html) {
-  const words = guidesNorm(trialsTerm).split(" ").filter(w => w.length > 1);
-  if (!words.length) return html;
-  const re = new RegExp("(" + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?![^<]*>)", "ig");
-  return html.replace(re, "<mark>$1</mark>");
-}
+const trialsHi = html => searchHi(html, trialsTerm);
 // Journal names short enough for the card's corner.
 const TRIALS_JOURNAL_SHORT = {"Gastroenterology": "Gastro", "Lancet Gastroenterol Hepatol": "Lancet Gastro", "Ann Intern Med": "Annals"};
 function trialsJournal(j) { return TRIALS_JOURNAL_SHORT[j] || j; }

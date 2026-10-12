@@ -111,12 +111,7 @@ function guidesTopicHTML(t, opts = {}) {
   return h + `</div></article>`;
 }
 // Search words lit in topic names.
-function guidesHi(html) {
-  const words = guidesNorm(guidesTerm).split(" ").filter(w => w.length > 1);
-  if (!words.length) return html;
-  const re = new RegExp("(" + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?![^<]*>)", "ig");
-  return html.replace(re, "<mark>$1</mark>");
-}
+const guidesHi = html => searchHi(html, guidesTerm);
 
 // ---- The tab ------------------------------------------------------------------------------------
 function viewGuides() {

@@ -1071,10 +1071,6 @@ const IBD_SOON = [
 const IBD_BY_ID = Object.fromEntries(IBD_DRUGS.map(d => [d.id, d]));
 const IBD_CLASS_BY_ID = Object.fromEntries(IBD_CLASSES.map(c => [c.id, c]));
 
-function ibdNorm(s) {
-  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-}
 // Source keys on a line, in order.
 function ibdKeys(line) { return String(line && line[1] || "").split(/\s+/).filter(Boolean); }
 // Every source a drug's card cites, in the order they first appear.
@@ -1102,30 +1098,15 @@ function ibdWorkupText(d) {
 function ibdHay(d) {
   const lines = [d.how].concat(d.use, d.dose, d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra);
   return {
-    name: " " + ibdNorm(d.n) + " ",
-    k: " " + ibdNorm(d.brands + " " + d.k + " " + IBD_CLASS_BY_ID[d.cls].n) + " ",
-    body: " " + ibdNorm(lines.map(l => l[0]).join(" ") + " " + (d.warn ? d.warn[0] : "")) + " ",
+    name: searchHay(d.n),
+    k: searchHay(d.brands + " " + d.k + " " + IBD_CLASS_BY_ID[d.cls].n),
+    body: searchHay(lines.map(l => l[0]).join(" ") + " " + (d.warn ? d.warn[0] : "")),
   };
 }
 const IBD_HAY = Object.fromEntries(IBD_DRUGS.map(d => [d.id, ibdHay(d)]));
-// Every word must match; matches in names and brands count most.
-function ibdSearch(drugs, q) {
-  const words = ibdNorm(q).split(" ").filter(Boolean);
-  if (!words.length) return drugs.slice();
-  const scored = [];
-  drugs.forEach((d, i) => {
-    const h = IBD_HAY[d.id];
-    let score = 0;
-    for (const w of words) {
-      const at = (hay, weight) => hay.includes(" " + w) ? weight * 2 : hay.includes(w) ? weight : 0;
-      const s = Math.max(at(h.name, 6), at(h.k, 4), at(h.body, 1));
-      if (!s) return;
-      score += s;
-    }
-    scored.push({d, score, i});
-  });
-  return scored.sort((a, b) => b.score - a.score || a.i - b.i).map(x => x.d);
-}
+// Matches in names and brands count most (search.js does the matching).
+const ibdScored = (drugs, q) => searchScored(drugs, q, d => [[IBD_HAY[d.id].name, 6], [IBD_HAY[d.id].k, 4], [IBD_HAY[d.id].body, 1]]);
+const ibdSearch = (drugs, q) => ibdScored(drugs, q).map(x => x.item);
 // The list for a chip: "all", "uc", "cd", or a class id.
 function ibdFilter(drugs, chip) {
   if (!chip || chip === "all") return drugs.slice();

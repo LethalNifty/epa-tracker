@@ -670,30 +670,16 @@ const TRIALS_SEC_BY_ID = Object.fromEntries(TRIALS_SECS.map(([id, n, glyph]) => 
 // Each trial's words, by how much a match there should count (as in guidesSearch).
 function trialsHay(t) {
   const text = [t.line, t.design, t.q, t.who, t.arms, t.key.v, t.key.l, t.res, t.now, t.catch, t.since || "", t.canada || ""].join(" ");
-  return {name: " " + guidesNorm(t.n) + " ", au: " " + guidesNorm(t.au) + " ",
-    k: " " + guidesNorm(t.k + " " + t.j + " " + t.y) + " ", text: " " + guidesNorm(text) + " "};
+  return {name: searchHay(t.n), au: searchHay(t.au), k: searchHay(t.k + " " + t.j + " " + t.y), text: searchHay(text)};
 }
 const TRIALS_HAY = new Map(TRIALS.map(t => [t.id, trialsHay(t)]));
-// Every word must match somewhere; a name, author or alias counts most. With
-// names set, only those count (for the guideline library's search box).
-function trialsSearch(list, q, names) {
-  const words = guidesNorm(q).split(" ").filter(Boolean);
-  if (!words.length) return list.slice();
-  const scored = [];
-  list.forEach((t, i) => {
-    const hay = TRIALS_HAY.get(t.id) || trialsHay(t);
-    let score = 0;
-    for (const w of words) {
-      const at = (h, weight) => h.includes(" " + w) ? weight * 2 : h.includes(w) ? weight : 0;
-      const s = Math.max(at(hay.name, 6), at(hay.au, 5), at(hay.k, 4), names ? 0 : at(hay.text, 1));
-      if (!s) return;
-      score += s;
-    }
-    if (hay.name.startsWith(" " + words.join(" "))) score += 20;
-    scored.push({t, score, i});
-  });
-  return scored.sort((a, b) => b.score - a.score || a.i - b.i).map(x => x.t);
+// A name, author or alias counts most (search.js does the matching).
+function trialsScored(list, q) {
+  const hay = t => TRIALS_HAY.get(t.id) || trialsHay(t);
+  return searchScored(list, q, t => { const h = hay(t); return [[h.name, 6], [h.au, 5], [h.k, 4], [h.text, 1]]; },
+    {bonus: (t, words) => hay(t).name.startsWith(" " + words.join(" ")) ? 20 : 0});
 }
+const trialsSearch = (list, q) => trialsScored(list, q).map(x => x.item);
 
 // ---- Lookups ------------------------------------------------------------------------------
 function trialsForTopic(id) {
@@ -733,10 +719,6 @@ function trialsWatchUnseen(list, seen) {
 }
 // Every word must match the journal, name, gist, note or topic.
 function trialsWatchSearch(list, q, byId) {
-  const words = guidesNorm(q).split(" ").filter(Boolean);
-  if (!words.length) return [];
-  return list.filter(r => {
-    const hay = " " + guidesNorm([r.w, r.n, r.t, r.x, r.y, r.tp && byId && byId[r.tp] ? byId[r.tp].n : ""].join(" ")) + " ";
-    return words.every(w => hay.includes(w));
-  });
+  if (!searchWords(q).length) return [];
+  return searchFind(list, q, r => [[searchHay([r.w, r.n, r.t, r.x, r.y, r.tp && byId && byId[r.tp] ? byId[r.tp].n : ""].join(" ")), 1]], {keep: true});
 }

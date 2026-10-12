@@ -55,13 +55,9 @@ function pearlTopicName(id) {
 const pearlDay = iso => dayLabel(iso);
 
 // Newest first; every word must match the pearl, who said it, its topic or its date.
-function pearlsSearch(list, q) {
-  const words = guidesNorm(q).split(" ").filter(Boolean);
-  return pearlsNewest(list).filter(p => {
-    const hay = " " + guidesNorm(p.t + " " + p.who + " " + pearlTopicName(p.topic) + " " + p.d) + " ";
-    return words.every(w => hay.includes(w));
-  });
-}
+const pearlsScored = (list, q) => searchScored(pearlsNewest(list), q,
+  p => [[searchHay(p.t + " " + p.who + " " + pearlTopicName(p.topic) + " " + p.d), 1]], {keep: true});
+const pearlsSearch = (list, q) => pearlsScored(list, q).map(x => x.item);
 
 // ---- The topic it's about ---------------------------------------------------------------------
 // The words worth matching: three letters or more, or a two-letter

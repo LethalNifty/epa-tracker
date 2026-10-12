@@ -61,12 +61,7 @@ function ibdRoute(d) {
   return d.route.map(r => names[r]).join(" · ");
 }
 // Search words lit in names and lines.
-function ibdHi(html) {
-  const words = ibdNorm(ibdTerm).split(" ").filter(w => w.length > 1);
-  if (!words.length) return html;
-  const re = new RegExp("(" + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?![^<]*>)", "ig");
-  return html.replace(re, "<mark>$1</mark>");
-}
+const ibdHi = html => searchHi(html, ibdTerm);
 
 // ---- The map: where each class acts ---------------------------------------------------------
 function ibdMapHTML() {
@@ -170,7 +165,7 @@ function viewIbd() {
   const pin = IBD_PINS.find(p => p.id === ibdChip);
   let h = ibdMapHTML();
   // The shared card opens by itself when the search is about it.
-  const prepHit = q && ibdNorm(JSON.stringify(IBD_PREP) + " " + IBD_ADV.map(id => IBD_BASE[id][0]).join(" ")).includes(ibdNorm(q));
+  const prepHit = q && searchNorm(JSON.stringify(IBD_PREP) + " " + IBD_ADV.map(id => IBD_BASE[id][0]).join(" ")).includes(searchNorm(q));
   h += ibdPrepHTML(ibdPrepOpen || !!prepHit);
   h += `<div class="qwrap">${ic("search")}<input id="ibdq" type="search" placeholder="Search: Skyrizi, TPMT, ECG, Shingrix" aria-label="Search IBD drugs" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(ibdTerm)}">` +
