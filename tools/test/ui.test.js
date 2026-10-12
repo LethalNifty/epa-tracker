@@ -282,3 +282,14 @@ test("the foot of EPAs says which version this phone is running", () => {
   h.click("tab", {page: "epas"});
   assert.match(h.html(), /<p class="bfoot mono appver">GI Hub epa-v\d+<\/p>/);
 });
+
+test("dates read as the rest of the app writes them: weekday, day, month, and the year only when it isn't this one", () => {
+  const h = load({today: "2026-09-24", state: state({f3a: [obs("2026-07-10"), obs("2025-12-30")]})});
+  assert.equal(h.val(`dayLabel("2026-07-10")`), "Fri 10 Jul");
+  assert.equal(h.val(`dayLabel("2025-12-30")`), "Tue 30 Dec 2025");
+  assert.equal(h.val(`dayLabel("")`), "");
+  h.click("open", {code: "F3"});
+  assert.match(h.html(), /<span class="odate">Fri 10 Jul<\/span>/);
+  assert.match(h.html(), /<span class="odate">Tue 30 Dec 2025<\/span>/);
+  assert.doesNotMatch(h.html(), /class="odate">\d{4}-/);
+});

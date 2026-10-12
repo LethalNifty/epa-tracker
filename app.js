@@ -171,6 +171,14 @@ function getToday() { return window.__today || new Date(); }
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function ic(name, cls) { return `<svg class="ic${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
 const pct = (n, of) => of ? Math.round(n / of * 1000) / 10 : 0;
+// "Fri 10 Jul" for 2026-07-10, the way every screen writes a day; the year
+// only for a day outside this one.
+function dayLabel(iso) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return "";
+  const dt = new Date(y, m - 1, d);
+  return `${DAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]}` + (y !== getToday().getFullYear() ? " " + y : "");
+}
 
 // Logged, approved and pending for a set of parts, each capped at what is required.
 function tally(parts) {
@@ -517,7 +525,7 @@ function partBlock(p, st) {
       h += `<li class="ob"><button class="spill ${appd ? "approved" : "pending"}" data-action="togglestatus" data-part="${p.id}" data-obs="${i}">` +
         `${ic(appd ? "check" : "clock")}${appd ? "Approved" : "Pending"}</button>` +
         `<button class="ometabtn" data-action="sheet" data-part="${p.id}" data-obs="${i}">` +
-        `<span class="onum">${String(i + 1).padStart(2, "0")}</span><span class="odate">${esc(o.d || "no date")}</span>` +
+        `<span class="onum">${String(i + 1).padStart(2, "0")}</span><span class="odate">${o.d ? esc(dayLabel(o.d)) : "no date"}</span>` +
         `<span class="otext">${[scopeBare(o.a), o.n].filter(Boolean).map(esc).join(" · ")}</span></button></li>`;
     });
     h += `</ol>`;

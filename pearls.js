@@ -51,11 +51,8 @@ function pearlTopicName(id) {
   const t = id && Guides.byId && Guides.byId[id];
   return t ? t.n : id || "";
 }
-// "Sat 10 Oct" for 2026-10-10.
-function pearlDay(iso) {
-  const [y, m, d] = String(iso).split("-").map(Number), dt = new Date(y, m - 1, d);
-  return `${DAYS[dt.getDay()]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-}
+// "Sat 10 Oct" for 2026-10-10 (app.js dayLabel).
+const pearlDay = iso => dayLabel(iso);
 
 // Newest first; every word must match the pearl, who said it, its topic or its date.
 function pearlsSearch(list, q) {
