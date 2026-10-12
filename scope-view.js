@@ -362,7 +362,7 @@ function scopeReportCardHTML() {
     `<label class="lbl mono">Name on the report<input type="text" value="${esc(s.reportName || "")}" placeholder="Name, year and program" data-scopefield="name" autocomplete="name" autocapitalize="words"></label>` +
     `<button class="btn primary" data-action="scopereport">${ic("share")}Export report (PDF)</button>` +
     `<button class="btn" data-action="scopecsv">${ic("share")}Export spreadsheet</button>` +
-    `<p class="bnote">Totals, therapeutic techniques, cecal intubation, milestones and every case in full, with a line to sign. For your program or a job application; no patient details, so it's safe to email.</p>` +
+    `<p class="bnote">Totals, therapeutic techniques, cecal intubation, milestones and every case in full. For your program or a job application; no patient details, so it's safe to email.</p>` +
     (scopeErr ? `<div class="err">${esc(scopeErr)}</div>` : "") + `</div></section>`;
 }
 function scopeProgressHTML() {

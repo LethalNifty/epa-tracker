@@ -451,16 +451,6 @@ function scopeReportPDF(o) {
     y += h;
   }
 
-  // Verification, for the program or a credentialing office.
-  room(96);
-  y += 22;
-  doc.text(M, y, "Verified by", {size: 9, bold: true});
-  y += 32;
-  [["Name and role", 0, 200], ["Signature", 220, 180], ["Date", 420, CW - 420]].forEach(([l, dx, w]) => {
-    doc.line(M + dx, y, M + dx + w, y, {stroke: RP.ink2, lw: .6});
-    doc.text(M + dx, y + 11, l, {size: 7.5, color: RP.faint});
-  });
-
   // Footers, now that the page count is known.
   const n = doc.pages.length;
   doc.pages.forEach((p, i) => {

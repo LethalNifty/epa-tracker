@@ -54,7 +54,7 @@ test("the report: the name, the period, every section and every case, written fo
   const pdf = checkPdf(latin1(h.val(`Array.from(scopeReportPDF({...scopeReportOpts(), from: "2026-07-01", to: "2026-09-28", label: "Academic year"}))`)));
   const pages = +/\/Count (\d+)/.exec(pdf)[1];
   for (const s of ["(ENDOSCOPY PROCEDURE LOG) Tj", "(Test Fellow) Tj", "(Procedures) Tj", "(Therapeutic procedures) Tj", "(Volume over time) Tj",
-    "(Cecal intubation) Tj", "(Furthest point reached) Tj", "(Milestones) Tj", "(Case mix) Tj", "(Logbook) Tj", "(Verified by) Tj",
+    "(Cecal intubation) Tj", "(Furthest point reached) Tj", "(Milestones) Tj", "(Case mix) Tj", "(Logbook) Tj",
     "(Non-variceal hemostasis) Tj", "(Clip) Tj", "(Active bleeding at endoscopy) Tj", "(Resection) Tj", "(Polypectomy) Tj",
     "(Dr. Brook, HSC) Tj", "(Urgent) Tj", `(Page ${pages} of ${pages}) Tj`, "(No patient identifiers are recorded.) Tj"])
     assert.ok(pdf.includes(s), s);
