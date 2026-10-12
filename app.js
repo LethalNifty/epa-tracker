@@ -828,6 +828,7 @@ function go(next, restore) {
 function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
   if (act.startsWith("scope")) {
@@ -1001,6 +1002,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
 const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, pearls: {page: "pearls", from: "study"}};
 function appOpenFromLink(name) {
   if (!APP_LINKS[name]) return;
+  if (name === "study") studyTab = "t";
   sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null;
   go({...APP_LINKS[name]});
 }

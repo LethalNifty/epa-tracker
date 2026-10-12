@@ -92,6 +92,7 @@ test("Show answer, then Got it or Missed; tapping the same mark clears it", asyn
 
 test("the bank lists questions on pages already read, with missed counts", async () => {
   const h = await phone("2026-10-05", withStudy({"2026-10-02": 6}, {qa: {"c3-1": {ok: false, d: "2026-09-30"}, "c3-2": {ok: true, d: "2026-09-30"}}}), {pw: PW});
+  h.click("studytab", {tab: "p"});
   const html = h.html();
   assert.match(html, /<h2>Question bank<\/h2><span class="mono"><b>2<\/b>\/3 answered · 1 missed<\/span>/);
   h.click("studybank", {id: "c3"});

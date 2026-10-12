@@ -334,16 +334,27 @@ function studyPauseHTML(st) {
 }
 
 // ---- The tab --------------------------------------------------------------------------------------------
+// Two views under one switch, like EPAs' Checklist | Year plan: Tonight is what
+// to read now (pages, questions, pearls, this week's nights); Plan is the block,
+// the whole book, the finish, question scores and pausing.
+let studyTab = "t";
+function studySwitchHTML() {
+  const b = (k, label) => `<button class="${studyTab === k ? "on" : ""}" data-action="studytab" data-tab="${k}"${studyTab === k ? ` aria-current="page"` : ""}>${label}</button>`;
+  return `<div class="segtabs" role="group" aria-label="Study views">${b("t", "Tonight")}${b("p", "Plan")}</div>`;
+}
 function viewStudy() {
-  const st = studyState(), {today, t} = st, S = studySeq(), blk = blockFor(today);
+  const st = studyState(), {today, t} = st, S = studySeq(), blk = blockFor(today), going = t.kind !== "after" && t.kind !== "complete";
   let h = `<header class="ph"><p class="eyebrow mono">Mayo Board Review · Pass 1</p><h1 class="title">Study</h1>` +
-    `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>`;
-  h += warningsHTML(today) + studyHeroHTML(st) + (t.kind === "read" ? guidesStudyHTML(studyAt(t.from).item) : "") +
+    `<div class="ph-meta mono"><b>${t.now}</b>/${S.total} pages${blk ? ` · Block ${blk.num} · ${esc(blk.name)}` : ""}</div></header>` +
+    studySwitchHTML() + warningsHTML(today);
+  if (studyTab === "p") {
+    if (going) h += studyBlockHTML(st);
+    h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st) + studyBankHTML(st);
+    return going ? h + studyPauseHTML(st) : h;
+  }
+  h += studyHeroHTML(st) + (t.kind === "read" ? guidesStudyHTML(studyAt(t.from).item) : "") +
     studyTipHTML(t) + studyQCardHTML(st) + studyScoreAskHTML(st.s) + pearlsStudyHTML();
-  if (t.kind !== "after" && t.kind !== "complete") h += studyNightsHTML(st);
-  if (t.kind !== "complete" && t.kind !== "after") h += studyBlockHTML(st);
-  h += studyBookHTML(st) + studyFinishHTML(st) + studyQuestionsHTML(st) + studyBankHTML(st);
-  if (t.kind !== "complete" && t.kind !== "after") h += studyPauseHTML(st);
+  if (going) h += studyNightsHTML(st);
   return h + `<p class="bfoot">Printed page numbers. Edge's page box counts PDF pages: in Mayo, printed + 15. ` +
     `Yamada's PDF page numbers are shown with each night's pages. ` +
     `Reading nights are Monday, Tuesday, Wednesday and Friday; call nights are skipped, and reading on any night counts.</p>`;
@@ -371,7 +382,7 @@ function studyCardHTML() {
     cls = " off";
   }
   return `<section class="sec"><div class="sec-head"><h2>Study</h2><span class="mono">Mayo Board Review</span></div>` +
-    `<button class="card studycard${cls}" data-action="tab" data-page="study"><span class="sc-glow" aria-hidden="true">` +
+    `<button class="card studycard${cls}" data-action="studyopen"><span class="sc-glow" aria-hidden="true">` +
     `${ic(cls === " done" ? "check" : cls === " off" ? "moon" : "study")}</span><span class="sc-main"><span class="mono">${lbl}</span>` +
     `<b>${esc(main)}</b><span class="sc-sub">${esc(sub)}</span></span>${ic("chev", "chev")}</button></section>`;
 }
@@ -465,6 +476,8 @@ function studySet(c, msg) {
   showToast(msg || (at ? `Through p. ${at.page} · ${studyItemLabel(at.item)}` : "Bookmark cleared"), () => Store.restoreStudy(before));
 }
 function studyDispatch(act, d) {
+  if (act === "studyopen") { studyTab = "t"; go({page: "study"}); return false; }
+  if (act === "studytab") { studyTab = d.tab; route.keepScroll = false; enterNext = true; return true; }
   const {t} = studyState();
   if (act === "studydone") studySet(Math.max(t.now, t.to), `Done · through p. ${studyAt(t.to - 1).page}`);
   else if (act === "studyread") studySet(Math.max(t.now, +d.to));

@@ -16,8 +16,27 @@ test("Study renders tonight's pages on the first reading night", () => {
   assert.match(html, /Esophageal Motility/);
   assert.match(html, /data-action="studydone"/);
   assert.equal((html.match(/class="ng /g) || []).length, 28);
-  assert.equal((html.match(/<i class="(lit|tn|)"/g) || []).length, 460);
-  assert.equal((html.match(/class="qrow"/g) || []).length, 7);
+  // The book and the question scores are on Plan.
+  assert.doesNotMatch(html, /class="qrow"/);
+  h.click("studytab", {tab: "p"});
+  const plan = h.html();
+  assert.equal((plan.match(/<i class="(lit|tn|)"/g) || []).length, 460);
+  assert.equal((plan.match(/class="qrow"/g) || []).length, 7);
+  assert.doesNotMatch(plan, /data-action="studydone"/);
+});
+
+test("Study opens on Tonight from Week and from a reminder, whichever view was last", () => {
+  const h = study("2026-09-30");
+  assert.match(h.html(), /<div class="segtabs" role="group" aria-label="Study views"><button class="on" data-action="studytab" data-tab="t" aria-current="page">Tonight<\/button><button class="" data-action="studytab" data-tab="p">Plan<\/button><\/div>/);
+  h.click("studytab", {tab: "p"});
+  h.click("tab", {page: "week"});
+  assert.match(h.html(), /<button class="card studycard[^"]*" data-action="studyopen">/);
+  h.click("studyopen");
+  assert.equal(h.val("route.page"), "study");
+  assert.equal(h.val("studyTab"), "t");
+  h.click("studytab", {tab: "p"});
+  h.run(`appOpenFromLink("study")`);
+  assert.equal(h.val("studyTab"), "t");
 });
 
 test("before the plan starts, Study previews the first night", () => {
@@ -97,6 +116,7 @@ test("a finished question set asks for a score, and the score is saved", () => {
   h.click("studysave");
   assert.deepEqual([h.saved().study.q.q3.r, h.saved().study.q.q3.of], [7, 8]);
   assert.doesNotMatch(h.html(), /questions done/);
+  h.click("studytab", {tab: "p"});
   assert.match(h.html(), /<span class="mono qs[^"]*">7\/8<\/span>/);
 });
 
@@ -109,7 +129,7 @@ test("the whole book read shows the pass complete", () => {
 test("Week shows the Tonight card, linking to Study", () => {
   const h = load({today: "2026-09-30"});
   const html = h.html();
-  assert.match(html, /class="card studycard" data-action="tab" data-page="study"/);
+  assert.match(html, /class="card studycard" data-action="studyopen"/);
   assert.match(html, /pp\. 35–38/);
   h.run(`Store.setStudyCursor(4, getToday()); render();`);
   assert.match(h.html(), /Reading done/);
