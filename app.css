@@ -360,16 +360,9 @@ a.btn.callbtn .ic { color: inherit; }
 .cx-who i { margin-right: 7px; font: 500 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; font-style: normal; color: var(--wli); }
 .cx-note { display: block; margin-top: 6px; font-size: 12.5px; color: var(--dim); }
 .callcard .trace { margin: 14px 16px 0; }
-.xlist { margin-top: 14px; }
-.xrow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 16px; border-top: 1px solid var(--fold); font-size: 14px; }
-.xrow:active, .cx-all:active, .cx:active { background: var(--wall-2); }
-.xd { flex: 0 0 88px; color: var(--light); font-size: 11.5px; }
-.xt { flex: 1; min-width: 0; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.xh { color: var(--dim); }
-.xh.long { color: var(--wli); }
+.cx-all:active, .cx:active { background: var(--wall-2); }
 .cx-all { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 48px; margin-top: 14px;
   padding: 0 16px; border-top: 1px solid var(--fold); color: var(--nbi-ink); font-size: 14px; font-weight: 500; }
-.xlist + .cx-all { margin-top: 0; }
 .callinvite { display: grid; grid-template-columns: auto 1fr; gap: 0 12px; align-items: start; padding: 16px; }
 .callinvite > .ic { margin-top: 1px; color: var(--wli); }
 .callinvite p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--dim); }
@@ -403,8 +396,6 @@ a.btn.callbtn .ic { color: inherit; }
 .numstat { display: flex; align-items: center; gap: 5px; min-height: 18px; margin-top: 7px; font-size: 12.5px; color: var(--nbi-ink); }
 .numstat .ic { width: 14px; height: 14px; stroke-width: 2.6; }
 .numstat.bad { color: var(--mucosa); }
-.cx-hint { display: flex; gap: 9px; align-items: flex-start; margin: 12px 16px 0; font-size: 12.5px; line-height: 1.45; color: var(--dim); }
-.cx-hint .ic { flex: 0 0 auto; width: 15px; height: 15px; margin-top: 1px; color: var(--wli); }
 .callnums input[aria-invalid] { border-color: color-mix(in srgb, var(--mucosa) 60%, var(--fold-2)); }
 .cnote.first { margin-top: 0; }
 .cnote { margin: 12px 2px 14px; font-size: 13px; line-height: 1.5; color: var(--dim); }

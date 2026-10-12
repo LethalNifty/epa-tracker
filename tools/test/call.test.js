@@ -196,7 +196,7 @@ test("Week with no call file: an invitation to import, right after This week", (
   assert.ok(html.indexOf("<h2>This week</h2>") < html.indexOf("callinvite"));
 });
 
-test("Week before a shift: the next one with a countdown, the week ahead, then what's after", () => {
+test("Week before a shift: the next one with a countdown and the week ahead; the rest is one tap away", () => {
   const h = withBlock("2026-10-27T12:00");
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
   const html = h.html();
@@ -205,11 +205,10 @@ test("Week before a shift: the next one with a countdown, the week ahead, then w
   assert.match(html, /<span>Wed 28 Oct · 17:00 → 08:00<\/span><span>15 h<\/span>/);
   assert.match(html, /<span class="cx-title">Wednesday night<\/span>/);
   assert.match(html, /<i>HSC<\/i>Attending A<\/span><span><i>St. B<\/i>Attending B/);
-  // The weekend, one row, then Nov 3.
-  assert.match(html, /<span class="xd mono">Fri 30 Oct<\/span><span class="xt">17:00 → Mon 08:00<\/span><span class="xh mono long">64 h<\/span>/);
-  assert.match(html, /<span class="xd mono">Tue 3 Nov<\/span>/);
-  // Before the shift, the card says what the paging numbers will do.
-  assert.match(html, /<p class="cx-hint">[\s\S]*?From Wed 17:00, the top of Week shows who's on at each site. Save the paging numbers/);
+  // The shifts after it wait behind one row that opens Call.
+  assert.doesNotMatch(html, /class="xrow"|Fri 30 Oct/);
+  const more = h.val(`callStatus(CallStore.list(), callNow()).up.length`) - 1;
+  assert.match(html, new RegExp(`<button class="cx-all" data-action="callopen"><span>${more} more shifts, contacts and numbers</span>`));
   // A week of hour ticks: 168, with the call hours standing tall.
   const svg = /<div class="tr-bar"[^>]*><svg[^>]*>([\s\S]*?)<\/svg>/.exec(html)[1];
   assert.equal((svg.match(/<line/g) || []).length, 168);
@@ -365,15 +364,13 @@ test("every screen has exactly one call file picker, with no accept filter", () 
   assert.doesNotMatch(full.html(), /id="callfile"[^>]*accept/);
 });
 
-test("saved numbers say Saved under the field, and the Week card says when the Call buttons appear", () => {
+test("saved numbers say Saved under the field", () => {
   const h = withBlock("2026-10-27T12:00");
   h.run(`CallStore.setNum("hsc", "(204) 555-0100"); CallStore.setNum("stb", "204 555 0199")`);
   h.click("callopen");
   const html = h.html();
   assert.match(html, /id="numstat-hsc" aria-live="polite"><svg[^>]*><use href="#i-check"\/><\/svg>Saved<\/div>/);
   assert.match(html, /id="numstat-stb" aria-live="polite"><svg[^>]*><use href="#i-check"\/><\/svg>Saved<\/div>/);
-  h.click("back");
-  assert.match(h.html(), /From Wed 17:00, the top of Week shows who's on, with a Call button for HSC and St. Boniface./);
   // Half-typed numbers stay quiet while typing and are flagged once you leave the field.
   assert.equal(h.run(`callNumStatus("20", true)`), "");
   assert.match(h.run(`callNumStatus("20", false)`), /Not a phone number/);

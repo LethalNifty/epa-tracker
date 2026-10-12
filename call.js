@@ -359,31 +359,20 @@ function callInviteHTML(msg, btn, head, meta) {
     (callError ? `<div class="err" role="alert">${esc(callError)}</div>` : "") + `</div></section>`;
 }
 // The Week tab's card when you are not on call: the next stretch with a
-// countdown, the week ahead as a trace, then the few stretches after it.
+// countdown and the week ahead as a trace; the stretches after it are on Call.
 function callCardHTML(cs, now) {
   if (!cs.has) return callInviteHTML("Import your block's call file to see your next shift and who's on at each site.", "Import call schedule");
   if (!cs.next) return callInviteHTML("No call left in the schedule you imported.", "Import the next block");
-  const nx = cs.next, first = nx.segs[0], rest = cs.up.slice(1, 4), more = cs.up.length - 1 - rest.length;
+  const nx = cs.next, first = nx.segs[0], more = cs.up.length - 1;
   let h = `<section class="sec"><div class="sec-head"><h2>Call</h2><span class="mono">Next in <b data-until="${nx.s}">${callSpan(nx.s - now)}</b></span></div>` +
     `<div class="card callcard"><button class="cx" data-action="callopen">` +
     `<span class="cx-top mono"><span>${callDay(nx.s)} · ${callRange(nx.s, nx.e)}</span><span>${callHours(nx.s, nx.e)} h</span></span>` +
     `<span class="cx-title">${callTitle(nx)}</span>` +
     `<span class="cx-who">${CALL_SITES.map(([k, short]) => `<span><i>${short}</i>${callWho(first[k].att)}</span>`).join("")}</span>` +
     (nx.segs.length > 1 ? `<span class="cx-note">${nx.segs.length} shifts back to back. Tap for who's on each.</span>` : "") +
-    `</button>` + callTraceHTML(callMidnight(now), 7, now, callStretches(CallStore.list()), null) + callHintHTML(nx);
-  if (rest.length) h += `<div class="xlist">` + rest.map(st => `<button class="xrow" data-action="callopen">` +
-    `<span class="xd mono">${callDay(st.s)}</span><span class="xt">${callRange(st.s, st.e)}</span>` +
-    `<span class="xh mono${st.e - st.s > 24 * HOUR_MS ? " long" : ""}">${callHours(st.s, st.e)} h</span></button>`).join("") + `</div>`;
-  return h + `<button class="cx-all" data-action="callopen"><span>${more > 0 ? `${more} more, plus contacts and numbers` :
+    `</button>` + callTraceHTML(callMidnight(now), 7, now, callStretches(CallStore.list()), null);
+  return h + `<button class="cx-all" data-action="callopen"><span>${more > 0 ? `${more} more shift${more === 1 ? "" : "s"}, contacts and numbers` :
     "All shifts, contacts and numbers"}</span>${ic("forward", "sm")}</button></div></section>`;
-}
-// What the numbers are for, said before the shift that uses them.
-function callHintHTML(nx) {
-  const when = `${callWd(nx.s)} ${callHM(nx.s)}`, n = CALL_SITES.filter(([k]) => callTel(CallStore.state.nums[k])).length;
-  return `<p class="cx-hint">${ic("phone")}<span>` + (n === CALL_SITES.length
-    ? `From ${when}, the top of Week shows who's on, with a Call button for HSC and St. Boniface.`
-    : `From ${when}, the top of Week shows who's on at each site. Save the paging numbers to get a Call button for each.`) +
-    `</span></p>`;
 }
 function callSegHTML(x, many) {
   return `<div class="cseg"><div class="cseg-when mono">${many ? `${callWd(x.s)} ${callHM(x.s)} → ${callWd(x.e)} ${callHM(x.e)}` : callRange(x.s, x.e)}</div>` +

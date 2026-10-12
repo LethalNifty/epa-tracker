@@ -143,6 +143,7 @@ test("a pending form with no assessor takes the name from that day's scopes, and
 
 test("estimated completion shows both dates", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
+  h.click("tab", {page: "plan"});
   assert.match(h.html(), /At your current pace<\/div><div class="fin-val warn">Oct 2027<\/div>/);
   assert.match(h.html(), /If you hit the plan<\/div><div class="fin-val ok">Jun 30, 2027<\/div>/);
 });
@@ -165,8 +166,10 @@ test("recap separates what's carried onto this week from what moved to a later b
   assert.doesNotMatch(h.html(), /Carried onto this week: <b>[^<]*F1-B/);
 });
 
-test("pace estimate says what it is based on", () => {
+test("pace estimate says what it is based on, on Year plan; Week keeps to today", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
+  assert.doesNotMatch(h.html(), /<h2>Finish line<\/h2>/);
+  h.click("tab", {page: "plan"});
   assert.match(h.html(), /<div class="fin-note">16 in the last 8 weeks<\/div>/);
 });
 

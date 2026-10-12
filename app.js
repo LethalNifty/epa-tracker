@@ -411,6 +411,7 @@ function finishHTML(pace, plan, today) {
     `<p class="fin-goal">Goal: everything logged by Jun 30, 2027.</p></div></section>`;
 }
 // On call, the Call panel leads the page; otherwise the Call card follows This week.
+// Week keeps to today: the finish line is on Year plan.
 function viewWeek() {
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs, cur = currentStage();
   const now = callNow(), cs = callStatus(CallStore.list(), now);
@@ -436,7 +437,7 @@ function viewWeek() {
   if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
   if (chase.length) h += chaseHTML(chase);
-  return h + finishHTML(paceFinish(obsBy, today), planFinish(cp), today);
+  return h;
 }
 
 // ---- EPAs --------------------------------------------------------------------
