@@ -79,9 +79,8 @@ Options: `--tag <feature>` names the rollback tag (default: the branch name; req
 
 | Task | Runbook | Touches this repo |
 |---|---|---|
-| `gi-hub-guideline-watch`, Sun 08:00 | `C:\Users\jared\My Drive\Fellowship\GI Hub\guidelines\WATCH.md` | rebuilds `guides.json`, commits `chore(guides): weekly watch <date>` to main, no bump |
-| `gi-hub-trials-watch`, Sun 08:40 | `C:\Users\jared\My Drive\Fellowship\GI Hub\trials\TRIALS.md` | no; kept trials stay in Drive. Showing them in Guides is unmerged branch `guide-trials` (`..\epa-trials`, bec2c00) |
-| `gi-hub-pearl-cards`, Sun 20:00 | `tools/anki/CARDS.md` in the Claude Code repo | no; reads the pearl files the phone saved to Drive |
+| `gi-hub-guideline-watch` (the Sunday watch), Sun 08:00 | `C:\Users\jared\My Drive\Fellowship\GI Hub\guidelines\WATCH.md` (trials part: `..\trials\TRIALS.md`) | trials first, then guidelines; one rebuild of `guides.json` (topics, plus the kept trials as `tr` for Trials' "New from the weekly watch"), one commit `chore(guides): weekly watch <date>` to main, no bump. Card fixes go to the GI Studio, never to Anki directly |
+| `gi-hub-pearl-cards`, Sun 20:00 | `tools/anki/CARDS.md` in the Claude Code repo (run from the stable copy `C:\Users\jared\Claude\gi-tools`) | no; reads the pearl files the phone saved to Drive, then sends the one Sunday notification |
 
 ## Never commit
 
