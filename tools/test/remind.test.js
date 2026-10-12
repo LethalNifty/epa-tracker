@@ -201,6 +201,7 @@ function worker(brief) {
   const cache = {match: async k => (store.has(k) ? new Response(store.get(k)) : undefined), put: async (k, r) => { store.set(k, r.b); }};
   const ctx = {
     Response, URL, console, Date,
+    fetch: async () => ({ok: true, clone() { return this; }}),
     caches: {open: async () => cache, keys: async () => [], match: async () => undefined},
     importScripts: f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx),
     self: {addEventListener: (t, fn) => { handlers[t] = fn; }, skipWaiting() {},
@@ -210,8 +211,19 @@ function worker(brief) {
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, "sw.js"), "utf8"), ctx);
   const fire = async (type, ev) => { let p; handlers[type]({...ev, waitUntil: x => { p = x; }}); await p; };
-  return {fire, shown, store, messages};
+  return {fire, shown, store, messages, handlers};
 }
+
+test("the service worker never answers for its own script, so Settings' update check reads the live one", async () => {
+  const w = worker();
+  const answered = [];
+  const ask = url => w.handlers.fetch({request: {url}, respondWith: p => answered.push(url)});
+  ask("https://lethalnifty.github.io/epa-tracker/sw.js");
+  assert.deepEqual(answered, []);
+  ask("https://lethalnifty.github.io/epa-tracker/app.js");
+  assert.deepEqual(answered, ["https://lethalnifty.github.io/epa-tracker/app.js"]);
+  await new Promise(r => setTimeout(r, 5));
+});
 
 test("service worker: a push shows the notification from the brief and records its arrival", async () => {
   const h = withBlock("2026-10-28T16:00");

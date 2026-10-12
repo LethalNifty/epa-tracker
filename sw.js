@@ -22,6 +22,9 @@ self.addEventListener("activate", e => {
 const LIVE = ["/studyq.json", "/guides.json"];
 self.addEventListener("fetch", e => {
   const path = new URL(e.request.url).pathname;
+  // Settings asks the server which version it serves by reading sw.js; that
+  // answer must never come from, or be kept in, this cache.
+  if (path.endsWith("/sw.js")) return;
   if (LIVE.some(f => path.endsWith(f))) {
     e.respondWith(fetch(e.request).then(res => { if (res.ok) { const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; })

@@ -66,7 +66,7 @@ function setVersionHTML() {
 }
 function setBackupHTML() {
   const lb = Store.state.lastBackup;
-  return `<div class="setgrp"><div class="set-h mono"><span>Backup</span><span>Last: ${lb ? esc(dayLabel(lb.slice(0, 10))) : "never"}</span></div>` +
+  return `<div class="setgrp"><div class="set-h mono"><span>Backup</span><span>Last: ${lb ? esc(dayLabel(fmtDate(new Date(lb)))) : "never"}</span></div>` +
     `<div class="card pad"><button class="btn" data-action="export">${ic("share")}Export backup</button>` +
     `<button class="btn" data-action="importpick">${ic("download")}Import backup</button>` +
     `<input type="file" id="importfile" accept=".json,application/json" hidden>` +
