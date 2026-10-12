@@ -41,7 +41,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 **Endo:**
 - a scope log: say the case out loud and the app reads the procedure, staff surname, findings, interventions and how far you got; confirm and save
 - Progress charts
-- a PDF report for the program director and a spreadsheet export, both built in the app
+- a PDF procedure log (totals, therapeutic techniques including EMR and ESD, cecal intubation, milestones, every case in full, a signature line) for the program or a job application, and a spreadsheet export, both built in the app
 
 **Guides** (Guidelines | Trials | IBD drugs | Biopsy):
 - a guideline library (titles, years, links and our own one-line notes), opening on this block's topics with every section folded to one row

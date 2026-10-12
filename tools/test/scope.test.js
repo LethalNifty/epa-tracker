@@ -80,6 +80,17 @@ test("upper GI bleed hemostasis", () => {
   assert.deepEqual(c.found.sort(), ["active", "du"]);
 });
 
+test("EMR, ESD, hemostatic powder and over-the-scope clips are their own techniques", () => {
+  assert.deepEqual(h.one("colonoscopy to the cecum, EMR of a 25 mm polyp").procs, ["colo.dx", "colo.poly", "colo.bigpoly", "colo.emr"]);
+  assert.deepEqual(h.one("EGD with endoscopic mucosal resection of Barrett's").procs, ["egd.dx", "egd.emr"]);
+  assert.deepEqual(h.one("colonoscopy to the cecum, ESD of a rectal lesion").procs, ["colo.dx", "colo.esd"]);
+  assert.deepEqual(h.one("EGD for melena, bleeding ulcer, Hemospray").procs, ["egd.dx", "egd.nv.powder"]);
+  assert.deepEqual(h.one("EGD for melena, over the scope clip on the ulcer").procs, ["egd.dx", "egd.nv.otsc"]);
+  // Whole words only: a weekday is not a dissection.
+  assert.ok(!h.one("EGD on Wednesday with biopsies").procs.includes("egd.esd"));
+  assert.equal(h.val(`scopeSummary({procs: ["colo.dx", "colo.poly", "colo.emr"], reach: "cecum"})`), "Colonoscopy to cecum · polypectomy, EMR");
+});
+
 test("variceal banding, PEG and dilation", () => {
   const b = h.one("banded varices");
   assert.deepEqual(b.procs, ["egd.dx", "egd.ev.band"]);
@@ -281,8 +292,8 @@ test("therapeutics against C8, observed from the checklist lines", () => {
 
 test("firsts, breadth, the week and the change since a date", () => {
   const f = h.val(`scopeFirsts(${JSON.stringify(CASES)})`);
-  assert.deepEqual(f.slice(0, 3).map(x => [x.label, x.d]), [["First procedure logged", "2026-07-12"],
-    ["First colonoscopy you drove", "2026-07-22"], ["First colonoscopy to the cecum", "2026-08-26"]]);
+  assert.deepEqual(f.slice(0, 3).map(x => [x.label, x.d]), [["First procedure", "2026-07-12"],
+    ["First colonoscopy", "2026-07-22"], ["First colonoscopy to the cecum", "2026-08-26"]]);
   assert.ok(f.some(x => x.label === "First terminal ileum intubation" && x.d === "2026-09-03"));
   const b = h.val(`scopeBreadth(${JSON.stringify(CASES)}, null, null, T_STAFF)`);
   assert.equal(b.staff[0].id, "a");

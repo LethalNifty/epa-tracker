@@ -49,16 +49,50 @@ test("text widths follow Helvetica", () => {
   assert.equal(h.val(`pdfFit("Colonoscopy to HF · polypectomy", 10, false, 0, 60)`).endsWith("..."), true);
 });
 
-test("the report: three pages, the name, the period, the numbers and every case", () => {
+test("the report: the name, the period, every section and every case, written for someone outside the program", () => {
   const h = load({today: "2026-09-28", state: withScopes(CASES)});
   const pdf = checkPdf(latin1(h.val(`Array.from(scopeReportPDF({...scopeReportOpts(), from: "2026-07-01", to: "2026-09-28", label: "Academic year"}))`)));
-  assert.match(pdf, /\/Count 3/);
-  for (const s of ["(Endoscopy logbook) Tj", "(Test Fellow) Tj", "(Colon depth) Tj", "(Totals) Tj", "(Reached the cecum) Tj", "(Therapeutics) Tj",
-    "(Firsts) Tj", "(Breadth) Tj", "(Cases) Tj", "(Dr. Brook \\267 HSC) Tj", "(Page 3 of 3) Tj", "(Non-variceal hemostasis) Tj"])
+  const pages = +/\/Count (\d+)/.exec(pdf)[1];
+  for (const s of ["(ENDOSCOPY PROCEDURE LOG) Tj", "(Test Fellow) Tj", "(Procedures) Tj", "(Therapeutic procedures) Tj", "(Volume over time) Tj",
+    "(Cecal intubation) Tj", "(Furthest point reached) Tj", "(Milestones) Tj", "(Case mix) Tj", "(Logbook) Tj", "(Verified by) Tj",
+    "(Non-variceal hemostasis) Tj", "(Clip) Tj", "(Active bleeding at endoscopy) Tj", "(Resection) Tj", "(Polypectomy) Tj",
+    "(Dr. Brook, HSC) Tj", "(Urgent) Tj", `(Page ${pages} of ${pages}) Tj`, "(No patient identifiers are recorded.) Tj"])
     assert.ok(pdf.includes(s), s);
-  assert.ok(pdf.includes("(4 procedures in this period, 3 of them colonoscopies. You reached the cecum yourself in 2 of the last 3) Tj"));
-  assert.ok(pdf.includes("(colonoscopies you drove \\(67%\\).) Tj"));
+  // 2 of the 3 colonoscopies reached the cecum or TI.
+  assert.ok(pdf.includes("(67%) Tj"));
+  // Nothing an outside reader would trip on: no app name, no EPA case-mix minimums, no second person.
+  const text = [...pdf.matchAll(/\((.*?)\) Tj/g)].map(m => m[1]).join("\n");
+  assert.doesNotMatch(text, /GI Hub|C8|minimum|Entrada|\byou\b|\byour\b/i);
   assert.doesNotMatch(pdf, /—/);
+});
+
+test("the logbook wraps long cells instead of cutting them off", () => {
+  const long = [{id: "w", d: "2026-09-20", staff: "sb", site: "hsc", loc: "icu", urg: "urgent", procs: ["egd.dx", "egd.nv.clip", "egd.nv.inj", "egd.nv.powder", "egd.ev.band"],
+    why: ["hematemesis", "melena"], found: ["ev", "gv", "phg", "du", "active"], ts: "1"}];
+  const h = load({today: "2026-09-28", state: withScopes(long)});
+  const pdf = latin1(h.val(`Array.from(scopeReportPDF(scopeReportOpts()))`));
+  const text = [...pdf.matchAll(/\((.*?)\) Tj/g)].map(m => m[1]).join(" ");
+  for (const s of ["hemostatic powder", "banding", "Portal hypertensive", "gastropathy", "Active bleeding"]) assert.ok(text.includes(s), s);
+  assert.doesNotMatch(text, /\.\.\./);
+});
+
+test("therapeutic work is counted by technique, with EMR and ESD on their own lines", () => {
+  const h = load({today: "2026-09-28"});
+  const cases = [
+    {id: "1", d: "2026-09-01", procs: ["colo.dx", "colo.poly", "colo.bigpoly", "colo.emr"], found: ["polyp"]},
+    {id: "2", d: "2026-09-02", procs: ["colo.dx", "colo.esd"], found: ["polyp"]},
+    {id: "3", d: "2026-09-03", procs: ["egd.dx", "egd.nv.clip", "egd.nv.inj"], found: ["du", "active"]},
+    {id: "4", d: "2026-09-04", procs: ["egd.dx", "egd.ev.band"], found: ["ev"]},
+    {id: "5", d: "2026-09-05", procs: ["egd.dx", "egd.bx"], found: []},
+  ];
+  const g = h.val(`scopeTxGroups(${JSON.stringify(cases)})`);
+  const by = Object.fromEntries(g.map(x => [x.label, x]));
+  assert.deepEqual(g.map(x => x.label), ["Non-variceal hemostasis", "Variceal hemostasis", "Resection"]);
+  assert.equal(by.Resection.n, 2);
+  assert.deepEqual(by.Resection.rows.map(r => [r.label, r.n]), [["Polypectomy", 1], ["Polyp 10 mm or larger", 1], ["EMR", 1], ["ESD", 1]]);
+  assert.deepEqual(by["Non-variceal hemostasis"].rows.map(r => [r.label, r.n]), [["Clip", 1], ["Epinephrine injection", 1], ["Active bleeding at endoscopy", 1]]);
+  assert.deepEqual(by["Variceal hemostasis"].rows.map(r => [r.label, r.n]), [["Band ligation", 1]]);
+  assert.equal(h.val(`${JSON.stringify(cases)}.filter(scopeIsTherapeutic).length`), 4);
 });
 
 test("an empty period still makes a valid report", () => {
@@ -73,7 +107,7 @@ test("many cases continue onto more pages", () => {
   const h = load({today: "2026-09-28", state: withScopes(many)});
   const pdf = checkPdf(latin1(h.val(`Array.from(scopeReportPDF({...scopeReportOpts(), from: "2026-09-01", to: "2026-09-28", label: "September"}))`)));
   assert.ok(+/\/Count (\d+)/.exec(pdf)[1] >= 4);
-  assert.ok(pdf.includes("(Cases, continued) Tj"));
+  assert.ok(pdf.includes("(Logbook, continued) Tj"));
 });
 
 test("report periods", () => {
@@ -89,7 +123,7 @@ test("exporting the report and the spreadsheet hands files to the share sheet", 
   const h = load({today: "2026-09-28", state: withScopes(CASES)});
   h.run(`globalThis.__shared = []; navigator.canShare = () => true; navigator.share = async o => { __shared.push(o.files[0]); };`);
   await h.run(`scopeExportReport()`);
-  assert.equal(h.val(`__shared[0].name`), "GI-Hub-endoscopy-report-2026-09-28.pdf");
+  assert.equal(h.val(`__shared[0].name`), "Endoscopy-procedure-log-2026-09-28.pdf");
   assert.equal(h.val(`__shared[0].type`), "application/pdf");
   assert.equal(h.saved().scopes.lastReport, "2026-09-28");
   assert.match(h.val("toast.msg"), /Report exported/);

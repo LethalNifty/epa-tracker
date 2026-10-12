@@ -162,9 +162,9 @@ function pdfWrap(s, size, bold, maxW) {
 }
 
 // ---- The report's palette (print) --------------------------------------------------------------
-const RP = {ink: "#10262a", ink2: "#4a5f5c", faint: "#7c8f8c", rule: "#d5dfdd", wash: "#f1f6f5", teal: "#0e8a7a", tealWash: "#e2f3f0",
-  indigo: "#4c5fd5", brown: "#b5702f", brownWash: "#f6ebe0", grid: "#e3eae8", dotLo: "#97aaa7", urgent: "#c9503f"};
-const RP_SERIES = [RP.teal, RP.indigo, RP.brown];
+const RP = {ink: "#171a2b", ink2: "#4b4f66", faint: "#80849a", rule: "#dcdee7", hair: "#eceef4", wash: "#f4f4f9",
+  accent: "#4c3fc0", accentSoft: "#ebe8fb", accentMid: "#a9a1e8", warm: "#b8642f", grid: "#e7e8ef", dotLo: "#a6a9ba"};
+const RP_SERIES = [RP.accent, "#b0479e", RP.warm];
 
 // Draws a chart scene from scope-chart.js at (ox, oy).
 function pdfScene(doc, sc, ox, oy) {
@@ -172,31 +172,22 @@ function pdfScene(doc, sc, ox, oy) {
   for (const it of sc.items) {
     const c = it.c;
     if (it.t === "line") {
-      const st = {grid: [RP.grid, .6], goal: [RP.teal, .8, [2.2, 2]], axis: ["#b7c6c3", .7], month: ["#edf2f1", .6], mark: [RP.brown, .8, [2, 2]]}[c] || [RP.grid, .6];
+      const st = {grid: [RP.grid, .6], goal: [RP.accent, .8, [2.2, 2]], axis: ["#c4c6d3", .7], month: ["#eff0f5", .6], mark: [RP.warm, .8, [2, 2]]}[c] || [RP.grid, .6];
       doc.line(X(it.x1), Y(it.y1), X(it.x2), Y(it.y2), {stroke: st[0], lw: st[1], dash: st[2]});
     } else if (it.t === "path") {
-      const col = c === "trend" ? "#8fcfc4" : c === "share" ? RP.teal : /^vol(\d)$/.test(c) ? RP_SERIES[+c.slice(3)] : RP.teal;
+      const col = c === "trend" ? RP.accentMid : c === "share" ? RP.accent : /^vol(\d)$/.test(c) ? RP_SERIES[+c.slice(3)] : RP.accent;
       doc.poly(it.pts.map(p => [X(p[0]), Y(p[1])]), {stroke: col, lw: c === "trend" ? 2.4 : 1.5});
-    } else if (it.t === "area") doc.poly(it.pts.map(p => [X(p[0]), Y(p[1])]), {fill: RP.tealWash, close: true});
-    else if (it.t === "dot") doc.circle(X(it.x), Y(it.y), it.r * .8, {fill: c === "dothi" ? RP.teal : RP.dotLo, stroke: "#ffffff", lw: .9});
-    else if (it.t === "ring") doc.circle(X(it.x), Y(it.y), it.r * .8, {stroke: RP.teal, lw: .8});
+    } else if (it.t === "area") doc.poly(it.pts.map(p => [X(p[0]), Y(p[1])]), {fill: RP.accentSoft, close: true});
+    else if (it.t === "dot") doc.circle(X(it.x), Y(it.y), it.r * .8, {fill: c === "dothi" ? RP.accent : RP.dotLo, stroke: "#ffffff", lw: .9});
+    else if (it.t === "ring") doc.circle(X(it.x), Y(it.y), it.r * .8, {stroke: RP.accent, lw: .8});
     else if (it.t === "text") {
       const vl = /^vlbl(\d)$/.exec(c);
-      const size = (it.size || 9) * .82, color = c === "lblhi" ? RP.teal : vl ? RP.ink : c === "mark" ? RP.brown : RP.faint;
+      const size = (it.size || 9) * .82, color = c === "lblhi" ? RP.accent : vl ? RP.ink : c === "mark" ? RP.warm : RP.faint;
       let x = X(it.x);
       if (vl) { doc.line(x, Y(it.y), x + 8, Y(it.y), {stroke: RP_SERIES[+vl[1]], lw: 2, cap: true}); x += 11; }
       doc.text(x, Y(it.y) + size * .35, it.s, {size, bold: !!it.mono || !!vl, color, align: it.a === "end" ? "right" : it.a === "middle" ? "center" : "left", spacing: it.mono ? .3 : 0});
     }
   }
-}
-// The GI Hub mark: a ring of ticks, some lit.
-function pdfMark(doc, cx, cy, r) {
-  const n = 44, lit = 17;
-  for (let i = 0; i < n; i++) {
-    const a = -Math.PI / 2 + (i + .5) * 2 * Math.PI / n, on = i < lit, r1 = on ? r * .8 : r * .86;
-    doc.line(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a), cx + r * Math.cos(a), cy + r * Math.sin(a), {stroke: on ? RP.teal : "#c4d2cf", lw: on ? .9 : .7, cap: true});
-  }
-  doc.circle(cx, cy, r * .15, {fill: RP.teal});
 }
 
 // ---- The report ---------------------------------------------------------------------------------
@@ -208,186 +199,274 @@ function scopeReportRange(period, cases, lastReport, today) {
   if (period === "since" && lastReport) return {from: lastReport, to: t, label: "Since the last report"};
   return {from: first < t ? first : t, to: t, label: period === "since" ? "Since logging began" : "All cases"};
 }
-// opts: {cases, staff, from, to, label, name, today, items, lineVal, lastReport}
+const rpPct = (k, n) => n ? Math.round(k / n * 100) + "%" : "–";
+// One logbook line's procedure, without the reach (it has its own column).
+function scopeReportProc(c) {
+  let s = scopeSummary(c);
+  for (const say of Object.values(SCOPE_REACH_SAY)) s = s.replace(" to " + say, "");
+  return s.replace("polypectomy, large polypectomy", "polypectomy, 10 mm or larger");
+}
+function scopeReportWhy(c) {
+  const why = (c.why || []).map(scopeWhyLabel), found = (c.found || []).map(scopeFoundLabel);
+  return [why.join(", "), found.join(", ")].filter(Boolean).join("; ");
+}
+// opts: {cases, staff, from, to, label, name, today}
 function scopeReportPDF(o) {
-  const doc = PdfDoc({title: "Endoscopy logbook" + (o.name ? " · " + o.name : "")});
-  const M = 48, CW = doc.W - 2 * M, all = o.cases.slice().sort(scopeByDate);
+  const doc = PdfDoc({title: "Endoscopy procedure log" + (o.name ? " · " + o.name : "")});
+  const M = 48, CW = doc.W - 2 * M, FOOT = 742, all = o.cases.slice().sort(scopeByDate);
   const inP = all.filter(c => c.d >= o.from && c.d <= o.to), upTo = all.filter(c => c.d <= o.to);
-  const tP = scopeTotals(all, o.from, o.to), tY = scopeTotals(all, "2026-07-01", o.to), tA = scopeTotals(upTo);
-  const series = scopeReachSeries(upTo), last20 = series.slice(-20), cec = last20.filter(x => x.rank >= 5).length;
-  const therapy = scopeTherapy(upTo, o.items, o.lineVal), therapyP = scopeTherapy(inP, o.items, o.lineVal);
+  const whole = inP.length === upTo.length;
+  const tP = scopeTotals(inP), tA = scopeTotals(upTo);
+  const series = scopeReachSeries(upTo), last20 = series.slice(-20);
+  const cec = s => s.filter(x => x.rank >= 5).length, ti = s => s.filter(x => x.reach === "ti").length;
   const staffName = id => { const p = (o.staff || []).find(x => x.id === id); return p ? "Dr. " + String(p.name).split(",")[0].trim() : ""; };
-  const section = (y, title, note) => {
-    doc.text(M, y, title, {size: 12.5, bold: true});
-    if (note) doc.text(M + CW, y, note, {size: 8, color: RP.faint, align: "right"});
-    doc.line(M, y + 6, M + CW, y + 6, {stroke: RP.rule, lw: .6});
-    return y + 22;
-  };
-  const header = sub => {
-    doc.page();
-    pdfMark(doc, M + 9, 50, 9);
-    doc.text(M + 24, 54, "GI Hub", {size: 10, bold: true});
-    doc.text(M + 62, 54, "Procedure logbook", {size: 10, color: RP.faint});
-    doc.text(M + CW, 54, sub, {size: 9, color: RP.faint, align: "right"});
-    doc.line(M, 68, M + CW, 68, {stroke: RP.rule, lw: .6});
-  };
+  const period = `${rpDate(o.from)} to ${rpDate(o.to)}`;
+  let y = 0;
 
-  // Page 1: who, when, the headline numbers, the colon depth, the totals.
-  header(`${rpDate(o.from)} to ${rpDate(o.to)}`);
-  let y = 104;
-  doc.text(M, y, "Endoscopy logbook", {size: 24, bold: true});
-  y += 22;
-  doc.text(M, y, o.name || "Gastroenterology fellow", {size: 12.5, color: RP.ink2});
-  y += 16;
-  doc.text(M, y, `${o.label} · ${rpDate(o.from)} to ${rpDate(o.to)} · generated ${rpDate(fmtDate(o.today))}`, {size: 9, color: RP.faint});
-  y += 22;
-  // The change since the last report, in one sentence.
-  const ch = scopeChange(upTo, o.from);
-  let sentence = `${tP.procs} procedure${tP.procs === 1 ? "" : "s"} in this period, ${tP.colo} of them colonoscop${tP.colo === 1 ? "y" : "ies"}.`;
-  if (ch.shareNow !== null) sentence += ` You reached the cecum yourself in ${cec} of the last ${last20.length} colonoscop${last20.length === 1 ? "y" : "ies"} you drove (${ch.shareNow}%)` +
-    (ch.shareThen !== null && ch.shareThen !== ch.shareNow ? `, ${ch.shareNow > ch.shareThen ? "up" : "down"} from ${ch.shareThen}% at the start of the period.` : ".");
-  const lines = pdfWrap(sentence, 10.5, false, CW - 28);
-  doc.rect(M, y, CW, 16 + lines.length * 15, {fill: RP.wash, r: 6});
-  doc.rect(M, y, 3, 16 + lines.length * 15, {fill: RP.teal});
-  lines.forEach((ln, i) => doc.text(M + 16, y + 20 + i * 15, ln, {size: 10.5, color: RP.ink}));
-  y += 30 + lines.length * 15;
-  // Headline tiles.
-  const nTx = inP.filter(c => scopeC8(c).size).length;
-  const tiles = [[String(tP.procs), "Procedures", "this period"], [String(tP.colo), "Colonoscopies", "this period"],
-    [last20.length ? `${Math.round(cec / last20.length * 100)}%` : "–", "Reached the cecum", last20.length ? `last ${last20.length} you drove` : "none driven yet"],
-    [String(nTx), "Therapeutic cases", "this period"]];
-  const tw = (CW - 3 * 10) / 4;
-  tiles.forEach(([v, l, s], i) => {
-    const x = M + i * (tw + 10);
-    doc.rect(x, y, tw, 62, {stroke: RP.rule, lw: .7, r: 6});
-    doc.text(x + 12, y + 30, v, {size: 22, bold: true, color: i === 2 ? RP.teal : RP.ink});
-    doc.text(x + 12, y + 44, l, {size: 8.5, bold: true, color: RP.ink2});
-    doc.text(x + 12, y + 55, s, {size: 7.5, color: RP.faint, maxW: tw - 20});
+  const header = () => {
+    doc.page();
+    doc.text(M, 44, "ENDOSCOPY PROCEDURE LOG", {size: 7.5, bold: true, color: RP.accent, spacing: 1.1});
+    doc.text(M + CW, 44, [o.name, period].filter(Boolean).join("  ·  "), {size: 7.5, color: RP.faint, align: "right", maxW: CW - 170});
+    doc.line(M, 54, M + CW, 54, {stroke: RP.rule, lw: .6});
+    return 84;
+  };
+  const section = (title, note) => {
+    doc.text(M, y, title, {size: 12, bold: true});
+    if (note) doc.text(M + CW, y, note, {size: 7.5, color: RP.faint, align: "right", maxW: CW - pdfWidth(title, 12, true) - 24});
+    doc.line(M, y + 6, M + CW, y + 6, {stroke: RP.ink, lw: .8});
+    y += 22;
+  };
+  const room = need => { if (y + need > FOOT) y = header(); };
+
+  // ---- Page 1: who, when, the headline figures, every procedure and every technique ----
+  doc.page();
+  doc.rect(M, 40, 4, 4, {fill: RP.accent});
+  doc.text(M + 10, 44.5, "ENDOSCOPY PROCEDURE LOG", {size: 8, bold: true, color: RP.accent, spacing: 1.2});
+  doc.text(M, 84, o.name || "Gastroenterology fellow", {size: 22, bold: true, maxW: CW});
+  doc.text(M, 103, `${o.label === "All cases" ? "All procedures" : o.label} · ${period}`, {size: 9.5, color: RP.ink2});
+  doc.text(M + CW, 103, `Generated ${rpDate(fmtDate(o.today))}`, {size: 8, color: RP.faint, align: "right"});
+  doc.line(M, 116, M + CW, 116, {stroke: RP.ink, lw: 1});
+
+  // Headline figures: open numerals between hairlines, no boxes.
+  const nTx = inP.filter(scopeIsTherapeutic).length;
+  const sub = n => whole ? `since ${rpDate(all.length ? all[0].d : o.from)}` : `${n} in total`;
+  const figs = [[String(tP.procs), "Procedures", sub(tA.procs)], [String(tP.colo), "Colonoscopies", sub(tA.colo)],
+    [rpPct(cec(last20), last20.length), "Cecal intubation", last20.length ? `${cec(last20)} of the last ${last20.length}` : "no colonoscopies yet"],
+    [String(nTx), "Therapeutic cases", whole ? `${rpPct(nTx, tP.cases)} of all cases` : `${upTo.filter(scopeIsTherapeutic).length} in total`]];
+  const fw = CW / 4;
+  figs.forEach(([v, l, s], i) => {
+    const x = M + i * fw + (i ? 14 : 0);
+    if (i) doc.line(M + i * fw, 132, M + i * fw, 190, {stroke: RP.rule, lw: .6});
+    doc.text(x, 164, v, {size: 26, bold: true, color: i === 2 ? RP.accent : RP.ink});
+    doc.text(x, 178, l, {size: 8.5, bold: true, color: RP.ink2});
+    doc.text(x, 189, s, {size: 7.5, color: RP.faint, maxW: fw - 18});
   });
-  y += 84;
-  y = section(y, "Colon depth", "Every colonoscopy you drove, placed at how far you got");
-  const firstIn = series.find(x => x.d >= o.from);
-  const depth = scopeDepthScene(series, {w: CW, h: 196, left: 58, right: 12, top: 6, bottom: 20});
-  if (firstIn && firstIn.i > 1 && depth.x) {
-    const xx = depth.x(firstIn.i) - (series.length > 1 ? (depth.x(2) - depth.x(1)) / 2 : 0);
-    depth.items.push({t: "line", x1: xx, y1: 2, x2: xx, y2: 196 - 20, c: "mark"});
-    depth.items.push({t: "text", x: xx + 4, y: 8, s: "This period", c: "mark", a: "start", size: 9});
-  }
-  if (series.length) pdfScene(doc, depth, M, y);
-  else { doc.rect(M, y, CW, 60, {fill: RP.wash, r: 6}); doc.text(M + CW / 2, y + 34, "No colonoscopies logged yet.", {size: 10, color: RP.faint, align: "center"}); }
-  y += series.length ? 206 : 74;
-  if (series.length) {
-    doc.circle(M + 62, y - 2, 3, {fill: RP.teal}); doc.text(M + 69, y + 1, "Cecum or terminal ileum", {size: 8, color: RP.ink2});
-    doc.circle(M + 180, y - 2, 3, {fill: RP.dotLo}); doc.text(M + 187, y + 1, "Before the cecum", {size: 8, color: RP.ink2});
-    if (series.length >= 4) { doc.line(M + 272, y - 2, M + 286, y - 2, {stroke: "#8fcfc4", lw: 2.4, cap: true}); doc.text(M + 290, y + 1, "Trend (median of 5)", {size: 8, color: RP.ink2}); }
-    y += 20;
-  }
-  y = section(y, "Totals", "Procedures by type");
-  const cols = [["This period", tP], ["Year to date", tY], ["All time", tA]];
-  const cx = [M + 250, M + 340, M + 430];
-  cols.forEach(([l], i) => doc.text(cx[i] + 60, y, l, {size: 8, bold: true, color: RP.faint, align: "right", spacing: .2}));
-  y += 14;
+  y = 228;
+
+  // Procedures by type, with how many carried a therapeutic intervention.
+  section("Procedures");
+  // Columns: [label, value of a family or "procs"], then how many of the period's carried a therapy.
+  const famTx = (cases, f) => cases.filter(c => scopeFams(c).includes(f) && (c.procs || []).some(p => scopeFam(p) === f && SCOPE_TX_CODES.has(p))).length;
+  const pc = whole ? [["Total", tA, M + CW - 100], ["Therapeutic", null, M + CW]]
+    : [["This period", tP, M + CW - 200], ["Therapeutic", null, M + CW - 100], ["Total", tA, M + CW]];
+  pc.forEach(([l, , x]) => doc.text(x, y, l, {size: 7.5, bold: true, color: RP.faint, align: "right", spacing: .2}));
+  y += 15;
   const fams = SCOPE_FAMS.filter(([f]) => tA[f] > 0 || ["egd", "colo"].includes(f));
   for (const [f, label] of fams) {
-    doc.line(M, y - 10, M + CW, y - 10, {stroke: RP.grid, lw: .5});
     doc.text(M, y, label, {size: 10});
-    cols.forEach(([, t], i) => doc.text(cx[i] + 60, y, String(t[f]), {size: 10, align: "right"}));
-    y += 17;
+    for (const [, t, x] of pc) {
+      if (t) { doc.text(x, y, String(t[f]), {size: 10, align: "right"}); continue; }
+      const tx = famTx(whole ? upTo : inP, f);
+      if (["egd", "colo", "fs", "ercp"].includes(f)) doc.text(x, y, String(tx), {size: 10, align: "right", color: tx ? RP.ink2 : RP.faint});
+    }
+    doc.line(M, y + 6, M + CW, y + 6, {stroke: RP.hair, lw: .5});
+    y += 18;
   }
-  doc.line(M, y - 10, M + CW, y - 10, {stroke: RP.ink2, lw: .7});
-  doc.text(M, y + 1, "All procedures", {size: 10, bold: true});
-  cols.forEach(([, t], i) => doc.text(cx[i] + 60, y + 1, String(t.procs), {size: 10, bold: true, align: "right"}));
+  doc.text(M, y, "All procedures", {size: 10, bold: true});
+  for (const [, t, x] of pc) if (t) doc.text(x, y, String(t.procs), {size: 10, bold: true, align: "right"});
+  y += 32;
 
-  // Page 2: the cecum share, volume, therapeutics, firsts.
-  header("Progress");
-  y = 100;
-  y = section(y, "Reached the cecum", "Share of your previous 20 colonoscopies, case by case");
-  if (series.length >= 5) { pdfScene(doc, scopeShareScene(scopeCecumShare(series, 20), {w: CW, h: 130, left: 40, right: 46}), M, y); y += 158; }
-  else { doc.text(M, y + 4, "Shown once five colonoscopies you drove are logged.", {size: 9.5, color: RP.faint}); y += 30; }
-  y = section(y, "Volume", "Running totals since logging began");
-  if (upTo.length) { pdfScene(doc, scopeVolumeScene(upTo, {w: CW, h: 150, left: 34, right: 110}), M, y); y += 178; }
-  y = section(y, "Therapeutics", "Against the C8 case-mix minimums");
-  doc.text(M + 218, y, "Period", {size: 8, bold: true, color: RP.faint, align: "right"});
-  doc.text(M + 272, y, "All", {size: 8, bold: true, color: RP.faint, align: "right"});
-  doc.text(M + 300, y, "Observed of minimum", {size: 8, bold: true, color: RP.faint});
+  // Therapeutic work by technique, in two balanced columns.
+  const gP = scopeTxGroups(inP), gA = scopeTxGroups(upTo);
+  const showRows = g => (SCOPE_TX_GROUPS.find(x => x[0] === g.label) || [, []])[1].length > 1 || g.rows.some(r => r.note);
+  const hOf = g => 17 + (showRows(g) ? g.rows.length * 13.5 : 0) + 9;
+  const total = gA.reduce((a, g) => a + hOf(g), 0), left = [], right = [];
+  let acc = 0;
+  for (const g of gA) { (acc + hOf(g) / 2 <= total / 2 ? left : right).push(g); acc += hOf(g); }
+  const colH = Math.max(left.reduce((a, g) => a + hOf(g), 0), right.reduce((a, g) => a + hOf(g), 0));
+  room(40 + colH);
+  section("Therapeutic procedures", "Cases by technique; a case counts once in each line that applies");
+  if (!gA.length) { doc.text(M, y + 2, "No therapeutic procedures logged.", {size: 9.5, color: RP.faint}); y += 24; }
+  else {
+    const nOf = (list, g, r) => { const G = list.find(x => x.label === g.label); if (!G) return 0; if (!r) return G.n; const R = G.rows.find(x => x.label === r.label); return R ? R.n : 0; };
+    const colW = (CW - 28) / 2;
+    if (!whole) {
+      for (const x of [M, M + colW + 28]) {
+        doc.text(x + colW - 34, y - 4, "Period", {size: 6.8, bold: true, color: RP.faint, align: "right", spacing: .2});
+        doc.text(x + colW, y - 4, "Total", {size: 6.8, bold: true, color: RP.faint, align: "right", spacing: .2});
+      }
+      y += 8;
+    }
+    const drawCol = (x, list) => {
+      let yy = y;
+      for (const g of list) {
+        const nA = String(g.n), nPer = whole ? "" : String(nOf(gP, g));
+        doc.text(x, yy, g.label, {size: 9.5, bold: true, maxW: colW - 70});
+        if (!whole) doc.text(x + colW - 34, yy, nPer, {size: 9.5, bold: true, align: "right", color: RP.ink2});
+        doc.text(x + colW, yy, nA, {size: 9.5, bold: true, align: "right"});
+        yy += 4;
+        doc.line(x, yy, x + colW, yy, {stroke: RP.rule, lw: .5});
+        yy += 13;
+        if (showRows(g)) for (const r of g.rows) {
+          doc.text(x + 9, yy, r.label, {size: 8.8, color: r.note ? RP.warm : RP.ink2, maxW: colW - 80});
+          if (!whole) doc.text(x + colW - 34, yy, String(nOf(gP, g, r)), {size: 8.8, align: "right", color: RP.faint});
+          doc.text(x + colW, yy, String(r.n), {size: 8.8, align: "right", color: r.note ? RP.warm : RP.ink});
+          yy += 13.5;
+        }
+        yy += 9;
+      }
+      return yy;
+    };
+    y = Math.max(drawCol(M, left), drawCol(M + colW + 28, right));
+  }
+
+  room(154);
   y += 14;
-  therapy.forEach((r, k) => {
-    doc.line(M, y - 10, M + CW, y - 10, {stroke: RP.grid, lw: .5});
-    doc.text(M, y, r.label, {size: 9.5});
-    doc.text(M + 218, y, String(therapyP[k].done), {size: 9.5, align: "right"});
-    doc.text(M + 272, y, String(r.done), {size: 9.5, bold: true, align: "right"});
-    const bw = 150, cell = bw / r.min;
-    for (let j = 0; j < r.min; j++) doc.rect(M + 300 + j * cell, y - 7, cell - 1.6, 7, {fill: j < r.observed ? RP.teal : j < r.done ? "#a9d9cf" : "#edf1f0"});
-    doc.text(M + 300 + bw + 10, y, `${r.observed}/${r.min}`, {size: 8.5, color: RP.ink2});
-    y += 16;
+  section("Volume over time", "Running totals since logging began");
+  if (upTo.length) { pdfScene(doc, scopeVolumeScene(upTo, {w: CW, h: 104, left: 34, right: 110}), M, y); y += 118; }
+
+  // ---- Colonoscopy: cecal intubation, depth, milestones ----
+  room(200);
+  y += 14;
+  section("Cecal intubation", "Reach = how far the fellow advanced the scope before any hand-over");
+  const stats = [[rpPct(cec(last20), last20.length), `last ${last20.length || 20} colonoscopies`, `${cec(last20)} of ${last20.length}`],
+    [rpPct(cec(series), series.length), "all colonoscopies", `${cec(series)} of ${series.length}`],
+    [rpPct(ti(last20), last20.length), "terminal ileum, last " + (last20.length || 20), `${ti(last20)} of ${last20.length}`]];
+  stats.forEach(([v, l, s], i) => {
+    const x = M + i * (CW / 3);
+    doc.text(x, y + 14, v, {size: 18, bold: true, color: i === 0 ? RP.accent : RP.ink});
+    doc.text(x + pdfWidth(v, 18, true) + 8, y + 5, l, {size: 8, bold: true, color: RP.ink2});
+    doc.text(x + pdfWidth(v, 18, true) + 8, y + 15, s, {size: 7.5, color: RP.faint});
   });
-  y += 2;
-  y = doc.para(M, y + 4, "Done counts logged cases. The bar fills pale for cases done and solid for observations ticked on the C8 checklist for Entrada.", {size: 8, color: RP.faint, maxW: CW});
-  y += 10;
-  const firsts = scopeFirsts(upTo);
-  if (firsts.length && y < 700) {
-    y = section(y, "Firsts", `${firsts.length} so far`);
+  y += 32;
+  const share = scopeCecumShare(series, 20).filter(p => p.n >= 10);
+  if (series.length >= 15) {
+    doc.text(M, y, "Rolling rate over the previous 20 colonoscopies", {size: 7.5, bold: true, color: RP.faint, spacing: .2});
+    pdfScene(doc, scopeShareScene(share, {w: CW, h: 118, left: 40, right: 46}), M, y + 6);
+    y += 140;
+  } else { doc.text(M, y + 2, "The rolling rate appears after 15 colonoscopies.", {size: 8.5, color: RP.faint}); y += 18; }
+
+  room(240);
+  y += 6;
+  section("Furthest point reached", `${series.length} colonoscop${series.length === 1 ? "y" : "ies"}, oldest to newest`);
+  const depth = scopeDepthScene(series, {w: CW, h: 176, left: 58, right: 12, top: 6, bottom: 20});
+  const firstIn = series.find(x => x.d >= o.from);
+  if (!whole && firstIn && firstIn.i > 1 && depth.x) {
+    const xx = depth.x(firstIn.i) - (series.length > 1 ? (depth.x(2) - depth.x(1)) / 2 : 0);
+    depth.items.push({t: "line", x1: xx, y1: 2, x2: xx, y2: 176 - 20, c: "mark"});
+    depth.items.push({t: "text", x: xx + 4, y: 8, s: "This period", c: "mark", a: "start", size: 9});
+  }
+  if (series.length) {
+    pdfScene(doc, depth, M, y); y += 186;
+    const key = [[RP.accent, "Cecum or terminal ileum"], [RP.dotLo, "Before the cecum"]];
+    let kx = M + 58;
+    key.forEach(([col, l]) => { doc.circle(kx, y - 2.5, 3, {fill: col}); doc.text(kx + 7, y, l, {size: 7.5, color: RP.ink2}); kx += pdfWidth(l, 7.5) + 26; });
+    if (series.length >= 4) { doc.line(kx - 4, y - 2.5, kx + 10, y - 2.5, {stroke: RP.accentMid, lw: 2.4, cap: true}); doc.text(kx + 14, y, "Median of 5", {size: 7.5, color: RP.ink2}); }
+    y += 22;
+  } else { doc.text(M, y + 2, "No colonoscopies logged yet.", {size: 9, color: RP.faint}); y += 22; }
+
+
+  const firsts = scopeFirsts(upTo).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+  if (firsts.length) {
+    const rows = Math.ceil(firsts.length / 2);
+    room(40 + rows * 14);
+    y += 6;
+    section("Milestones", "In date order");
     const colW = CW / 2;
     firsts.forEach((f, i) => {
-      const x = M + (i % 2) * colW, yy = y + Math.floor(i / 2) * 15;
-      if (yy > 740) return;
-      doc.text(x, yy, rpDate(f.d), {size: 8.5, bold: true, color: f.d >= o.from ? RP.teal : RP.faint});
-      doc.text(x + 66, yy, f.label, {size: 9, maxW: colW - 72});
+      const x = M + Math.floor(i / rows) * colW, yy = y + (i % rows) * 14;
+      doc.text(x, yy, rpDate(f.d), {size: 8.5, bold: true, color: !whole && f.d >= o.from ? RP.accent : RP.ink2});
+      doc.text(x + 68, yy, f.label, {size: 9, maxW: colW - 76});
     });
+    y += rows * 14 + 8;
   }
 
-  // Page 3: breadth, then every case in the period.
-  header("Breadth and cases");
-  y = 100;
+  // ---- Case mix, then the logbook ----
   const b = scopeBreadth(all, o.from, o.to, o.staff);
-  y = section(y, "Breadth", `The ${b.n} case${b.n === 1 ? "" : "s"} in this period`);
+  room(60 + 14 * Math.max(Math.min(12, b.staff.length) + 1, 8));
+  y += 6;
+  section("Case mix", `The ${b.n} case${b.n === 1 ? "" : "s"} ${whole ? "logged" : "in this period"}`);
   const bars = (x, yy, w, title, rows) => {
-    doc.text(x, yy, title, {size: 8, bold: true, color: RP.faint, spacing: .3});
+    doc.text(x, yy, title, {size: 7.5, bold: true, color: RP.faint, spacing: .6});
     yy += 14;
     const max = Math.max(1, ...rows.map(r => r.n));
     for (const r of rows) {
-      doc.text(x, yy, r.label, {size: 9, maxW: 92});
-      doc.rect(x + 98, yy - 7, Math.max(2, (w - 130) * r.n / max), 7, {fill: r.label === "Not recorded" ? "#dbe3e1" : RP.teal, r: 1.5});
-      doc.text(x + w, yy, String(r.n), {size: 9, align: "right"});
-      yy += 15;
+      doc.text(x, yy, r.label, {size: 8.8, maxW: 96});
+      doc.rect(x + 102, yy - 6.5, Math.max(2, (w - 134) * r.n / max), 6.5, {fill: r.label === "Not recorded" ? "#dcdee7" : RP.accent, r: 1.5});
+      doc.text(x + w, yy, String(r.n), {size: 8.8, align: "right"});
+      yy += 14;
     }
     return yy;
   };
   const staffRows = b.staff.slice(0, 12).map(r => ({label: r.id === "none" ? "Not recorded" : "Dr. " + String(r.name).split(",")[0].trim(), n: r.n}));
   const mapRows = (obj, list) => list.map(([k, l]) => ({label: l, n: obj[k] || 0})).filter(r => r.n).concat(obj.none ? [{label: "Not recorded", n: obj.none}] : []);
-  const yL = bars(M, y, CW / 2 - 16, "STAFF", staffRows.length ? staffRows : [{label: "Not recorded", n: 0}]);
+  const yL = bars(M, y, CW / 2 - 16, "SUPERVISING STAFF", staffRows.length ? staffRows : [{label: "Not recorded", n: 0}]);
   let yR = bars(M + CW / 2 + 16, y, CW / 2 - 16, "SITE", mapRows(b.site, SCOPE_SITES.map(x => [x[0], x[1]])));
-  yR = bars(M + CW / 2 + 16, yR + 8, CW / 2 - 16, "SETTING", mapRows(b.loc, SCOPE_LOCS.map(x => [x[0], x[2] === "Suite" ? "Endoscopy suite" : x[2]]))
+  yR = bars(M + CW / 2 + 16, yR + 6, CW / 2 - 16, "SETTING", mapRows(b.loc, SCOPE_LOCS.map(x => [x[0], x[2] === "Suite" ? "Endoscopy suite" : x[2]]))
     .concat(mapRows(b.urg, [["urgent", "Urgent"], ["elective", "Elective"]]).filter(r => r.label !== "Not recorded")));
-  y = Math.max(yL, yR) + 14;
-  // The cases.
-  const colX = [M, M + 58, M + 238, M + 296, M + 408, M + CW];
-  const head = yy => {
-    ["Date", "Procedure", "How far", "Why / found", "Staff · site"].forEach((h, i) => doc.text(colX[i], yy, h, {size: 7.5, bold: true, color: RP.faint, spacing: .2}));
-    doc.line(M, yy + 5, M + CW, yy + 5, {stroke: RP.rule, lw: .6});
-    return yy + 17;
+  y = Math.max(yL, yR) + 20;
+
+  // The logbook: every case in the period, each cell wrapped in full.
+  const lc = [[M, 44, "Date"], [M + 46, 172, "Procedure"], [M + 220, 44, "Reach"], [M + 266, 140, "Indication; findings"], [M + 408, CW - 408, "Supervisor, site"]];
+  const multiYear = o.from.slice(0, 4) !== o.to.slice(0, 4);
+  const LS = 8.3, LH = 10.4;
+  const logHead = () => {
+    lc.forEach(([x, , h]) => doc.text(x, y, h, {size: 7.3, bold: true, color: RP.faint, spacing: .2}));
+    doc.line(M, y + 5, M + CW, y + 5, {stroke: RP.ink, lw: .7});
+    y += 17;
   };
-  y = section(y, "Cases", `${inP.length} in this period`);
-  y = head(y);
-  if (!inP.length) doc.text(M, y, "No cases in this period.", {size: 9, color: RP.faint});
+  room(80);
+  section("Logbook", `${inP.length} case${inP.length === 1 ? "" : "s"}, oldest first`);
+  logHead();
+  if (!inP.length) { doc.text(M, y, "No cases in this period.", {size: 9, color: RP.faint}); y += 16; }
   for (const c of inP) {
-    if (y > 742) { header("Cases, continued"); y = head(100); }
-    const why = (c.why || []).map(scopeWhyLabel).concat((c.found || []).map(scopeFoundLabel)).join(", ");
-    const who = [staffName(c.staff), scopeSiteShortR(c.site), c.urg === "urgent" ? "urgent" : ""].filter(Boolean).join(" · ");
-    doc.text(colX[0], y, rpDate(c.d).replace(/ \d{4}$/, ""), {size: 8.5, color: RP.ink2});
-    doc.text(colX[1], y, scopeSummary(c), {size: 8.5, maxW: colX[2] - colX[1] - 8});
-    doc.text(colX[2], y, scopeHasBase(c) && c.reach ? scopeReachShort(c.reach) : "", {size: 8.5, bold: scopeRank(c.reach) >= 5, color: scopeRank(c.reach) >= 5 ? RP.teal : RP.ink});
-    doc.text(colX[3], y, why, {size: 8.5, color: RP.ink2, maxW: colX[4] - colX[3] - 8});
-    doc.text(colX[4], y, who, {size: 8.5, color: RP.ink2, maxW: colX[5] - colX[4]});
-    doc.line(M, y + 5, M + CW, y + 5, {stroke: "#eef2f1", lw: .5});
-    y += 15.5;
+    const urgent = c.urg === "urgent";
+    const cells = [
+      [rpDate(c.d).replace(multiYear ? /$/ : / \d{4}$/, ""), {color: RP.ink2}],
+      [scopeReportProc(c), {}],
+      [scopeHasBase(c) && c.reach ? scopeReachShort(c.reach) : scopeFams(c).includes("colo") && !scopeHasBase(c) ? "Therapy only" : "",
+        {bold: scopeHasBase(c) && scopeRank(c.reach) >= 5, color: !scopeHasBase(c) ? RP.faint : scopeRank(c.reach) >= 5 ? RP.accent : RP.ink}],
+      [scopeReportWhy(c), {color: RP.ink2}],
+      [[staffName(c.staff), scopeSiteShortR(c.site)].filter(Boolean).join(", "), {color: RP.ink2}],
+    ];
+    const wrapped = cells.map(([s, st], i) => pdfWrap(s, LS, !!st.bold, lc[i][1] - 8));
+    if (urgent) wrapped[4].push("Urgent");
+    const n = Math.max(1, ...wrapped.map(w => w.length)), h = n * LH + 5;
+    if (y + h > FOOT) { y = header(); doc.text(M, y, "Logbook, continued", {size: 9, bold: true, color: RP.ink2}); y += 18; logHead(); }
+    wrapped.forEach((lines, i) => lines.forEach((ln, k) => {
+      const isUrg = i === 4 && urgent && k === lines.length - 1;
+      doc.text(lc[i][0], y + k * LH, ln, {size: isUrg ? 7.3 : LS, bold: isUrg || !!cells[i][1].bold, color: isUrg ? RP.warm : cells[i][1].color || RP.ink, spacing: isUrg ? .3 : 0});
+    }));
+    doc.line(M, y + h - LH + 2, M + CW, y + h - LH + 2, {stroke: RP.hair, lw: .5});
+    y += h;
   }
+
+  // Verification, for the program or a credentialing office.
+  room(96);
+  y += 22;
+  doc.text(M, y, "Verified by", {size: 9, bold: true});
+  y += 32;
+  [["Name and role", 0, 200], ["Signature", 220, 180], ["Date", 420, CW - 420]].forEach(([l, dx, w]) => {
+    doc.line(M + dx, y, M + dx + w, y, {stroke: RP.ink2, lw: .6});
+    doc.text(M + dx, y + 11, l, {size: 7.5, color: RP.faint});
+  });
+
   // Footers, now that the page count is known.
   const n = doc.pages.length;
   doc.pages.forEach((p, i) => {
     const text = (x, yy, s, al) => p.push(`BT /F1 7.5 Tf ${pdfRGB(RP.faint)} rg 0 Tc 1 0 0 1 ${pdfN(al === "right" ? x - pdfWidth(s, 7.5) : x)} ${pdfN(doc.H - yy)} Tm ${pdfStr(s)} Tj ET`);
     p.push(`${pdfRGB(RP.rule)} RG 0.6 w [] 0 d ${M} ${pdfN(doc.H - 758)} m ${M + CW} ${pdfN(doc.H - 758)} l S`);
-    text(M, 770, "Logged in GI Hub by the fellow. No patient identifiers are recorded.");
+    text(M, 770, "No patient identifiers are recorded.");
     text(M + CW, 770, `Page ${i + 1} of ${n}`, "right");
   });
   return doc.bytes();
@@ -421,7 +500,7 @@ async function scopeExportReport() {
   scopeErr = null;
   try {
     const bytes = scopeReportPDF(scopeReportOpts());
-    const ok = await scopeShareFile(bytes, `GI-Hub-endoscopy-report-${fmtDate(getToday())}.pdf`, "application/pdf", "Endoscopy logbook");
+    const ok = await scopeShareFile(bytes, `Endoscopy-procedure-log-${fmtDate(getToday())}.pdf`, "application/pdf", "Endoscopy procedure log");
     if (ok) { Store.markReport(fmtDate(getToday())); showToast("Report exported"); }
   } catch (e) { console.error(e); scopeErr = "Couldn't make the report. Try again."; }
   route.keepScroll = true; render();

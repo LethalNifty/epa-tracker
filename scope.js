@@ -32,6 +32,8 @@ const SCOPE_PROCS = [
   ["egd.be", "egd", "Barrett's screening", "EGD: Screen BE"],
   ["egd.entero", "egd", "Push enteroscopy", "EGD: Enteroscopy"],
   ["egd.poly", "egd", "Polypectomy", "EGD: Polypectomy", "polypectomy"],
+  ["egd.emr", "egd", "EMR", "EGD: EMR"],
+  ["egd.esd", "egd", "ESD", "EGD: ESD"],
   ["egd.fb", "egd", "Foreign body removal", "EGD: FB Removal", "foreign body"],
   ["egd.peg", "egd", "PEG", "EGD: PEG Placement"],
   ["egd.nj", "egd", "NJ tube", "EGD: NJ placement"],
@@ -44,6 +46,8 @@ const SCOPE_PROCS = [
   ["egd.nv.inj", "egd", "Injection", "EGD: NVUGIB: Injection", "non-variceal hemostasis"],
   ["egd.nv.apc", "egd", "APC", "EGD: NVUGIB: APC", "non-variceal hemostasis"],
   ["egd.nv.bipolar", "egd", "Bipolar", "EGD: NVUGIB: Bipolar", "non-variceal hemostasis"],
+  ["egd.nv.powder", "egd", "Hemostatic powder", "EGD: NVUGIB: Powder", "non-variceal hemostasis"],
+  ["egd.nv.otsc", "egd", "Over-the-scope clip", "EGD: NVUGIB: OTSC", "non-variceal hemostasis"],
   ["egd.ev.band", "egd", "Banding", "EGD: EVB: Band", "variceal hemostasis"],
   ["egd.ev.glue", "egd", "Glue", "EGD: EVB: Glue", "variceal hemostasis"],
   ["egd.ev.sclero", "egd", "Sclerotherapy", "EGD: EVB: Sclerotherapy", "variceal hemostasis"],
@@ -52,6 +56,8 @@ const SCOPE_PROCS = [
   ["colo.bx", "colo", "Biopsy", "Colo: Biopsy"],
   ["colo.poly", "colo", "Polypectomy", "Colo: Polypectomy", "polypectomy"],
   ["colo.bigpoly", "colo", "Large polypectomy", "Colo: Large Polypectomy", "polypectomy >1 cm"],
+  ["colo.emr", "colo", "EMR", "Colo: EMR", "polypectomy >1 cm"],
+  ["colo.esd", "colo", "ESD", "Colo: ESD", "polypectomy >1 cm"],
   ["colo.dil", "colo", "Dilation", "Colo: Colonic Dilation", "dilations"],
   ["colo.stent", "colo", "Stent", "Colo: Endoluminal Stent"],
   ["colo.hem", "colo", "Hemostasis", "Colo: Hemostasis", "non-variceal hemostasis"],
@@ -59,6 +65,7 @@ const SCOPE_PROCS = [
   ["colo.hem.inj", "colo", "Injection", "Colo: Hemostasis: Injection", "non-variceal hemostasis"],
   ["colo.hem.apc", "colo", "APC", "Colo: Hemostasis: APC", "non-variceal hemostasis"],
   ["colo.hem.bipolar", "colo", "Bipolar", "Colo: Hemostasis: Bipolar", "non-variceal hemostasis"],
+  ["colo.hem.powder", "colo", "Hemostatic powder", "Colo: Hemostasis: Powder", "non-variceal hemostasis"],
   ["fs.dx", "fs", "Diagnostic", "FS: Diag/Screen", null, "base"],
   ["fs.bx", "fs", "Biopsy", "FS: Biopsy"],
   ["fs.poly", "fs", "Polypectomy", "FS: Polypectomy", "polypectomy"],
@@ -218,6 +225,9 @@ const SCOPE_COMPLETE = [["cecum", phrase("all the way|to completion|complete col
 
 // Therapies: [pattern, handler(fam, ctx) -> codes]
 const SCOPE_TX = [
+  [phrase("esd|(?:endoscopic )?submucosal dissection"), fam => fam === "colo" ? ["colo.esd"] : fam === "egd" ? ["egd.esd"] : []],
+  [phrase("over[- ]?the[- ]?scope clips?|otsc|ovesco|padlock clip"), fam => fam === "colo" ? ["colo.hem.clip"] : fam === "egd" ? ["egd.nv.otsc"] : []],
+  [phrase("hemo ?spray|ha?emostatic (?:powder|spray)|tc[- ]?325|endoclot"), (fam, m, ctx) => [hemCode(fam, "powder", ctx)]],
   [phrase("glue|cyanoacrylate|histoacryl"), () => ["egd.ev.glue"]],
   [phrase("sclero\\w*"), () => ["egd.ev.sclero"]],
   [phrase("band(?:s|ed|ing)?|ligat(?:ed|ion)|evl|banding ligation"), () => ["egd.ev.band"]],
@@ -231,13 +241,14 @@ const SCOPE_TX = [
   [phrase("(?:balloon |cre |tts |bougie |savary |maloney |pneumatic |rigiflex |achalasia )*(?:dilat(?:ed|ion|ions|e|ing)|dilatation|stretched)|savary|bougie|maloney|pneumatic dilation|rigiflex"),
     (fam, m) => fam === "colo" ? ["colo.dil"] : fam === "fs" ? ["fs.dil"] :
       [/pneumatic|rigiflex|achalasia/.test(m) ? "egd.dil.pneum" : /bougie|savary|maloney/.test(m) ? "egd.dil.bougie" : "egd.dil.balloon"]],
-  [phrase("(?:cold |hot )?snare(?:d)?(?: polypectom\\w*)?|polypectom\\w*|emr|(?:removed|resected|took off) (?:a |the |an |one |two |three |four |five |\\d+ )?" +
+  [phrase("(?:cold |hot )?snare(?:d)?(?: polypectom\\w*)?|polypectom\\w*|emr|(?:endoscopic )?mucosal resection|(?:removed|resected|took off) (?:a |the |an |one |two |three |four |five |\\d+ )?" +
     "(?:\\d+(?:\\.\\d+)? ?(?:cm|mm|centimet\\w*|millimet\\w*) |small |large |big |sessile |pedunculated |flat |tiny )*polyps?|polyps? (?:was |were )?(?:removed|resected)"),
     (fam, m, ctx) => {
-      const big = ctx.bigPolyp || /emr/.test(m);
-      if (fam === "egd") return ["egd.poly"];
+      // EMR is its own technique (Barrett's in the esophagus, large polyps in the colon).
+      const emr = /emr|mucosal resection/.test(m), big = ctx.bigPolyp || emr;
+      if (fam === "egd") return [emr ? "egd.emr" : "egd.poly"];
       if (fam === "fs") return ["fs.poly"];
-      return big ? ["colo.poly", "colo.bigpoly"] : ["colo.poly"];
+      return big ? ["colo.poly", "colo.bigpoly"].concat(emr ? ["colo.emr"] : []) : ["colo.poly"];
     }],
   [phrase("biops(?:y|ies|ied|ying)|bx|bxs|cold forceps"), fam => [fam + ".bx"].filter(c => SCOPE_PROC[c])],
   [phrase("brush(?:ings?|ed)?|cytology brush\\w*"), fam => [fam === "ercp" ? "ercp.brush" : "egd.brush"]],
@@ -738,7 +749,8 @@ function scopeSummary(c, o = {}) {
     if (f === "other") head = c.procs.includes("other.ileo") ? "Ileoscopy" : (c.otherLabel || "Other");
     if (f === "para") head = c.procs.includes("para.ther") ? "Paracentesis, therapeutic" : "Paracentesis";
     const tx = (c.procs || []).filter(p => scopeFam(p) === f && SCOPE_PROC[p] && !SCOPE_PROC[p].base && p !== "egd.entero")
-      .map(p => SCOPE_PROC[p].label.toLowerCase().replace("apc", "APC").replace("peg", "PEG").replace("nj tube", "NJ tube").replace("barrett's", "Barrett's"));
+      .map(p => /^[A-Z]{2,}$/.test(SCOPE_PROC[p].label) ? SCOPE_PROC[p].label
+        : SCOPE_PROC[p].label.toLowerCase().replace("nj tube", "NJ tube").replace("barrett's", "Barrett's"));
     parts.push(head + (tx.length && !o.heads ? " · " + tx.join(", ") : ""));
   }
   return parts.join(" + ") || "No procedure yet";
@@ -802,14 +814,52 @@ function scopeTherapy(cases, items, lineVal) {
     return {stem, label, min, done, observed};
   });
 }
+// Therapeutic work by technique, for the report: [group, [[row, codes]]]. A case
+// counts once per row and once per group, however many codes it carries.
+const SCOPE_TX_GROUPS = [
+  ["Non-variceal hemostasis", [["Clip", ["egd.nv.clip", "colo.hem.clip"]], ["Over-the-scope clip", ["egd.nv.otsc"]],
+    ["Epinephrine injection", ["egd.nv.inj", "colo.hem.inj"]], ["Bipolar or heater probe", ["egd.nv.bipolar", "colo.hem.bipolar"]],
+    ["Argon plasma coagulation", ["egd.nv.apc", "colo.hem.apc"]], ["Hemostatic powder", ["egd.nv.powder", "colo.hem.powder"]],
+    ["Method not recorded", ["egd.nv", "colo.hem", "fs.hem"]]]],
+  ["Variceal hemostasis", [["Band ligation", ["egd.ev.band"]], ["Cyanoacrylate", ["egd.ev.glue"]], ["Sclerotherapy", ["egd.ev.sclero"]]]],
+  ["Resection", [["Polypectomy", ["egd.poly", "colo.poly", "fs.poly"]], ["Polyp 10 mm or larger", ["colo.bigpoly"]],
+    ["EMR", ["egd.emr", "colo.emr"]], ["ESD", ["egd.esd", "colo.esd"]]]],
+  ["Dilation", [["Balloon", ["egd.dil.balloon"]], ["Bougie", ["egd.dil.bougie"]], ["Pneumatic", ["egd.dil.pneum"]], ["Colonic", ["colo.dil", "fs.dil"]]]],
+  ["Foreign body removal", [["Foreign body or food bolus", ["egd.fb"]]]],
+  ["Enteral access", [["PEG", ["egd.peg"]], ["Nasojejunal tube", ["egd.nj"]]]],
+  ["Luminal stent", [["Esophageal or gastroduodenal", ["egd.stent"]], ["Colonic", ["colo.stent", "fs.stent"]]]],
+  ["ERCP", [["Sphincterotomy", ["ercp.sphinc"]], ["Plastic biliary stent", ["ercp.plastic"]], ["Metal biliary stent", ["ercp.metal"]],
+    ["Pancreatic stent", ["ercp.panc"]], ["Brushings or biopsy", ["ercp.brush", "ercp.bx"]]]],
+];
+const SCOPE_TX_CODES = new Set(SCOPE_TX_GROUPS.flatMap(([, rows]) => rows.flatMap(([, codes]) => codes)));
+const scopeIsTherapeutic = c => (c.procs || []).some(p => SCOPE_TX_CODES.has(p));
+// [{label, n, rows: [{label, n}]}] with only what was done; non-variceal
+// hemostasis adds how many of its cases were actively bleeding.
+function scopeTxGroups(cases) {
+  const out = [];
+  for (const [label, rows] of SCOPE_TX_GROUPS) {
+    const has = (c, codes) => (c.procs || []).some(p => codes.includes(p));
+    const all = rows.flatMap(([, codes]) => codes), inG = cases.filter(c => has(c, all));
+    if (!inG.length) continue;
+    const g = {label, n: inG.length, rows: rows.map(([l, codes]) => ({label: l, n: inG.filter(c => has(c, codes)).length})).filter(r => r.n)};
+    if (label === "Non-variceal hemostasis") {
+      const act = inG.filter(c => (c.found || []).includes("active")).length;
+      if (act) g.rows.push({label: "Active bleeding at endoscopy", n: act, note: true});
+    }
+    out.push(g);
+  }
+  return out;
+}
 const SCOPE_FIRSTS = [
-  ["First procedure logged", () => true],
-  ["First colonoscopy you drove", c => scopeHasBase(c)],
+  ["First procedure", () => true],
+  ["First colonoscopy", c => scopeHasBase(c)],
   ["First colonoscopy to the cecum", c => scopeHasBase(c) && scopeRank(c.reach) >= 5],
   ["First terminal ileum intubation", c => scopeHasBase(c) && c.reach === "ti"],
   ["First flex sig", c => scopeFams(c).includes("fs")],
   ["First polypectomy", c => scopeC8(c).has("polypectomy")],
-  ["First polyp over 1 cm", c => scopeC8(c).has("polypectomy >1 cm")],
+  ["First polyp 10 mm or larger", c => scopeC8(c).has("polypectomy >1 cm")],
+  ["First EMR", c => (c.procs || []).some(p => p === "egd.emr" || p === "colo.emr")],
+  ["First ESD", c => (c.procs || []).some(p => p === "egd.esd" || p === "colo.esd")],
   ["First non-variceal hemostasis", c => scopeC8(c).has("non-variceal hemostasis")],
   ["First variceal hemostasis", c => scopeC8(c).has("variceal hemostasis")],
   ["First dilation", c => scopeC8(c).has("dilations")],

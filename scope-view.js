@@ -357,12 +357,12 @@ function scopeBreadthHTML() {
 function scopeReportCardHTML() {
   const s = scopeData(), last = s.lastReport;
   const opts = [["since", last ? "Since last report" : "Since you started"], ["block", "This block"], ["year", "This year"], ["all", "All time"]];
-  return `<section class="sec"><div class="sec-head"><h2>For your program director</h2><span class="mono">${last ? "Last report " + esc(scopeShortDate(last)) : "No report yet"}</span></div>` +
+  return `<section class="sec"><div class="sec-head"><h2>Procedure log</h2><span class="mono">${last ? "Last report " + esc(scopeShortDate(last)) : "No report yet"}</span></div>` +
     `<div class="card pad report"><div class="datechips wrap">${opts.map(([k, l]) => `<button class="pick ghost${scopePeriod === k ? " on" : ""}" data-action="scopeperiod" data-p="${k}">${l}</button>`).join("")}</div>` +
-    `<label class="lbl mono">Name on the report<input type="text" value="${esc(s.reportName || "")}" placeholder="Your name" data-scopefield="name" autocomplete="name" autocapitalize="words"></label>` +
+    `<label class="lbl mono">Name on the report<input type="text" value="${esc(s.reportName || "")}" placeholder="Name, year and program" data-scopefield="name" autocomplete="name" autocapitalize="words"></label>` +
     `<button class="btn primary" data-action="scopereport">${ic("share")}Export report (PDF)</button>` +
     `<button class="btn" data-action="scopecsv">${ic("share")}Export spreadsheet</button>` +
-    `<p class="bnote">Charts, totals, therapeutics, firsts and every case in the period. No patient details are stored, so it's safe to email.</p>` +
+    `<p class="bnote">Totals, therapeutic techniques, cecal intubation, milestones and every case in full, with a line to sign. For your program or a job application; no patient details, so it's safe to email.</p>` +
     (scopeErr ? `<div class="err">${esc(scopeErr)}</div>` : "") + `</div></section>`;
 }
 function scopeProgressHTML() {
