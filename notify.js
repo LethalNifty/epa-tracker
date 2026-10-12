@@ -59,13 +59,22 @@ function noteStudy(brief, now) {
   if (n.kind === "pause") return {title: "Reading paused", body: "No pages tonight.", tag, url};
   return {title: "No reading tonight", body: next, tag, url};
 }
-// msg: {kind: "week" | "ask" | "call" | "study" | "test", t, s?}; brief: what the app saved, or null.
+// Sunday 17:00: the pearls still to send, or a nudge to catch this week's.
+const NOTE_PEARLS_GENERIC = {title: "Pearls", body: "Open GI Hub to send this week's pearls.", tag: "gi-pearls", url: "./#pearls"};
+function notePearls(brief, now) {
+  const n = brief.pearls ? brief.pearls.unsent || 0 : 0;
+  const day = new Date(now), tag = "gi-pearls-" + new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime(), url = "./#pearls";
+  if (n) return {title: `${n} pearl${n === 1 ? "" : "s"} to send`, body: "Send them from GI Hub so they're in Drive for tonight's cards.", tag, url};
+  return {title: "Any pearls this week?", body: "Catch them in GI Hub while you still remember.", tag, url};
+}
+// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "test", t, s?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
     return {title: "GI Hub reminders are on", body: "Mondays at 08:00: the week's EPAs. Wednesdays at 08:00: what's still due, to ask for. " +
-      "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages.", tag: "gi-test", url: "./"};
+      "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages. Sundays at 17:00: pearls to send.", tag: "gi-test", url: "./"};
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
+  if (kind === "pearls") return b ? notePearls(b, now) : NOTE_PEARLS_GENERIC;
   if (kind === "call") {
     const list = b ? b.call || [] : [];
     const st = (msg.s && list.find(x => Math.abs(x.s - msg.s) < 60000)) || list.find(x => x.e > now && x.s - now < 3 * 3600000);

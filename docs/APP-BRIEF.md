@@ -54,6 +54,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - Wednesday 8 AM: what's still due
 - an hour before call: who's on
 - 8 PM on reading nights: tonight's pages
+- Sunday 5 PM: pearls still to send (or a nudge to catch this week's)
 
 ## How it's built
 

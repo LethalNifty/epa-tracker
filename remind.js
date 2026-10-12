@@ -113,7 +113,9 @@ function remindBrief(now) {
     return qn ? {...n, qn} : n;
   });
   const study = {nights, week: studyLastWeek(day, Store.state.study, str)};
-  return {v: 1, at: now, weeks, call, study};
+  // How many pearls wait to be sent: never their words or who said them.
+  const pearls = {unsent: Store.state.pearls.filter(p => !p.sent).length};
+  return {v: 1, at: now, weeks, call, study, pearls};
 }
 function remindAfterRender() {
   if (!remindSub || typeof caches === "undefined") return;
@@ -125,15 +127,16 @@ function remindAfterRender() {
   caches.open(REMIND_CACHE).then(c => c.put("__gi-brief.json",
     new Response(JSON.stringify(brief), {headers: {"content-type": "application/json"}}))).catch(() => { remindBriefKey = ""; });
 }
-// The next reminder this phone expects: Monday or Wednesday 08:00, an hour
-// before a call, or 20:00 on a reading night, whichever comes first.
+// The next reminder this phone expects: Monday or Wednesday 08:00, Sunday
+// 17:00 (pearls), an hour before a call, or 20:00 on a reading night,
+// whichever comes first. Matches tools/push/schedule.js.
 function remindNext(now) {
   const d = new Date(now);
   let msg = null;
   for (let k = 0; k < 8 && !msg; k++) {
-    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 8).getTime();
-    const kind = {1: "week", 3: "ask"}[day.getDay()];
-    if (kind && t > now) msg = {kind, t};
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), slot = {0: ["pearls", 17], 1: ["week", 8], 3: ["ask", 8]}[day.getDay()];
+    const t = slot ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), slot[1]).getTime() : 0;
+    if (slot && t > now) msg = {kind: slot[0], t};
   }
   const st = callStretches(CallStore.list()).find(x => x.s - HOUR_MS > now);
   if (st && st.s - HOUR_MS < msg.t) msg = {kind: "call", t: st.s - HOUR_MS, s: st.s};
@@ -151,7 +154,8 @@ function remindNext(now) {
 const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Mon 08:00</span><span>The week's EPAs, and any call coming up</span></li>` +
   `<li><span class="mono">Wed 08:00</span><span>What's still due, so you can ask today</span></li>` +
   `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li>` +
-  `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li></ul>`;
+  `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li>` +
+  `<li><span class="mono">Sun 17:00</span><span>Pearls to send, before Sunday's cards</span></li></ul>`;
 function remindCodeHTML() {
   return `<div class="rcode mono" aria-label="Connection code">${esc(remindSub.endpoint.replace(/^https:\/\//, "").slice(0, 38))}…</div>` +
     `<div class="rbtns"><button class="btn primary" data-action="remindshare">${ic("share")}Share code</button>` +

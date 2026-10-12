@@ -5,6 +5,9 @@ const HOUR = 3600000;
 // EPAs: Monday 08:00, the week's plan; Wednesday 08:00, the last day of each
 // block week, what's still due so you can ask for it.
 const EPA_TIMES = [{day: 1, hour: 8, kind: "week"}, {day: 3, hour: 8, kind: "ask"}];
+// Pearls: Sunday 17:00, the pearls still to send, ahead of Sunday's cards on the
+// computer. Must match remind.js (remindNext).
+const PEARLS_TIME = {day: 0, hour: 17, kind: "pearls"};
 const CALL_LEAD = HOUR;               // an hour before each call starts
 // Tonight's Mayo pages: 20:00 on reading nights (Mon, Tue, Wed, Fri) while
 // the plan runs, not on a day a call stretch starts by 20:00. These must
@@ -36,7 +39,7 @@ function dueReminders(lo, hi, callStarts) {
   const out = [];
   const d = new Date(lo);
   for (let day = new Date(d.getFullYear(), d.getMonth(), d.getDate()); day.getTime() <= hi; day.setDate(day.getDate() + 1)) {
-    for (const r of EPA_TIMES) {
+    for (const r of EPA_TIMES.concat(PEARLS_TIME)) {
       if (day.getDay() !== r.day) continue;
       const t = new Date(day.getFullYear(), day.getMonth(), day.getDate(), r.hour).getTime();
       if (t > lo && t <= hi) out.push({kind: r.kind, t});
@@ -64,4 +67,4 @@ function windowFor(prevStart, thisStart) {
   return {lo, hi};
 }
 
-module.exports = {HOUR, EPA_TIMES, CALL_LEAD, STUDY, wallMs, wallString, parseCallTimes, dueReminders, windowFor};
+module.exports = {HOUR, EPA_TIMES, PEARLS_TIME, CALL_LEAD, STUDY, wallMs, wallString, parseCallTimes, dueReminders, windowFor};

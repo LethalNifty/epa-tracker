@@ -84,7 +84,7 @@ test("sending: the right headers, and a body only the phone can read", async () 
 
 test("Monday and Wednesday at 08:00 Winnipeg time, through the clock change; nothing on Thursday", () => {
   // Oct 26 and 28 are before the change (CDT), Nov 2 and 4 after (CST): 08:00 local every time.
-  const due = dueReminders(at(2026, 10, 25, 12), at(2026, 11, 6, 12), []).filter(x => x.kind !== "study");
+  const due = dueReminders(at(2026, 10, 25, 12), at(2026, 11, 6, 12), []).filter(x => x.kind === "week" || x.kind === "ask");
   assert.deepEqual(due, [{kind: "week", t: at(2026, 10, 26, 8)}, {kind: "ask", t: at(2026, 10, 28, 8)},
     {kind: "week", t: at(2026, 11, 2, 8)}, {kind: "ask", t: at(2026, 11, 4, 8)}]);
   assert.deepEqual(due.map(x => new Date(x.t).toISOString().slice(11, 16)), ["13:00", "13:00", "14:00", "14:00"]);

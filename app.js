@@ -5,7 +5,7 @@
 
 const KEY = "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
-const APP_VERSION = "epa-v36";
+const APP_VERSION = "epa-v37";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
@@ -994,17 +994,20 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
     if (route.page === "week" && hiddenAt && Date.now() - hiddenAt > 5000) introDone = false;
     route.keepScroll = true; render(); remindInit(); studyqInit(); guidesInit(); }
 });
-// A tapped call reminder opens the Call screen: by link when the app was
-// closed, by message from the service worker when it was open.
-if (typeof location !== "undefined" && (location.hash === "#call" || location.hash === "#study")) {
-  route = location.hash === "#call" ? {page: "call", from: "week"} : {page: "study"};
+// A tapped reminder opens its screen (Call, Study or Pearls): by link when
+// the app was closed, by message from the service worker when it was open.
+const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, pearls: {page: "pearls", from: "study"}};
+function appOpenFromLink(name) {
+  if (!APP_LINKS[name]) return;
+  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null;
+  go({...APP_LINKS[name]});
+}
+if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)]) {
+  route = {...APP_LINKS[location.hash.slice(1)]};
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
 if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
-  navigator.serviceWorker.addEventListener("message", ev => {
-    if (ev.data && ev.data.go === "call") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; go({page: "call", from: "week"}); }
-    else if (ev.data && ev.data.go === "study") { sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; go({page: "study"}); }
-  });
+  navigator.serviceWorker.addEventListener("message", ev => { if (ev.data && ev.data.go) appOpenFromLink(ev.data.go); });
 Store.load();
 CallStore.load();
 render();

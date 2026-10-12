@@ -1,5 +1,5 @@
 importScripts("notify.js");
-const CACHE = "epa-v36";
+const CACHE = "epa-v37";
 // Kept across updates: the brief remind.js saves for writing notifications.
 const BRIEF = "gi-brief";
 const ASSETS = ["./", "index.html", "app.css", "coach.js", "call.js", "study.js", "studyq.js", "studyq.json", "guides.js", "guides.json", "guides-view.js", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "scope.js", "notify.js", "remind.js", "study-view.js", "scope-chart.js", "scope-view.js", "scope-report.js", "live.js", "app.js", "manifest.webmanifest", "icon.svg",
@@ -50,7 +50,11 @@ self.addEventListener("notificationclick", e => {
   const url = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({type: "window", includeUncontrolled: true}).then(list => {
     const w = list[0];
-    if (w) { if (url.includes("#call")) w.postMessage({go: "call"}); else if (url.includes("#study")) w.postMessage({go: "study"}); return w.focus(); }
+    if (w) {
+      const go = ["call", "study", "pearls"].find(p => url.includes("#" + p));
+      if (go) w.postMessage({go});
+      return w.focus();
+    }
     return self.clients.openWindow(url);
   }));
 });
