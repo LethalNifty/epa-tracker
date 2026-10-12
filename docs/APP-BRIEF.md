@@ -25,29 +25,31 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - the next call shift and who's on at each site
 - a weekly recap
 - a list of forms still pending in Entrada after 14+ days, so you can chase them
+- a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, and reminders
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) with approved and pending against the required count
-- the Year plan: the block calendar
-- backup export and import, and reminder settings
+- the Year plan: the block calendar and the finish line
 
-**Study:**
+**Study** (Tonight | Plan):
 - pass 1 of Mayo Board Review across Blocks 4 to 12, with Yamada pages where Mayo is thin, turned into tonight's pages
 - three or four Royal College-style short-answer questions on those pages, answered before reading
 - buttons for Done, Stopped elsewhere and Not tonight; the plan reflows from a bookmark
 - Pearls: teaching points caught on the wards, searchable, sent on as a text file to become Anki cards (`docs/PEARLS.md`)
+- Plan: the block's reading, the whole book, the finish, question scores and the bank, and pausing
 
 **Endo:**
 - a scope log: say the case out loud and the app reads the procedure, staff surname, findings, interventions and how far you got; confirm and save
 - Progress charts
 - a PDF report for the program director and a spreadsheet export, both built in the app
 
-**Guides:**
-- a guideline library (titles, years, links and our own one-line notes)
-- the local biopsy protocol
+**Guides** (Guidelines | Trials | IBD drugs | Biopsy):
+- a guideline library (titles, years, links and our own one-line notes), opening on this block's topics with every section folded to one row
+- landmark trials, every IBD drug sold in Canada, and the local biopsy protocol
+- one search box that finds guidelines, trials, drugs, biopsy protocols and your pearls together
 - a weekly check adds new guidelines without an app update
 
-**+ (floating button):** log a case by voice, with links to log an EPA observation or catch a pearl. An observation: pick the EPA (this week's first), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending or approved.
+**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending or approved.
 
 **Reminders (Web Push):**
 - Monday 8 AM: the week's EPAs
@@ -79,6 +81,8 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 | File | What it holds |
 |---|---|
 | `app.js` | the store, the screens, what each tap does |
+| `search.js` | one search: matching, ranking and highlighting for every search box |
+| `settings.js` | the Settings sheet: version and update check, backup, reminders |
 | `coach.js` | block calendar and weekly plan math (pure) |
 | `call.js` | call schedule from a per-block `.ics`, the Call card |
 | `study.js`, `study-view.js` | reading plan math, the Study tab |

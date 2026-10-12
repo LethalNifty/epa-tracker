@@ -25,7 +25,7 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `app.js` | the Store (localStorage `epa-state-v1`), routing, render, dispatch by action prefix, sheets, backup. A new state field joins `importJSON`'s whitelist or a restore drops it |
 | `app.css` | every style; feature blocks sit just before `/* Backup */` |
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
-| feature files | `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live` (the brief's file map) |
+| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live` (the brief's file map) |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
 | `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` every 15 minutes |
 | `tools/ship.py` | shipping, below |
