@@ -57,10 +57,6 @@ const Store = {
   lineVal(id) { return (this.state.lines[id] && this.state.lines[id].v) || 0; },
   setLineMeta(id, m) { Object.assign(this.state.lines[id] ||= {v:0}, m); this.save(); },
   partDone(p) { return (this.state.obs[p]||[]).length; },
-  epaProgress(code) { const e = EPA_DATA.find(x => x.code === code);
-    let done = 0, req = 0;
-    for (const p of e.parts) { req += p.required; done += Math.min(this.partDone(p.id), p.required); }
-    return {done, req}; },
   exportJSON() { return JSON.stringify(this.state, null, 1); },
   markBackup() { this.state.lastBackup = new Date().toISOString(); this.save(); },
   importJSON(text) {
@@ -449,7 +445,7 @@ function epaRowHTML(e, focus) {
     `<span class="bar"><i style="width:${pct(t.approved, t.req)}%"></i><i class="pend" style="width:${pct(t.pending, t.req)}%"></i></span>` +
     `<span class="epa-tags">${focus.includes(e.code) ? `<span class="tag">this block</span>` : ""}` +
     `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span></span>` +
-    `<span class="epa-count${t.logged >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
+    `<span class="epa-count${t.approved >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
 }
 // EPAs and the year plan share a tab, with a switch under the header.
 function epaSwitchHTML(on) {
@@ -467,7 +463,8 @@ function viewEpas() {
   for (const st of STAGE_ORDER) {
     const s = stageTally(st), state = stageState(st, cur);
     const list = EPA_DATA.filter(x => x.stage === st);
-    const done = list.filter(e => { const p = Store.epaProgress(e.code); return p.done >= p.req; });
+    // Done means approved in Entrada; a pending form keeps the EPA in the list.
+    const done = list.filter(e => { const t = tally(PARTS.filter(P => P.code === e.code)); return t.approved >= t.req; });
     h += `<section class="stage-sec st-${st}"><div class="stage-head${state === "locked" ? " lock" : ""}"><i></i><h2>${STAGE_NAMES[st]}</h2>` +
       `<span class="mono state">${STATE_LABEL[state]}</span><span class="mono">${s.logged}/${s.req}</span></div>` +
       `<div class="stage-bar"><i style="width:${pct(s.approved, s.req)}%"></i><i class="pend" style="width:${pct(s.pending, s.req)}%"></i></div>` +

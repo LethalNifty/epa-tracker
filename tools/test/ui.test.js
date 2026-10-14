@@ -13,6 +13,16 @@ test("EPAs tab: stage groups, done EPAs folded, pending shown as text", () => {
   assert.doesNotMatch(html, /[\u23F3\u{1F680}\u{1F3C5}\u{1F512}\u{1F389}]/u);
 });
 
+test("an EPA moves to Done only once every observation is approved, not just logged", () => {
+  const withD1 = list => { const h = load({today: "2026-09-24", state: state({d1: list})}); h.click("tab", {page: "epas"}); return h.html(); };
+  const pending = withD1([...many(3, "2026-07-10"), obs("2026-07-11", {status: "pending"})]);
+  assert.doesNotMatch(pending, /class="donegrp"/);
+  assert.match(pending, /data-code="D1">[\s\S]*?<span class="tag warn">1 pending<\/span>[\s\S]*?<span class="epa-count">4\/4<\/span>/);
+  const approved = withD1(many(4, "2026-07-10"));
+  assert.match(approved, /Done \(1\)<\/summary><button class="epa st-ttd" data-action="open" data-code="D1">/);
+  assert.match(approved, /<span class="epa-count done">4\/4<\/span>/);
+});
+
 test("bottom bar: Week, EPAs, Study, Endo, Guides with the log button floating; current tab highlighted", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "study"});
