@@ -164,6 +164,26 @@ test("admin page: only with the key, and only same-site actions", async () => {
   assert.equal((await handle(req("/__admin"), envWith({GI_ADMIN: ""}), next)).status, 404);
 });
 
+test("the summary for the owner's own GI Hub: the admin key as a Bearer token, no codes in it", async () => {
+  const {handle} = await load();
+  const env = envWith();
+  await phone(handle, env).enter("K7QM-4TZP");
+  await phone(handle, env, ANDROID, {city: "Toronto", regionCode: "ON", country: "CA"}).enter("K7QM-4TZP");
+  const pre = await handle(req("/__admin/summary", {method: "OPTIONS"}), env, next);
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get("Access-Control-Allow-Headers"), "Authorization");
+  assert.equal((await handle(req("/__admin/summary"), env, next)).status, 401);
+  assert.equal((await handle(req("/__admin/summary", {headers: {Authorization: "Bearer AAAA-BBBB-CCCC-DDDD"}}), env, next)).status, 401);
+  const res = await handle(req("/__admin/summary", {headers: {Authorization: "Bearer " + ADMIN_KEY.toLowerCase()}}), env, next);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
+  const text = await res.text(), j = JSON.parse(text);
+  assert.equal(j.inUse, 1);
+  assert.deepEqual(j.codes.map(c => [c.id, c.state, c.tries]), [["f01", "in", 1], ["f02", "new", 0]]);
+  assert.deepEqual(j.tries.map(t => [t.id, t.dev, t.where]), [["f01", "Android", "Toronto, ON"]]);
+  assert.doesNotMatch(text, /K7QM|4TZP|WX3N/);
+});
+
 test("phones signed in before codes claimed a phone: the first claims its code, any other is out", async () => {
   const {handle} = await load();
   const env = envWith();

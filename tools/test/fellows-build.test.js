@@ -21,6 +21,9 @@ test("the fellows' build: every cached file, the switch before any script, no st
     const sw = fs.readFileSync(path.join(out, "sw.js"), "utf8");
     const assets = [.../const ASSETS = \[([\s\S]*?)\];/.exec(sw)[1].matchAll(/"([^"]+)"/g)].map(m => m[1]);
     assert.ok(!assets.includes("studyq.json"));
+    // The owner's watch on the codes never reaches the fellows.
+    assert.ok(!assets.includes("watch.js") && !fs.existsSync(path.join(out, "watch.js")));
+    assert.doesNotMatch(html, /watch\.js/);
     assert.ok(!fs.existsSync(path.join(out, "studyq.json")));
     for (const f of assets) if (f !== "./") assert.ok(fs.existsSync(path.join(out, f)), "missing " + f);
     // The version the Settings check reads is the full app's.

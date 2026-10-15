@@ -4,7 +4,8 @@
 //
 //   node tools/fellows/build.mjs [outDir]
 //
-// The same files as the full app, minus the study questions, with three changes:
+// The same files as the full app, minus the study questions and the owner's
+// watch on the codes (watch.js), with three changes:
 // index.html sets window.GI_EDITION = "fellows" before any script runs and asks
 // search engines to stay away; sw.js stops caching studyq.json; the manifest
 // describes the fellows' edition. robots.txt keeps crawlers out too.
@@ -15,7 +16,8 @@ import {fileURLToPath} from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const OUT = path.resolve(process.argv[2] || path.join(ROOT, "dist"));
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8");
-const LEFT_OUT = new Set(["./", "studyq.json"]);
+// The owner's watch on the fellows' codes (watch.js) never reaches the fellows.
+const LEFT_OUT = new Set(["./", "studyq.json", "watch.js"]);
 const DESCRIPTION = "EPA tracker, procedure log and guideline library for GI fellows.";
 
 function must(text, from, to, what) {
@@ -37,12 +39,13 @@ for (const f of assets) {
 }
 
 let html = read("index.html");
+html = must(html, `<script src="watch.js"></script>\n`, "", "watch.js in index.html");
 html = must(html, "<body>\n", `<body>\n<script>window.GI_EDITION = "fellows";</script>\n`, "<body>");
 html = must(html, /<meta name="description" content="[^"]*">/.exec(html)?.[0] ?? "<meta name=\"description\"",
   `<meta name="description" content="${DESCRIPTION}">\n<meta name="robots" content="noindex, nofollow">`, "the description");
 fs.writeFileSync(path.join(OUT, "index.html"), html);
 
-fs.writeFileSync(path.join(OUT, "sw.js"), must(sw, ` "studyq.json",`, "", "studyq.json in ASSETS"));
+fs.writeFileSync(path.join(OUT, "sw.js"), must(must(sw, ` "studyq.json",`, "", "studyq.json in ASSETS"), ` "watch.js",`, "", "watch.js in ASSETS"));
 
 const manifest = JSON.parse(read("manifest.webmanifest"));
 manifest.description = DESCRIPTION;

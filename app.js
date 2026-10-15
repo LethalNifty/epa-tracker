@@ -419,7 +419,7 @@ function viewWeek() {
   let h = `<header class="ph has-gear"><button class="iconbtn phgear" data-action="setopen" aria-label="Settings">${ic("gear")}</button>` + (blk
     ? `<p class="eyebrow mono">Block ${blk.num} · ${esc(blk.name)}</p><h1 class="title">Week ${blk.week} of 4</h1>`
     : `<p class="eyebrow mono">GI Hub</p><h1 class="title">${dayIndex(today) < 0 ? "Almost time" : "Year 1 done"}</h1>`) + `</header>`;
-  h += warningsHTML(today) + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
+  h += warningsHTML(today) + watchWeekHTML() + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
   if (!blk) {
     return h + `<div class="card pad empty spaced">${dayIndex(today) < 0 ? "Fellowship starts July 2, 2026." :
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
@@ -862,6 +862,7 @@ function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("watch")) { if (watchDispatch(act) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
@@ -931,7 +932,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (felField(ev.target) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
+  if (felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -1029,7 +1030,7 @@ let hiddenAt = 0;
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
-  if (document.visibilityState === "visible") updateCheck();
+  if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) watchCheck(); }
   if (document.visibilityState === "visible" && !anySheet() &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
     if (updateNow()) return;
@@ -1055,7 +1056,8 @@ Store.load();
 CallStore.load();
 render();
 // The fellows' edition has no reminders or study questions; it checks its invite code instead.
-if (!FELLOWS) { remindInit(); studyqInit(); }
+// The full app looks in on the fellows' codes (watch.js).
+if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); }
 else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------

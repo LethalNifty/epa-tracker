@@ -13,7 +13,8 @@
 //             the code; any spaces or commas between).
 //   GI_KV     KV namespace: "acc:<id>" is a code's phone, state and attempts;
 //             "extra" holds the codes added at /__admin.
-//   GI_ADMIN  secret: the key that opens /__admin.
+//   GI_ADMIN  secret: the key that opens /__admin, and /__admin/summary (the
+//             same facts as JSON, for the owner's own GI Hub to show).
 // Without GI_KV no phone can claim a code, so the site stays closed to new
 // phones; phones already in keep working. Without GI_CODES (or with a code
 // taken out of it) that code fails everywhere.
@@ -193,6 +194,7 @@ async function check(request, env) {
 async function admin(request, env, url) {
   const key = normCode(env.GI_ADMIN);
   if (key.length < 12) return page(404, "Not found");
+  if (url.pathname === "/__admin/summary") return summary(request, env, key);
   const token = await hmac(key, "gi-admin");
   if (request.method === "POST" && url.pathname === "/__admin/login") {
     let typed = "";
@@ -220,6 +222,26 @@ async function admin(request, env, url) {
     return goTo("/__admin#" + id);
   }
   return page(200, await adminPage(env, url.searchParams.get("new")));
+}
+// Every code's state and the attempts from other phones, newest first, for
+// the owner's GI Hub on another site: the admin key comes as a Bearer token
+// (no cookie), so any site may ask, and the codes themselves are left out.
+const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization",
+  "Access-Control-Allow-Methods": "GET", "Access-Control-Max-Age": "86400"};
+async function summary(request, env, key) {
+  if (request.method === "OPTIONS") return new Response(null, {status: 204, headers: {...CORS, ...NOINDEX}});
+  const sent = normCode((/^Bearer\s+(.+)$/i.exec(request.headers.get("Authorization") || "") || [])[1]);
+  if (!sent || !same(sent, key)) { await wait(600); return json(401, {ok: false}, CORS); }
+  const codes = [...(await allCodes(env)).keys()].sort((a, b) => a.localeCompare(b, "en", {numeric: true}));
+  const recs = env.GI_KV ? await Promise.all(codes.map(id => record(env, id))) : codes.map(() => null);
+  const list = codes.map((id, i) => {
+    const r = recs[i], p = r && r.phone;
+    return {id, state: r && r.off ? "off" : p ? "in" : "new", dev: p ? p.dev : "", where: p ? p.where : "",
+      since: p ? p.at : "", seen: p ? p.seen || p.at : "", tries: r ? r.tries.length : 0};
+  });
+  const tries = codes.flatMap((id, i) => (recs[i] ? recs[i].tries : []).map(t => ({id, at: t.at, dev: t.dev, where: t.where})))
+    .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50);
+  return json(200, {ok: true, store: !!env.GI_KV, total: codes.length, inUse: list.filter(c => c.state === "in").length, codes: list, tries}, CORS);
 }
 function freshCode() {
   let out = "";

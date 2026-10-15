@@ -1137,6 +1137,17 @@ a.src:active { background: var(--wall-3); }
 .felhint { margin: 8px 2px 0; font-size: 13px; color: var(--dim); }
 .felgoal > .lbl:first-child { margin-top: 0; }
 
+/* Fellows' codes (watch.js, the full app only) */
+.watchset .lbl { margin-top: 0; }
+.watchset > .btn { margin-top: 12px; }
+.watchset > .textbtn { display: block; margin: 8px auto 0; color: var(--dim); }
+.watchrow { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--fold); font-size: 14px; line-height: 1.45; }
+.watchrow b { min-width: 30px; font-variant-numeric: tabular-nums; }
+.watchrow span { color: var(--dim); }
+.watchrow em { font-style: normal; color: var(--capillary); }
+.watchrow.hot b { color: var(--capillary); }
+.watchalert b { font-weight: 600; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

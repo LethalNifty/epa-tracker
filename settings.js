@@ -1,6 +1,7 @@
 "use strict";
 // GI Hub settings: one sheet, opened from the gear on Week, holding the
-// version (and whether this phone is up to date), backup and reminders.
+// version (and whether this phone is up to date), backup, reminders and the
+// fellows' codes (watch.js).
 // Loaded after remind.js and before app.js; uses app.js helpers when it runs.
 
 let setSheet = null, setFresh = false;
@@ -10,7 +11,7 @@ let setSheet = null, setFresh = false;
 const updateInfo = {latest: null, at: 0, busy: false, failed: false, pulling: false, stuck: false};
 const updateNum = v => +((/epa-v(\d+)/.exec(v || "") || [0, 0])[1]);
 
-function setOpen() { setSheet = {}; setFresh = true; updateLook(); }
+function setOpen() { setSheet = {}; setFresh = true; updateLook(); if (!FELLOWS) watchCheck(); }
 // Asks the live app which version it serves, past every cache.
 async function updateLook() {
   updateInfo.busy = true; updateInfo.failed = false;
@@ -78,7 +79,7 @@ function setSheetHTML() {
   return `<div class="scrim${fresh}" data-action="setclose"></div>` +
     `<div class="sheet setsheet${fresh}" role="dialog" aria-modal="true" aria-label="Settings"><div class="grab"></div>` +
     `<div class="shead"><b>Settings</b><button class="iconbtn" data-action="setclose" aria-label="Close">${ic("x")}</button></div>` +
-    setVersionHTML() + setBackupHTML() + (FELLOWS ? felSetHTML() : remindGroupHTML()) + `</div>`;
+    setVersionHTML() + setBackupHTML() + (FELLOWS ? felSetHTML() : remindGroupHTML() + watchSetHTML()) + `</div>`;
 }
 
 // ---- Taps -----------------------------------------------------------------------------------------

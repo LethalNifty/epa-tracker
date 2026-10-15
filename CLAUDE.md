@@ -25,7 +25,7 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `app.js` | the Store (localStorage `epa-state-v1`), routing, render, dispatch by action prefix, sheets, backup. A new state field joins `importJSON`'s whitelist or a restore drops it |
 | `app.css` | every style; feature blocks sit just before `/* Backup */` |
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
-| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live`, `fellows` (the fellows' edition, below); the brief has the full file map |
+| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
 | `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` every 15 minutes |
 | `tools/ship.py` | shipping, below |
@@ -82,7 +82,8 @@ A trimmed GI Hub for the other fellows in the program: EPAs, Endo and Guides, wi
 - **Invite codes:** `functions/_middleware.js` runs `tools/fellows/access.mjs` on Cloudflare before every request: no valid code, no app (only the icons, manifest, font, `sw.js` and `notify.js` are open). A code opens GI Hub on **one phone**: the first phone to enter it claims it, and another phone that tries it is refused and noted. On an iPhone in Safari the invite page asks for the home screen first (Safari and the home-screen app keep separate cookies). The first codes live in the Cloudflare secret `GI_CODES` (`f01:ABCD-2345 f02:...`), never in the repo; the user's list of who has which is in `My Drive\Fellowship\GI Hub`. Each code's phone, state and attempts live in the KV namespace bound as `GI_KV`. The user manages codes at `/__admin` (secret `GI_ADMIN`): which phone and city, last opened, attempts from other phones, and Free for new phone, Turn off, Add a code. The app asks `/__access` on each launch online and locks on a 401, keeping the data and Export backup.
 
 - **Hosting:** Cloudflare Pages builds the `fellows` branch (build command `node tools/fellows/build.mjs`, output `dist`) at an address that carries no GitHub name. Preview deployments are off.
-- **Promote, never push to it directly:** a change reaches fellows only after about a week on main without problems, and only on the user's yes: `git push origin origin/main:refs/heads/fellows` (plain push, fast-forward only). Cloudflare redeploys within a minute.
+- **Promote, never push to it directly, and always ask:** after every ship, ask separately whether to send it to the fellows' version, saying what they would see; a yes to shipping never covers it. Then `git push origin origin/main:refs/heads/fellows` (plain push, fast-forward only); Cloudflare redeploys within a minute.
+- **New features stay out of the fellows' version by default:** hide them with `!FELLOWS` unless the user says they're for fellows. Anki, study, pearls, the call card and anything personal never show there. `watch.js` (the user's view of the codes) isn't even copied into the fellows' build.
 - **Preview:** `python tools/preview/bundle.py <out.html> --edition fellows`.
 - Anything personal (the user's name, GitHub links, staff, call or study data) never goes into the fellows' build.
 
