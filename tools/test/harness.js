@@ -9,7 +9,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const KEY = "epa-state-v1";
+// opts.edition "fellows" boots the fellows' edition, which saves under its own key.
+const KEYS = {full: "epa-state-v1", fellows: "gihub-fellows-v1"};
 
 function pageScripts() {
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
@@ -32,7 +33,7 @@ function dateExpr(iso) {
 }
 
 function load(opts = {}) {
-  const store = new Map();
+  const store = new Map(), KEY = KEYS[opts.edition || "full"];
   if (opts.state) store.set(KEY, JSON.stringify(opts.state));
   const downloads = [];
   const els = {
@@ -69,6 +70,7 @@ function load(opts = {}) {
   vm.createContext(ctx);
   const run = code => vm.runInContext(code, ctx);
   if (opts.today) run(`window.__today = ${dateExpr(opts.today)};`);
+  if (opts.edition) run(`window.GI_EDITION = ${JSON.stringify(opts.edition)};`);
   for (const s of pageScripts()) vm.runInContext(s.code, ctx, {filename: s.name});
   return {
     ctx, store, downloads, els, run,

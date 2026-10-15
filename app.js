@@ -3,7 +3,8 @@
 // Reads EPA_DATA and BIOPSY_DATA (index.html), the coach (coach.js) and the
 // guideline library (guides.js).
 
-const KEY = "epa-state-v1";
+// The fellows' edition (fellows.js) saves apart from the full app.
+const KEY = FELLOWS ? "gihub-fellows-v1" : "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
 const APP_VERSION = "epa-v42";
 const Store = {
@@ -64,7 +65,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -122,7 +123,8 @@ const Store = {
 let nudgeDismissed = false, backupError = null;
 function needsNudge(today) {
   if (!Store.hasData()) return false;
-  const lb = Store.state.lastBackup;
+  // A fellow who just set up gets 30 days before the first nudge.
+  const lb = Store.state.lastBackup || (Store.state.setup && Store.state.setup.d + "T12:00:00");
   return !lb || (today - new Date(lb)) > 30 * 86400000;
 }
 
@@ -252,7 +254,8 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 });
 
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
-const NAV = [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
+const NAV = FELLOWS ? [["week", "Home", "week"], ["epas", "EPAs", "epas"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]]
+  : [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
 // Pages that light up another tab in the bar: the year plan sits inside EPAs.
 const NAV_HOME = {plan: "epas", pearls: "study"};
 function navHTML(active) {
@@ -315,7 +318,7 @@ function monitorHTML(today, cur) {
   const date = `${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
   // The first draw after launch powers the monitor on: light, ticks, overlay.
   return `<section class="monitor${liveBootClass()}"${liveBootStyle()} aria-label="${t.logged} of ${t.req} required observations logged; ${t.approved} approved, ${t.pending} pending">` +
-    `<div class="monitor-in"><div class="ov mono"><span>Year 1 · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
+    `<div class="monitor-in"><div class="ov mono"><span>${FELLOWS ? "Adult GI" : "Year 1"} · 2026–27</span><span>${date}<span class="clock" data-clock>${liveClockText()}</span></span></div>` +
     `<div class="dial-wrap arc">${dialSVG(stageSegs(cur), {size: 320, r2: 138, r1: 114, r1off: 125, gap: 3, rings: [153], arc: true, cls: liveBootClass() ? "intro" : ""})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
     (cur ? `<div class="dial-sub mono st-${cur}">${STAGE_NAMES[cur]} ${curT.logged}/${curT.req}</div>` : `<div class="dial-sub mono">Every stage logged</div>`) +
@@ -409,6 +412,7 @@ function finishHTML(pace, plan, today) {
 // On call, the Call panel leads the page; otherwise the Call card follows This week.
 // Week keeps to today: the finish line is on Year plan.
 function viewWeek() {
+  if (FELLOWS) return felHomeHTML();
   const today = getToday(), blk = blockFor(today), obsBy = Store.state.obs, cur = currentStage();
   const now = callNow(), cs = callStatus(CallStore.list(), now);
   // The gear opens Settings: version, backup and reminders.
@@ -455,11 +459,11 @@ function epaSwitchHTML(on) {
 }
 const LOCK_NOTE = {core: "Opens once every Foundations observation is logged.", ttp: "Opens once every Core observation is logged."};
 function viewEpas() {
-  const today = getToday(), cp = coachPlan(Store.state.obs, today), focus = cp ? blockFocus(cp) : [];
+  const today = getToday(), cp = FELLOWS ? null : coachPlan(Store.state.obs, today), focus = cp ? blockFocus(cp) : [];
   const cur = currentStage(), t = tally(PARTS);
   let h = `<header class="ph"><p class="eyebrow mono">Royal College · Adult Gastroenterology</p><h1 class="title">EPAs</h1>` +
     `<div class="ph-meta mono"><b>${t.logged}</b>/${t.req} logged · <b>${Store.overallPending()}</b> pending</div></header>` +
-    epaSwitchHTML("epas") + warningsHTML(today);
+    (FELLOWS ? "" : epaSwitchHTML("epas")) + warningsHTML(today);
   for (const st of STAGE_ORDER) {
     const s = stageTally(st), state = stageState(st, cur);
     const list = EPA_DATA.filter(x => x.stage === st);
@@ -468,7 +472,7 @@ function viewEpas() {
     h += `<section class="stage-sec st-${st}"><div class="stage-head${state === "locked" ? " lock" : ""}"><i></i><h2>${STAGE_NAMES[st]}</h2>` +
       `<span class="mono state">${STATE_LABEL[state]}</span><span class="mono">${s.logged}/${s.req}</span></div>` +
       `<div class="stage-bar"><i style="width:${pct(s.approved, s.req)}%"></i><i class="pend" style="width:${pct(s.pending, s.req)}%"></i></div>` +
-      (st === "ttd" && state !== "done" ? `<p class="stagenote">${ic("forward")}<span>Earlier stage: the coach won't suggest these. ` +
+      (st === "ttd" && state !== "done" && !FELLOWS ? `<p class="stagenote">${ic("forward")}<span>Earlier stage: the coach won't suggest these. ` +
         `Log anything Entrada has that's missing here so your totals match.</span></p>` : "") +
       (state === "locked" ? `<p class="stagenote">${ic("lock")}<span>${LOCK_NOTE[st]} You can still log these any time.</span></p>` : "") +
       list.filter(e => !done.includes(e)).map(e => epaRowHTML(e, focus)).join("");
@@ -503,7 +507,7 @@ function partBlock(p, st) {
       h += `<li class="ob"><button class="spill ${appd ? "approved" : "pending"}" data-action="togglestatus" data-part="${p.id}" data-obs="${i}">` +
         `${ic(appd ? "check" : "clock")}${appd ? "Approved" : "Pending"}</button>` +
         `<button class="ometabtn" data-action="sheet" data-part="${p.id}" data-obs="${i}">` +
-        `<span class="onum">${String(i + 1).padStart(2, "0")}</span><span class="odate">${o.d ? esc(dayLabel(o.d)) : "no date"}</span>` +
+        `<span class="onum">${String(i + 1).padStart(2, "0")}</span><span class="odate">${o.d ? esc(dayLabel(o.d)) : o.pre ? "From Entrada" : "no date"}</span>` +
         `<span class="otext">${[scopeBare(o.a), o.n].filter(Boolean).map(esc).join(" · ")}</span></button></li>`;
     });
     h += `</ol>`;
@@ -542,7 +546,7 @@ function refBlock(e) {
 function viewEpa(code) {
   const e = EPA_DATA.find(x => x.code === code), st = e.stage;
   const t = tally(PARTS.filter(P => P.code === code));
-  const backTo = {week: "This week", plan: "Plan"}[route.from] || "All EPAs";
+  const backTo = {week: FELLOWS ? "Home" : "This week", plan: "Plan"}[route.from] || "All EPAs";
   const segs = e.parts.map(p => { const pt = tally([PART_BY_ID[p.id]]);
     return {stage: st, total: p.required, approved: pt.approved, pending: pt.pending, next: true}; });
   let h = `<header class="ph"><button class="back" data-action="back">${ic("back")}${backTo}</button></header>` +
@@ -644,9 +648,9 @@ function viewBiopsy(opts = {}) {
 // each keeps what was typed until the + flow ends: closing, saving or deleting
 // the sheet in view ends it (render checks).
 let plusOn = null;    // "c", "e" or "p" while the + flow is open
-const PLUS = [["c", "Case", "scope"], ["e", "EPA", "epas"], ["p", "Pearl", "pearl"]];
+const PLUS = [["c", "Case", "scope"], ["e", "EPA", "epas"], ["p", "Pearl", "pearl"]].filter(x => !FELLOWS || x[0] !== "p");
 function plusHeadHTML(close) {
-  return `<div class="grab"></div><div class="shead plushead"><div class="segtabs three plusseg" role="group" aria-label="Log">` +
+  return `<div class="grab"></div><div class="shead plushead"><div class="segtabs${PLUS.length === 3 ? " three" : ""} plusseg" role="group" aria-label="Log">` +
     PLUS.map(([k, label, icon]) => `<button class="${plusOn === k ? "on" : ""}" data-action="plusto" data-to="${k}"` +
       (plusOn === k ? ` aria-current="true"` : "") + `>${ic(icon, "sm")}${label}</button>`).join("") +
     `</div><button class="iconbtn" data-action="${close}" aria-label="Close">${ic("x")}</button></div>`;
@@ -784,16 +788,16 @@ async function exportBackup() {
 let enterNext = true;
 const scrollMemo = {};
 function render() {
-  const p = route.page;
+  const p = route.page, setup = FELLOWS && !!(felSetup || felNeedsSetup());
   // Opening the app (or coming back to it) on Week powers the monitor on.
-  if (p === "week" && !introDone) { introDone = true; liveBootArm(); }
+  if (p === "week" && !introDone && !setup) { introDone = true; liveBootArm(); }
   // The sheet in view on the + closed (a save, a delete, Close): the + flow ends.
   if (plusOn && !{c: scopeSheet, e: sheet, p: pearlSheet}[plusOn]) plusEnd();
   let html;
   try {
-    const body = p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
+    const body = setup ? felSetupHTML() : p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
-    html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}">${body}</main>` + navHTML(p === "epa" || p === "call" ? route.from : p) +
+    html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
@@ -853,6 +857,7 @@ function go(next, restore) {
 function dispatch(act, d) {
   if (act === "plusto") { plusTo(d.to); route.keepScroll = true; render(); return; }
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
@@ -923,7 +928,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
+  if (felField(ev.target) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -945,7 +950,12 @@ document.getElementById("app").addEventListener("change", ev => {
       backupError = null;
       if (confirm("Replace current progress with this backup?")) {
         const res = Store.importJSON(rd.result);
-        if (!res.ok) backupError = res.error; else showToast("Backup imported");
+        if (!res.ok) backupError = res.error;
+        else {
+          showToast("Backup imported");
+          // A fellow restoring onto a new phone skips setup.
+          if (FELLOWS) { felSetup = null; if (!Store.state.setup) { Store.state.setup = {d: fmtDate(getToday())}; Store.save(); } }
+        }
       }
       render();
     };
@@ -1032,7 +1042,7 @@ function appOpenFromLink(name) {
   sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null;
   go({...APP_LINKS[name]});
 }
-if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)]) {
+if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)] && !FELLOWS) {
   route = {...APP_LINKS[location.hash.slice(1)]};
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }

@@ -78,7 +78,7 @@ function setSheetHTML() {
   return `<div class="scrim${fresh}" data-action="setclose"></div>` +
     `<div class="sheet setsheet${fresh}" role="dialog" aria-modal="true" aria-label="Settings"><div class="grab"></div>` +
     `<div class="shead"><b>Settings</b><button class="iconbtn" data-action="setclose" aria-label="Close">${ic("x")}</button></div>` +
-    setVersionHTML() + setBackupHTML() + remindGroupHTML() + `</div>`;
+    setVersionHTML() + setBackupHTML() + (FELLOWS ? felSetHTML() : remindGroupHTML()) + `</div>`;
 }
 
 // ---- Taps -----------------------------------------------------------------------------------------

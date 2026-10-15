@@ -123,7 +123,7 @@ function trialsWatchHTML(list) {
 
 // ---- The view ---------------------------------------------------------------------------------
 function viewTrials() {
-  const today = getToday(), blk = blockFor(today), q = trialsTerm.trim();
+  const today = getToday(), blk = FELLOWS ? null : blockFor(today), q = trialsTerm.trim();
   const watch = trialsWatch(Guides.data);
   if (!trialsVisit) trialsVisit = new Set(trialsWatchUnseen(watch, Store.state.guides.seen).map(r => r.k));
   let h = "";

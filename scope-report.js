@@ -194,7 +194,7 @@ function pdfScene(doc, sc, ox, oy) {
 const rpDate = iso => { const d = new Date(iso + "T12:00:00"); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 function scopeReportRange(period, cases, lastReport, today) {
   const t = fmtDate(today), first = cases.length ? cases.slice().sort(scopeByDate)[0].d : t, blk = blockFor(today);
-  if (period === "block" && blk) return {from: fmtDate(blockStart(blk.num)), to: t, label: `Block ${blk.num} (${blk.name})`};
+  if (period === "block" && blk) return {from: fmtDate(blockStart(blk.num)), to: t, label: FELLOWS ? `Block ${blk.num}` : `Block ${blk.num} (${blk.name})`};
   if (period === "year") return {from: "2026-07-01", to: t, label: "Academic year 2026 to 2027"};
   if (period === "since" && lastReport) return {from: lastReport, to: t, label: "Since the last report"};
   return {from: first < t ? first : t, to: t, label: period === "since" ? "Since logging began" : "All cases"};

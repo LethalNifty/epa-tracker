@@ -1089,6 +1089,51 @@ a.src:active { background: var(--wall-3); }
 .plusseg button .ic { color: var(--faint); }
 .plusseg button.on .ic { color: var(--nbi-ink); }
 
+/* The fellows' edition (fellows.js): first-run setup and Home. Setup is two
+   pages with no bar: what the app is plus the name for the procedure log, then
+   a count per EPA of what Entrada already has, in the stage colours. */
+.felhead { padding-top: calc(env(safe-area-inset-top) + 34px); }
+.felhead .mark { display: block; margin: 0 0 18px -4px; filter: drop-shadow(0 0 18px rgba(213, 140, 255, .35)); }
+.felhead .title { font-size: 29px; text-wrap: balance; }
+.felpoints { list-style: none; margin: 18px 0 0; padding: 4px 16px; }
+.felpoints li { display: flex; align-items: flex-start; gap: 13px; padding: 12px 0; }
+.felpoints li + li { border-top: 1px solid var(--fold); }
+.felpoints .ic { margin-top: 1px; color: var(--nbi-ink); }
+.felpoints span { font-size: 14px; line-height: 1.45; color: var(--dim); }
+.felpoints b { display: block; color: var(--light); font-weight: 540; font-size: 15px; }
+.felacts { margin-top: 22px; }
+.felsetup .ph-note { max-width: 34em; }
+.felstage { margin-top: 22px; }
+.felstage-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; }
+.felstage-head i { align-self: flex-start; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--c); flex: 0 0 auto; }
+.felstage-head > div { flex: 1; min-width: 0; }
+.felstage-head h2 { margin: 0; font-size: 17px; font-weight: 500; line-height: 1.25; }
+.felstage-head .mono { display: block; margin-top: 3px; color: var(--dim); }
+.felstage-head .chip { height: 30px; font-size: 13px; }
+.felstage-head .chip.on { padding-right: 12px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--light); }
+.felstage-head .chip .ic { color: var(--c); }
+.felrow { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 6px 8px 6px 14px; }
+.felrow + .felrow { border-top: 1px solid var(--fold); }
+.felrow .cc { color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
+.felname { flex: 1; min-width: 0; font-size: 14.5px; }
+.felstep { display: flex; align-items: center; gap: 2px; }
+.felstep .iconbtn { width: 40px; height: 40px; color: var(--nbi-ink); }
+.felstep .iconbtn:disabled { color: var(--fold-2); }
+.felstep .ic { width: 18px; height: 18px; }
+.felstep b { min-width: 46px; text-align: center; font: 520 17px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--faint); }
+.felstep b span { font-size: 12px; color: var(--faint); font-weight: 500; }
+.felstep b.some { color: var(--light); }
+.felstep b.full { color: var(--c); }
+.felbar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-top: 18px; padding: 28px 0 calc(env(safe-area-inset-bottom) + 14px);
+  background: linear-gradient(to bottom, transparent, var(--field) 34%); }
+.felscope { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px 14px 14px 16px; }
+.felscope > .ic { color: var(--nbi-ink); }
+.felscope > .ic:last-child { color: var(--faint); }
+.felscope > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.felscope b { font-weight: 520; }
+.felscope span span { font-size: 13.5px; color: var(--dim); line-height: 1.4; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

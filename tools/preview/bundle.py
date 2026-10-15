@@ -4,12 +4,14 @@ ships. Every script, the stylesheet and the font are inlined; guides.json is
 served from inside the page and studyq.json answers 404 (the questions stay
 locked), so the page needs no server. The service worker is left out.
 
-    python tools/preview/bundle.py <out.html> [--repo DIR] [--demo FILE] [--title TEXT] [--today now]
+    python tools/preview/bundle.py <out.html> [--repo DIR] [--demo FILE] [--title TEXT] [--today now] [--edition fellows]
 
 --repo defaults to this checkout (so run it from a worktree to bundle that
 branch), --demo to tools/preview/demo.json, and the app's date to the demo's
 "today" so the example weeks line up (--today now uses the real clock, or give
-YYYY-MM-DD).
+YYYY-MM-DD). --edition fellows builds the fellows' edition: it opens on first-run
+setup, and finishing setup fills the scope log with the demo's cases so Endo
+has something to show.
 """
 import argparse
 import base64
@@ -25,6 +27,7 @@ ap.add_argument("--repo", type=Path, default=HERE.parent.parent)
 ap.add_argument("--demo", type=Path, default=HERE / "demo.json")
 ap.add_argument("--title", default="GI Hub preview")
 ap.add_argument("--today", help="YYYY-MM-DD, or now for the real clock (default: the demo's today)")
+ap.add_argument("--edition", choices=["full", "fellows"], default="full")
 a = ap.parse_args()
 repo = a.repo
 
@@ -54,15 +57,18 @@ pin = ""
 if today != "now":
     y, m, d = (int(x) for x in today.split("-"))
     pin = f"window.__today = new Date({y}, {m - 1}, {d}, 12);"
+fellows = a.edition == "fellows"
+fill = "" if fellows else f"""
+    if (!localStorage.getItem("epa-state-v1")) {{
+      localStorage.setItem("epa-state-v1", {json.dumps(json.dumps(demo["state"]))});
+      localStorage.setItem("gi-call-v1", {json.dumps(json.dumps(demo["call"]))});
+    }}"""
 seed = f"""<script>
 // Preview only: example data with fictional names, kept in this page's own storage.
 (function () {{
   {pin}
-  try {{
-    if (!localStorage.getItem("epa-state-v1")) {{
-      localStorage.setItem("epa-state-v1", {json.dumps(json.dumps(demo["state"]))});
-      localStorage.setItem("gi-call-v1", {json.dumps(json.dumps(demo["call"]))});
-    }}
+  {'window.GI_EDITION = "fellows";' if fellows else ""}
+  try {{{fill}
   }} catch (e) {{}}
   var GUIDES = {guides};
   var real = window.fetch ? window.fetch.bind(window) : null;
@@ -76,7 +82,17 @@ seed = f"""<script>
   }};
 }})();
 </script>"""
-note = """<script>
+scopes = json.dumps({"cases": demo["state"]["scopes"]["cases"], "staff": demo["state"]["scopes"]["staff"]})
+note = ("""<script>
+// Preview only: finishing setup fills the scope log with the demo's example cases.
+var SAMPLE_SCOPES = """ + scopes + """;
+var felFinishReal = felFinish;
+felFinish = function () {
+  if (!felSetup.again && !Store.state.scopes.cases.length) { Store.state.scopes.cases = SAMPLE_SCOPES.cases; Store.state.scopes.staff = SAMPLE_SCOPES.staff; }
+  felFinishReal();
+};
+setTimeout(function () { try { showToast("Preview of the fellows' version, with example names."); route.keepScroll = true; render(); } catch (e) {} }, 2600);
+</script>""") if fellows else """<script>
 setTimeout(function () { try { showToast("Preview with example names. Your own GI Hub is unchanged."); route.keepScroll = true; render(); } catch (e) {} }, 2600);
 </script>"""
 

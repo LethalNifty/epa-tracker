@@ -159,7 +159,8 @@ function guidesFindHTML(q, D, opts) {
 
 // ---- The tab ------------------------------------------------------------------------------------
 function viewGuides() {
-  const today = getToday(), blk = blockFor(today), D = Guides.data;
+  // The fellows' edition knows no one's rotations, so it has no block chip.
+  const today = getToday(), blk = FELLOWS ? null : blockFor(today), D = Guides.data;
   const head = (eyebrow, meta) => `<header class="ph"><p class="eyebrow mono">${eyebrow}</p><h1 class="title">Guides</h1>${meta}</header>`;
   if (guidesTab === "b")
     return head("Shared Health Manitoba · 2022", `<p class="ph-note">Biopsy protocols: Manitoba first; other sources where it's silent.</p>`) +
