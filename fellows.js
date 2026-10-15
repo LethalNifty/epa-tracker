@@ -139,21 +139,28 @@ function felGoalFieldsHTML(g, yearAct, byField) {
     `<label class="lbl mono">Finish every EPA by<input type="date" data-fel="${byField}" min="${g.start}" value="${g.by}"></label>`;
 }
 // What is left, what that needs a month, and where the last 8 weeks' pace
-// would finish. Caught-up observations have no date: they count as logged,
-// never as pace.
+// would finish. A caught-up observation has no date, so it is spread evenly
+// from the start of fellowship to the day it was entered, and the 8 weeks get
+// their share; once setup is more than 8 weeks back, only real logging counts.
 function felPace(g, today) {
   const DAY = 864e5, req = PARTS.reduce((a, P) => a + P.required, 0);
   const logged = PARTS.reduce((a, P) => a + Math.min((Store.state.obs[P.id] || []).length, P.required), 0), left = req - logged;
   const t0 = felDay(g.start), t1 = new Date(Math.max(+felDay(g.by), +t0 + 30 * DAY));
-  const weeks = Math.max(1, Math.min(8, (today - t0) / DAY / 7));
-  let n = 0;
+  const weeks = Math.max(1, Math.min(8, (today - t0) / DAY / 7)), lo = +today - weeks * 7 * DAY;
+  let n = 0, spread = false;
   for (const pid in Store.state.obs) for (const o of Store.state.obs[pid]) {
-    if (!o.d) continue;
-    const age = (today - felDay(o.d)) / DAY;
-    if (age > -1 && age < weeks * 7) n++;
+    if (o.d) {
+      const age = (today - felDay(o.d)) / DAY;
+      if (age > -1 && age < weeks * 7) n++;
+    } else if (o.pre) {
+      const at = Date.parse(o.ts || ""), end = isNaN(at) ? +today : Math.min(+today, at);
+      if (end - t0 < DAY) continue;
+      const share = Math.max(0, end - Math.max(+t0, lo)) / (end - t0);
+      if (share) { n += share; spread = true; }
+    }
   }
   const monthsLeft = Math.max(0, (t1 - today) / DAY / 30.44);
-  return {req, logged, left, n, weeks: Math.round(weeks), t0, t1, monthsLeft,
+  return {req, logged, left, n: Math.round(n), spread, weeks: Math.round(weeks), t0, t1, monthsLeft,
     finish: left && n ? new Date(+today + left / (n / weeks) * 7 * DAY) : null,
     perMonth: Math.ceil(left / Math.max(1, monthsLeft)),
     behind: Math.round(req * Math.min(1, Math.max(0, (today - t0) / (t1 - t0))) - logged)};
@@ -168,7 +175,8 @@ function felFinishHTML(today) {
   const cell = (label, val, cls, note) => `<div><div class="fin-lbl mono">${label}</div><div class="fin-val${cls ? " " + cls : ""}">${val}</div>` +
     (note ? `<div class="fin-note">${note}</div>` : "") + `</div>`;
   const pace = !p.left ? cell("At your current pace", "Done", "ok") : p.finish ?
-    cell("At your current pace", `${MONTHS[p.finish.getMonth()]} ${p.finish.getFullYear()}`, ok ? "ok" : "warn", `${p.n} in the last ${p.weeks} week${p.weeks === 1 ? "" : "s"}`) :
+    cell("At your current pace", `${MONTHS[p.finish.getMonth()]} ${p.finish.getFullYear()}`, ok ? "ok" : "warn",
+      `${p.spread ? "About " : ""}${p.n} in the last ${p.weeks} week${p.weeks === 1 ? "" : "s"}`) :
     cell("At your current pace", "–", "", "Log a few to estimate");
   const months = Math.round(p.monthsLeft);
   const need = !p.left ? cell("Left to log", "None", "ok") :

@@ -185,8 +185,9 @@ test("finish line on Home: what is left, a month's worth, the pace, against an e
   st.goal = {year: "pgy4", start: "2026-07-01", by: "2027-12-31"};
   const html = fellow({state: st}).html();
   assert.match(html, /<h2>Finish line<\/h2><span class="mono">Goal Dec 31, 2027<\/span>/);
-  // 30 of 139 logged, 10 of them dated in the last 8 weeks: 109 left at 1.25 a week lands in June 2028.
-  assert.match(html, /<div class="fin-val warn">Jun 2028<\/div><div class="fin-note">10 in the last 8 weeks<\/div>/);
+  // 30 of 139 logged: 10 dated in the last 8 weeks, and the 20 caught up at setup spread from July 1
+  // to today, 56 of those 99 days in the window (about 11 more). 109 left at about 2.7 a week: July 2027.
+  assert.match(html, /<div class="fin-val ok">Jul 2027<\/div><div class="fin-note">About 21 in the last 8 weeks<\/div>/);
   assert.match(html, /<div class="fin-val">8 a month<\/div><div class="fin-note">109 left · 15 months<\/div>/);
   assert.match(html, /Ahead of an even pace\./);
   assert.match(html, /<i class="plan" style="width:18\.1/);
@@ -235,4 +236,12 @@ test("the + sheet offers what is left in the fellow's stage, never the full app'
   assert.doesNotMatch(html, /This week's EPAs/);
   const offered = [...html.matchAll(/data-action="pickpart" data-part="(\w+)"/g)].map(m => m[1]);
   assert.deepEqual(offered, ["f1b", "f2", "f3a", "f3b", "f4"]);
+});
+
+test("caught-up observations stop counting toward pace once setup is more than 8 weeks back", () => {
+  const caught = n => Array.from({length: n}, () => obs("", {pre: true, ts: "2026-07-15T12:00:00.000Z"}));
+  const st = setUp({d1: caught(4), f1a: caught(2), f1b: many(4, "2026-09-20")});
+  st.goal = {year: "pgy4", start: "2026-07-01", by: "2027-12-31"};
+  const html = fellow({state: st}).html();
+  assert.match(html, /<div class="fin-note">4 in the last 8 weeks<\/div>/);
 });

@@ -1190,6 +1190,11 @@ html.kb .sheet { --kbbar: 48px; padding-bottom: calc(12px + var(--kbbar)); }
   letter-spacing: 0; text-transform: none; -webkit-appearance: none; appearance: none; }
 .lbl > input:focus, .editor input:focus { border-color: var(--nbi); box-shadow: 0 0 0 4px var(--nbi-wash); }
 .lbl > input::placeholder, .editor input::placeholder { color: var(--faint); }
+/* iOS draws a date field's value at the top of a fixed-height box and centred
+   across it: size the box by its padding instead, and line the value up left
+   like every other field. */
+.lbl > input[type=date], .editor input[type=date] { height: auto; min-height: 48px; padding-top: 12px; padding-bottom: 12px; line-height: 22px; }
+input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
 .pickrow { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
 .sugg:empty { display: none; }
 .pickgrp { display: flex; align-items: center; gap: 6px; margin-top: 12px; color: var(--dim); }
