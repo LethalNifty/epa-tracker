@@ -650,6 +650,69 @@ function scopeReach(lower, used, mark) {
   return r >= 0 ? SCOPE_REACH[r][0] : null;
 }
 
+// The phone often writes a day with no full stops ("EGD with Brook for
+// dysphagia colonoscopy with Stone to the cecum"), so one stretch can hold
+// several patients. It is cut before each procedure word, taking the clause
+// that word opens (after a comma or "and") or a "with Stone a" just before it,
+// and each piece is joined back on unless both name staff (staff are said once
+// a case), or it names the same procedure again with its own reach. "EGD and
+// colonoscopy with Brook" stays one bidirectional case.
+function scopeSplitPatients(text, ctx) {
+  const lower = text.toLowerCase(), staff = ctx.staff || [];
+  const hits = [];
+  for (const [, rx] of SCOPE_FAM_RX) {
+    rx.lastIndex = 0;
+    let m;
+    while ((m = rx.exec(lower))) {
+      // "a polyp in the colon" names a place, and "last colonoscopy three years ago" the history, not another patient.
+      const pre = lower.slice(Math.max(0, m.index - 16), m.index), post = lower.slice(m.index + m[0].length, m.index + m[0].length + 32);
+      const place = /(?:in|of|into|through|from) (?:the )?$/.test(pre);
+      const past = /(?:last|previous|prior|recent|earlier|had|since|after) (?:an? |his |her |their )?$/.test(pre) ||
+        /^ (?:(?:[a-z0-9]+ ){0,2}(?:years?|months?|weeks?|days?) ago|in (?:19|20)\d\d)/.test(post);
+      // A bare "colon" is a procedure only where a case would start: "a colon to the transverse", not "the transverse colon".
+      const bareColon = /^colo(?:ns?)?$/.test(m[0]) && !/(?:^|[,;]|(?:a|an|another|one|two|three|and|then|did|plus))\s*$/.test(pre);
+      if (!place && !past && !bareColon) hits.push({a: m.index, b: m.index + m[0].length});
+      if (!m[0].length) rx.lastIndex++;
+    }
+  }
+  hits.sort((x, y) => x.a - y.a);
+  const marks = hits.filter((x, i) => !i || x.a >= hits[i - 1].b);
+  if (marks.length < 2) return [text];
+  const nameAt = w => { const r = scopeStaffMatch(w, staff); return !!r && r.score >= 3; };
+  const wordsIn = s => (s.match(/[a-z][a-z'-]*/g) || []).length;
+  const cuts = [];
+  for (let i = 1; i < marks.length; i++) {
+    const from = marks[i - 1].b, m = marks[i], before = lower.slice(from, m.a);
+    const comma = before.lastIndexOf(","), and = before.search(/\band\b(?![\s\S]*\band\b)/);
+    const bound = Math.max(comma, and);
+    if (bound >= 0 && wordsIn(before.slice(bound + (bound === comma ? 1 : 3))) <= 4) { cuts.push(from + bound); continue; }
+    let p = m.a;
+    const back = rx => { const r = rx.exec(lower.slice(from, p)); if (r) p = from + r.index; return r; };
+    back(/\s(?:a|an|the|another|one|two|three|four|five|[2-9])\s+$/);
+    const w = back(/\s(?:with|by|dr\.?|doctor)\s+([a-z'-]+)\s*$/);
+    if (w && (nameAt(w[1]) || !(scopeVocabWords().has(scopeLetters(w[1])) || SCOPE_STOP.has(w[1])))) { cuts.push(p); continue; }
+    if (w) p = from + w.index + w[0].length;
+    const bare = /\s([a-z'-]+)\s*$/.exec(lower.slice(from, p));
+    cuts.push(bare && nameAt(bare[1]) ? from + bare.index : p);
+  }
+  const who = d => d.staff || (d.staffHeard || "").toLowerCase() || (d.staffAlt || []).join("|");
+  const out = [];
+  let cur = null, last = 0;
+  for (const c of cuts.concat(text.length)) {
+    const t = text.slice(last, c).replace(/^[\s,]*(?:and\b)?[\s,]*|[\s,]+$/gi, "");
+    last = c;
+    if (!t) continue;
+    const d = scopeReadCase(t, ctx);
+    if (!cur) { cur = {t, d}; continue; }
+    const a = who(cur.d), b = who(d);
+    const again = scopeFams(d).some(f => scopeFams(cur.d).includes(f)) && (b || d.reach);
+    if ((a && b) || again) { out.push(cur.t); cur = {t, d}; }
+    else { const joined = cur.t + ", " + t; cur = {t: joined, d: scopeReadCase(joined, ctx)}; }
+  }
+  out.push(cur.t);
+  return out;
+}
+
 // Dictation -> draft cases. ctx: {today, staff, learned}.
 function scopeParse(text, ctx = {}) {
   const g = scopeGuard(text);
@@ -666,8 +729,9 @@ function scopeParse(text, ctx = {}) {
     else { cur.texts.push(s.text); for (const f of fams) if (!cur.fams.includes(f)) cur.fams.push(f); }
   }
   const cases = [];
-  for (const gr of groups) {
-    const d = scopeReadCase(gr.texts.join(", "), ctx);
+  const pieces = groups.flatMap(gr => scopeSplitPatients(gr.texts.join(", "), ctx).map((t, k) => ({t, again: gr.again && !k})));
+  for (const gr of pieces) {
+    const d = scopeReadCase(gr.t, ctx);
     const prev = cases[cases.length - 1];
     if (gr.again && prev && !d.procs.length) {
       d.procs = prev.procs.slice(); d.reach = d.reach || prev.reach;

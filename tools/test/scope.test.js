@@ -139,6 +139,37 @@ test("splitting a day into cases", () => {
   assert.equal(day.cases[2].reach, "hf");
 });
 
+test("a day said without full stops still splits where the staff changes", () => {
+  const who = r => r.cases.map(c => c.staff);
+  // Commas only, three staff: three cases, each with only its own words.
+  let r = h.parse("EGD with Brook for dysphagia biopsies EoE, colonoscopy with Kowalczyk to the cecum polypectomy, flex sig with Alpha for diarrhea");
+  assert.deepEqual(who(r), ["b", "k", "a"]);
+  assert.deepEqual(r.cases.map(c => c.procs), [["egd.dx", "egd.bx"], ["colo.dx", "colo.poly"], ["fs.dx"]]);
+  assert.deepEqual(r.cases.map(c => c.why), [["dysphagia"], [], ["diarrhea"]]);
+  assert.deepEqual(r.cases.map(c => c.found), [["eoe"], ["polyp"], []]);
+  assert.equal(r.cases[1].reach, "cecum");
+  assert.deepEqual(r.cases.map(c => c.leftover), [[], [], []]);
+  // No punctuation at all, the way the phone often writes it.
+  r = h.parse("EGD with Brook for dysphagia biopsies EoE colonoscopy with Kowalczyk to the cecum polypectomy flex sig with Alpha for diarrhea");
+  assert.deepEqual(who(r), ["b", "k", "a"]);
+  assert.deepEqual(r.cases.map(c => c.why), [["dysphagia"], [], ["diarrhea"]]);
+  // Joined by "and", or the name said before the procedure.
+  assert.deepEqual(who(h.parse("EGD with Brook for dysphagia and colonoscopy with Kowalczyk to the cecum and a flex sig with Alpha")), ["b", "k", "a"]);
+  assert.deepEqual(who(h.parse("Brook EGD for dysphagia, Kowalczyk colonoscopy to the cecum polypectomy, Alpha flex sig")), ["b", "k", "a"]);
+  assert.deepEqual(who(h.parse("EGD with Brook for dysphagia with Kowalczyk a colonoscopy to the cecum")), ["b", "k"]);
+  // The same procedure again with its own reach is the next patient, same staff or not.
+  r = h.parse("Colonoscopy with Brook to the cecum polypectomy colonoscopy with Brook to the TI biopsies");
+  assert.deepEqual(r.cases.map(c => c.reach), ["cecum", "ti"]);
+  // Staff named again starts the next case, even the same staff; a colon that is a place is not a procedure.
+  r = h.parse("Flex sig with Kowalczyk for colitis biopsies and a paracentesis with Kowalczyk");
+  assert.deepEqual(r.cases.map(c => c.procs), [["fs.dx", "fs.bx"], ["para.dx"]]);
+  r = h.parse("colonoscopy with Brook for surveillance polypectomy in the transverse colon to the cecum EGD with Kowalczyk for melena ulcer clip");
+  assert.deepEqual(r.cases.map(c => [c.staff, c.reach, c.procs.filter(p => !p.endsWith(".dx"))]), [["b", "cecum", ["colo.poly"]], ["k", null, ["egd.nv.clip"]]]);
+  // Still one case: an EGD and a colonoscopy under one staff member, and an earlier scope in the history.
+  assert.equal(h.one("EGD with Brook for iron deficiency anemia and colonoscopy to the cecum").procs.length, 2);
+  assert.equal(h.one("Colonoscopy with Brook for surveillance, last colonoscopy three years ago, to the cecum").reach, "cecum");
+});
+
 test("dates", () => {
   const d = t => h.one("EGD " + t).d;
   assert.equal(h.one("EGD").d, null);
