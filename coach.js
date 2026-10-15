@@ -260,9 +260,13 @@ function paceFinish(obsByPart, today) {
   if (!remaining) return {done: true};
   const t = dayIndex(today), weeks = Math.max(1, Math.min(8, (t + 1) / 7));
   let n = 0;
-  for (const pid in obsByPart) for (const o of obsByPart[pid]) {
-    const d = attrDate(o);
-    if (d && dayIndex(d) <= t && dayIndex(d) > t - weeks * 7) n++;
+  for (const pid in obsByPart) {
+    const list = obsByPart[pid] || [], P = PART_BY_ID[pid];
+    let w = 0;
+    for (const o of list) { const d = attrDate(o); if (d && dayIndex(d) <= t && dayIndex(d) > t - weeks * 7) w++; }
+    // Forms past an EPA's requirement (a spare sent in case one isn't filled)
+    // aren't progress: the newest ones beyond it don't count toward the pace.
+    n += P ? Math.max(0, w - Math.max(0, list.length - P.required)) : w;
   }
   if (!n) return {date: null};
   const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + Math.ceil(remaining / (n / weeks) * 7));

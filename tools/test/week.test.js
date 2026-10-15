@@ -56,6 +56,14 @@ test("pace estimate uses the last 8 weeks", () => {
     return [fmtDate(r.date), r.onTrack]; })()`), ["2027-10-25", false]);
 });
 
+test("pace estimate: a spare form past an EPA's requirement doesn't count", () => {
+  const h = load({today: "2026-09-24"});
+  const req = h.val("PART_BY_ID.c5.required");
+  const at = k => h.val(`fmtDate(paceFinish({c8a: ${JSON.stringify(many(8, "2026-09-01"))}, c5: ${JSON.stringify(many(k, "2026-09-10"))}}, ${dateExpr("2026-09-24")}).date)`);
+  assert.equal(at(req + 1), at(req));
+  assert.notEqual(at(req), at(req - 1));
+});
+
 test("pace estimate needs something logged in the window", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(5, "2026-07-20")})});
   assert.deepEqual(h.val(`paceFinish(Store.state.obs, ${dateExpr("2026-09-24")})`), {date: null});

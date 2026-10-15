@@ -28,7 +28,7 @@ test("a fellow's first open is setup, with no bar, and saves under its own key",
   assert.equal(h.val("KEY"), "gihub-fellows-v1");
   const html = h.html();
   assert.match(html, /EPAs and scopes, on your phone/);
-  assert.match(html, /Everything stays on this phone/);
+  assert.match(html, /What you log stays on this phone/);
   assert.doesNotMatch(html, /class="bnav"/);
   h.run(`felField({dataset: {fel: "name"}, value: "Test Fellow, PGY-5"})`);
   h.click("felnext");
@@ -195,7 +195,7 @@ test("finish line on Home: what is left, a month's worth, the pace, against an e
   assert.match(fellow({state: setUp()}).html(), /Pick a finish date/);
 });
 
-test("an invite code that has ended locks the app, with a way back in and a backup", async () => {
+test("a phone whose code was freed or turned off locks, with a way back in and a backup", async () => {
   const h = fellow({state: setUp({d1: many(1, "2026-09-01")})});
   const settle = () => h.run("new Promise(r => setTimeout(r, 5))");
   // No check here (the full app, a preview) or no signal: nothing locks.
@@ -208,7 +208,7 @@ test("an invite code that has ended locks the app, with a way back in and a back
   // The code was taken out: locked, no bar, a backup still possible.
   h.run(`globalThis.fetch = async () => ({status: 401, ok: false}); felCheckAccess();`);
   await settle();
-  assert.match(h.html(), /This invite code has ended/);
+  assert.match(h.html(), /GI Hub is locked on this phone/);
   assert.doesNotMatch(h.html(), /class="bnav"/);
   assert.match(h.html(), /data-action="export"/);
   // A wrong new code says so; a right one reloads into the app.
@@ -218,6 +218,11 @@ test("an invite code that has ended locks the app, with a way back in and a back
   await settle();
   assert.equal(h.val("__sent[0]"), JSON.stringify({code: "WX3N-8HRB"}));
   assert.match(h.html(), /That code doesn't work/);
+  // A code already on another phone says so.
+  h.run(`globalThis.fetch = async () => ({status: 409, ok: false, json: async () => ({ok: false, why: "taken"})});`);
+  h.click("felcode");
+  await settle();
+  assert.match(h.html(), /already in use on another phone/);
   h.run(`globalThis.location = {reload() { globalThis.__reloaded = true; }}; globalThis.fetch = async () => ({status: 200, ok: true});`);
   h.click("felcode");
   await settle();

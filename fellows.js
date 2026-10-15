@@ -51,7 +51,7 @@ function felWelcomeHTML() {
     point("epas", "EPAs", "Every observation by stage, what's still pending, and forms waiting 14+ days in Entrada.") +
     point("scope", "Endo", "Say each case after the scope. It becomes your procedure log, with a PDF for your program.") +
     point("guides", "Guides", "Current guidelines, landmark trials, IBD drugs and the Manitoba biopsy protocol.") +
-    point("shield", "Private", "Everything stays on this phone. Nothing is sent anywhere, and no one else can see it.") + `</ul>` +
+    point("shield", "Private", "What you log stays on this phone. It's never sent anywhere, and no one else can see it.") + `</ul>` +
     `<label class="lbl mono">Your name, as it prints on the procedure log<input type="text" data-fel="name" value="${esc(felSetup.name)}" ` +
     `placeholder="Name, PGY-5 Adult Gastroenterology" autocomplete="name" autocapitalize="words"></label>` +
     felGoalFieldsHTML(felSetup.goal, "felyear", "by") +
@@ -148,16 +148,24 @@ function felPace(g, today) {
   const t0 = felDay(g.start), t1 = new Date(Math.max(+felDay(g.by), +t0 + 30 * DAY));
   const weeks = Math.max(1, Math.min(8, (today - t0) / DAY / 7)), lo = +today - weeks * 7 * DAY;
   let n = 0, spread = false;
-  for (const pid in Store.state.obs) for (const o of Store.state.obs[pid]) {
-    if (o.d) {
-      const age = (today - felDay(o.d)) / DAY;
-      if (age > -1 && age < weeks * 7) n++;
-    } else if (o.pre) {
-      const at = Date.parse(o.ts || ""), end = isNaN(at) ? +today : Math.min(+today, at);
-      if (end - t0 < DAY) continue;
-      const share = Math.max(0, end - Math.max(+t0, lo)) / (end - t0);
-      if (share) { n += share; spread = true; }
+  for (const pid in Store.state.obs) {
+    const list = Store.state.obs[pid] || [], P = PART_BY_ID[pid];
+    let w = 0, ws = 0;
+    for (const o of list) {
+      if (o.d) {
+        const age = (today - felDay(o.d)) / DAY;
+        if (age > -1 && age < weeks * 7) w++;
+      } else if (o.pre) {
+        const at = Date.parse(o.ts || ""), end = isNaN(at) ? +today : Math.min(+today, at);
+        if (end - t0 < DAY) continue;
+        ws += Math.max(0, end - Math.max(+t0, lo)) / (end - t0);
+      }
     }
+    // Forms past an EPA's requirement (a spare sent in case one isn't filled)
+    // aren't progress: the newest ones beyond it don't count toward the pace.
+    const got = P ? Math.max(0, w + ws - Math.max(0, list.length - P.required)) : w + ws;
+    if (got && ws) spread = true;
+    n += got;
   }
   const monthsLeft = Math.max(0, (t1 - today) / DAY / 30.44);
   return {req, logged, left, n: Math.round(n), spread, weeks: Math.round(weeks), t0, t1, monthsLeft,
@@ -199,19 +207,27 @@ function felFinishHTML(today) {
 // ---- Invite code ------------------------------------------------------------------------------------
 // On the fellows' site Cloudflare checks an invite code before serving anything
 // (tools/fellows/access.mjs). Once cached, the app opens without the network,
-// so each launch online asks /__access whether its code still works. A 401
+// so each launch online asks /__access whether this phone still holds its code
+// (a code opens one phone, and can be freed for a new phone or turned off). A 401
 // locks the app: the data stays on the phone and a backup can still be made.
 // A 404 means there is no check here (the full app, a preview), and no answer
 // means no signal; neither locks anything.
 let felLocked = false, felCodeTyped = "", felCodeErr = null, felCodeBusy = false;
+// Why the server refused a code (the same words as its invite page).
+const FEL_CODE_WHY = {
+  taken: "That code is already in use on another phone. Ask the person who invited you.",
+  off: "That code has been turned off. Ask the person who invited you.",
+  setup: "Signing in isn't open right now. Try again later.",
+  wrong: "That code doesn't work. Check it, or ask the person who invited you."
+};
 function felCheckAccess() {
   if (!FELLOWS || typeof fetch !== "function") return;
   fetch("__access", {cache: "no-store"}).then(r => { if (r.status === 401 && !felLocked) { felLocked = true; render(); } }).catch(() => {});
 }
 function felLockHTML() {
   return `<header class="ph felhead">${markSVG(58)}<p class="eyebrow mono">GI Hub · Adult Gastroenterology</p>` +
-    `<h1 class="title">This invite code has ended</h1></header>` +
-    `<p class="ph-note">Ask the person who invited you for a new code. Everything you logged is still on this phone; export a backup to keep it safe.</p>` +
+    `<h1 class="title">GI Hub is locked on this phone</h1></header>` +
+    `<p class="ph-note">Your invite code no longer opens GI Hub here. Ask the person who invited you. Everything you logged is still on this phone; export a backup to keep it safe.</p>` +
     `<label class="lbl mono">Invite code<input type="text" data-fel="code" value="${esc(felCodeTyped)}" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345"></label>` +
     `<div class="felacts"><button class="btn primary" data-action="felcode"${felCodeBusy ? " disabled" : ""}>Open GI Hub</button>` +
     `<button class="btn" data-action="export">${ic("share")}Export backup</button></div>` +
@@ -222,7 +238,9 @@ async function felSendCode() {
   try {
     const r = await fetch("__access", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({code: felCodeTyped})});
     if (r.ok) { location.reload(); return; }
-    felCodeErr = "That code doesn't work. Check it, or ask the person who invited you.";
+    let why = "";
+    try { why = (await r.json()).why; } catch (e) {}
+    felCodeErr = FEL_CODE_WHY[why] || FEL_CODE_WHY.wrong;
   } catch (e) { felCodeErr = "No connection. Try again once you have signal."; }
   felCodeBusy = false; route.keepScroll = true; render();
 }
