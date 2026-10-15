@@ -222,3 +222,17 @@ test("an invite code that has ended locks the app, with a way back in and a back
   await settle();
   assert.equal(h.val("__reloaded"), true);
 });
+
+test("the + sheet offers what is left in the fellow's stage, never the full app's weekly plan; Today is labelled early on", () => {
+  const st = setUp({d1: many(4, "2026-07-10"), f1a: many(2, "2026-08-01")});
+  st.goal = {year: "pgy4", start: "2026-07-01", by: "2027-12-31"};
+  const h = fellow({state: st});
+  assert.match(h.html(), /<span class="t" style="left:[\d.]+%">Today<\/span>/);
+  assert.doesNotMatch(h.html(), /<span>Jul 2026<\/span>/);
+  h.click("plusto", {to: "e"});
+  const html = h.html();
+  assert.match(html, /Still to log in Foundations/);
+  assert.doesNotMatch(html, /This week's EPAs/);
+  const offered = [...html.matchAll(/data-action="pickpart" data-part="(\w+)"/g)].map(m => m[1]);
+  assert.deepEqual(offered, ["f1b", "f2", "f3a", "f3b", "f4"]);
+});

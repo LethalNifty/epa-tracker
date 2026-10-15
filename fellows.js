@@ -181,8 +181,9 @@ function felFinishHTML(today) {
     `<div class="lane-area"><div class="lane-bar"><i class="plan" style="width:${p.logged / p.req * GOAL}%"></i></div>` +
     `<div class="lane-bar">${paceW ? `<i class="pace${ok ? " ok" : ""}${over ? " over" : ""}" style="width:${paceW}%"></i>` : ""}</div>` +
     `<span class="goal-line" style="left:${GOAL}%"></span><span class="today-line" style="left:${now}%"></span>` +
-    `<div class="axis mono"><span>${MONTHS[p.t0.getMonth()]} ${p.t0.getFullYear()}</span>` +
-    (now > 22 && now < GOAL - 14 ? `<span class="t" style="left:${now}%">Today</span>` : "") +
+    // Today matters more than the start: the start's label gives way when Today is near it.
+    `<div class="axis mono">${now >= 24 ? `<span>${MONTHS[p.t0.getMonth()]} ${p.t0.getFullYear()}</span>` : "<span></span>"}` +
+    (now > 6 && now < GOAL - 12 ? `<span class="t" style="left:${now}%">Today</span>` : "") +
     `<span style="left:${GOAL}%">${MONTHS[p.t1.getMonth()]} ${p.t1.getDate()}</span></div></div></div>` +
     `<p class="fin-goal">${status} Done reaches the goal line when everything is logged; keep it ahead of Today.</p></div></section>`;
 }

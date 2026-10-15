@@ -714,10 +714,13 @@ function sheetHTML() {
   let picker;
   if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
   else {
-    const quick = weekRows(Store.state.obs, today).filter(r => r.outstanding > 0).map(r => r.pid);
+    // The fellows' edition knows no one's rotations: it offers what is left in the current stage.
+    const cur = FELLOWS ? currentStage() : null;
+    const quick = FELLOWS ? PARTS.filter(P => P.stage === cur && (Store.state.obs[P.id] || []).length < P.required).map(P => P.id)
+      : weekRows(Store.state.obs, today).filter(r => r.outstanding > 0).map(r => r.pid);
     if (s.pid && !quick.includes(s.pid)) quick.unshift(s.pid);
     picker = !s.all && quick.length
-      ? `<div class="lbl mono">This week's EPAs</div><div class="pickrow">${quick.map(chip).join("")}` +
+      ? `<div class="lbl mono">${FELLOWS ? `Still to log in ${STAGE_NAMES[cur] || "your stage"}` : "This week's EPAs"}</div><div class="pickrow">${quick.map(chip).join("")}` +
         `<button class="pick ghost" data-action="pickall">All EPAs</button></div>`
       : `<div class="lbl mono">All EPAs</div>` + STAGE_ORDER.map(st =>
         `<div class="pickgrp mono st-${st}"><i></i>${STAGE_NAMES[st]}</div><div class="pickrow">` +
