@@ -6,3 +6,5 @@ GI-Scopes*.json
 study-password*.txt
 questions/
 b[0-9]*.json
+# The fellows' edition, built by tools/fellows/build.mjs (Cloudflare builds its own).
+dist/

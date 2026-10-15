@@ -25,7 +25,7 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `app.js` | the Store (localStorage `epa-state-v1`), routing, render, dispatch by action prefix, sheets, backup. A new state field joins `importJSON`'s whitelist or a restore drops it |
 | `app.css` | every style; feature blocks sit just before `/* Backup */` |
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
-| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live` (the brief's file map) |
+| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live`, `fellows` (the fellows' edition, below) (the brief's file map) |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
 | `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` every 15 minutes |
 | `tools/ship.py` | shipping, below |
@@ -74,6 +74,15 @@ Options: `--tag <feature>` names the rollback tag (default: the branch name; req
 - **One-file preview for the user's phone:** `python tools/preview/bundle.py <scratchpad>\gi-hub-preview.html` from your worktree inlines every script, the CSS, the font and the demo data (dated to the demo's week; `--today now` for the real clock), then publish that file with the Artifact tool.
 - `demo.json` is fictional (invented staff, 555 phone numbers). Keep it that way.
 - On localhost the app's own service worker caches every file it serves, so the browser pane can show a stale copy after an edit until the worker is unregistered. shot.mjs bypasses the worker.
+
+## The fellows' edition
+
+A trimmed GI Hub for the other fellows in the program: EPAs, Endo and Guides, with a Home tab, first-run setup and a catch-up from Entrada. Study, Pearls, the call card, reminders and the year plan are hidden. Same code: `fellows.js` reads `window.GI_EDITION = "fellows"` into `FELLOWS`, and that edition saves under `gihub-fellows-v1`.
+
+- **Hosting:** Cloudflare Pages builds the `fellows` branch (build command `node tools/fellows/build.mjs`, output `dist`) at an address that carries no GitHub name. Preview deployments are off.
+- **Promote, never push to it directly:** a change reaches fellows only after about a week on main without problems, and only on the user's yes: `git push origin origin/main:refs/heads/fellows` (plain push, fast-forward only). Cloudflare redeploys within a minute.
+- **Preview:** `python tools/preview/bundle.py <out.html> --edition fellows`.
+- Anything personal (the user's name, GitHub links, staff, call or study data) never goes into the fellows' build.
 
 ## Weekly tasks (outside this repo)
 

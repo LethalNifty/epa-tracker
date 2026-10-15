@@ -1051,8 +1051,8 @@ if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
 Store.load();
 CallStore.load();
 render();
-remindInit();
-studyqInit();
+// The fellows' edition has no reminders or study questions.
+if (!FELLOWS) { remindInit(); studyqInit(); }
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------
 // A new version installs in the background. When it takes over, the app
