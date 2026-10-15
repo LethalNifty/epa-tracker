@@ -104,84 +104,66 @@ test("a code opens GI Hub on the first phone only; another phone is turned away 
   assert.equal((await forged.check()).status, 401);
 });
 
-test("admin: free a code for a new phone, turn one off and back on, add a code", async () => {
-  const {handle} = await load();
+test("no admin page on the fellows' site: the owner's GI Hub asks one address from the key, with the key", async () => {
+  const {handle, ownerPath} = await load();
   const env = envWith();
-  const old = phone(handle, env), fresh = phone(handle, env, ANDROID);
+  // Nowhere to type a key: old admin addresses are just the invite page.
+  for (const p of ["/__admin", "/__admin/login", "/__admin/summary"]) {
+    const html = await (await handle(req(p, {headers: {Accept: "text/html"}}), env, next)).text();
+    assert.match(html, /Enter your invite code/);
+    assert.doesNotMatch(html, /Admin key|admin/i);
+  }
+  const at = await ownerPath(ADMIN_KEY);
+  assert.match(at, /^\/__[0-9a-f]{24}$/);
+  const ask = (body, key = ADMIN_KEY, p = at) => handle(req(p, body
+    ? {method: "POST", headers: {Authorization: "Bearer " + key, "Content-Type": "application/json"}, body: JSON.stringify(body)}
+    : {headers: {Authorization: "Bearer " + key}}), env, next);
+  // A wrong key, no key, or the key somewhere else: what any address gets.
+  assert.equal((await ask(null, "AAAA-BBBB-CCCC-DDDD")).status, 401);
+  assert.equal((await handle(req(at), env, next)).status, 401);
+  assert.equal((await ask(null, ADMIN_KEY, "/__0123456789abcdef01234567")).status, 401);
+  assert.equal((await ask(null, ADMIN_KEY, "/__admin/summary")).status, 401);
+  const pre = await handle(req(at, {method: "OPTIONS"}), env, next);
+  assert.equal(pre.status, 204);
+  assert.match(pre.headers.get("Access-Control-Allow-Headers"), /Authorization/);
+  // What the owner sees: each code (with the code, to send), its phone, tries from other phones.
+  const old = phone(handle, env), fresh = phone(handle, env, ANDROID, {city: "Toronto", regionCode: "ON", country: "CA"});
   await old.enter("K7QM-4TZP");
   await fresh.enter("K7QM-4TZP");
-  const me = await adminOf(handle, env);
-  let html = await me.view();
-  assert.match(html, /1 of 2 codes in use/);
-  assert.match(html, /Tried on another phone once/);
-  assert.match(html, /K7QM-4TZP/);
+  const res = await ask(null, ADMIN_KEY.toLowerCase());
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
+  let j = await res.json();
+  assert.equal(j.inUse, 1);
+  assert.deepEqual(j.codes.map(c => [c.id, c.state, c.tries, c.code, c.where]), [["f01", "in", 1, "K7QM-4TZP", "Winnipeg, MB"], ["f02", "new", 0, "WX3N-8HRB", ""]]);
+  assert.deepEqual(j.tries.map(t => [t.id, t.dev, t.where]), [["f01", "Android", "Toronto, ON"]]);
   // A new phone: free it up; the old phone locks, the new one gets in.
-  await me.act("free", "f01");
+  j = await (await ask({act: "free", id: "f01"})).json();
+  assert.equal(j.codes[0].state, "new");
   assert.equal((await old.check()).status, 401);
   assert.equal((await fresh.enter("K7QM-4TZP")).status, 200);
-  assert.equal((await fresh.check()).status, 200);
-  assert.equal((await env.GI_KV.get("acc:f01", "json")).claims, 2);
   // Off locks the phone and refuses the code; back on, the same phone is in again.
-  await me.act("off", "f01");
+  await ask({act: "off", id: "f01"});
   assert.equal((await fresh.check()).status, 401);
   assert.equal((await fresh.file("/app.js")).status, 401);
   assert.equal((await (await fresh.enter("K7QM-4TZP")).json()).why, "off");
-  assert.match(await me.view(), /Turned off/);
-  await me.act("on", "f01");
+  await ask({act: "on", id: "f01"});
   assert.equal((await fresh.check()).status, 200);
-  // A new code, shown once to send, works like the others.
-  const added = await me.act("add");
-  assert.equal(added.headers.get("Location"), "/__admin?new=f03");
-  html = await (await me.send("/__admin?new=f03")).text();
-  const code = /New code <b>f03<\/b>: <span class="code">([A-Z0-9-]+)<\/span>/.exec(html)[1];
-  assert.match(code, /^[A-HJ-KM-NP-Z2-9]{4}-[A-HJ-KM-NP-Z2-9]{4}$/);
+  j = await (await ask({act: "clear", id: "f01"})).json();
+  assert.equal(j.codes[0].tries, 0);
+  // A new code works like the others.
+  j = await (await ask({act: "add"})).json();
+  assert.equal(j.added.id, "f03");
+  assert.match(j.added.code, /^[A-HJ-KM-NP-Z2-9]{4}-[A-HJ-KM-NP-Z2-9]{4}$/);
   const third = phone(handle, env);
-  assert.equal((await third.enter(code)).status, 200);
+  assert.equal((await third.enter(j.added.code)).status, 200);
   assert.equal(await (await third.file("/app.js")).text(), "the app");
-  await me.act("add");
+  await ask({act: "add"});
   assert.deepEqual(Object.keys(await env.GI_KV.get("extra", "json")), ["f03", "f04"]);
-});
-
-test("admin page: only with the key, and only same-site actions", async () => {
-  const {handle} = await load();
-  const env = envWith();
-  const stranger = phone(handle, env);
-  assert.match(await (await stranger.send("/__admin")).text(), /Admin key/);
-  const wrong = await stranger.send("/__admin/login", form({key: "AAAA-BBBB-CCCC-DDDD"}));
-  assert.equal(wrong.status, 401);
-  assert.equal(stranger.jar.gi_admin, undefined);
-  // Without the admin cookie an action does nothing.
-  await stranger.send("/__admin/act", form({act: "add"}));
-  assert.equal(await env.GI_KV.get("extra"), null);
-  // A fellow's own cookie doesn't open it either.
-  await stranger.enter("K7QM-4TZP");
-  assert.match(await (await stranger.send("/__admin")).text(), /Admin key/);
-  const me = phone(handle, env);
-  const ok = await me.send("/__admin/login", form({key: ADMIN_KEY}));
-  assert.match(ok.headers.get("Set-Cookie"), /^gi_admin=[0-9a-f]{64}; Path=\/__admin; Max-Age=\d+; Secure; HttpOnly; SameSite=Lax$/);
-  assert.match(await (await me.send("/__admin")).text(), /Who's in/);
-  // No admin key set: there is no admin page.
-  assert.equal((await handle(req("/__admin"), envWith({GI_ADMIN: ""}), next)).status, 404);
-});
-
-test("the summary for the owner's own GI Hub: the admin key as a Bearer token, no codes in it", async () => {
-  const {handle} = await load();
-  const env = envWith();
-  await phone(handle, env).enter("K7QM-4TZP");
-  await phone(handle, env, ANDROID, {city: "Toronto", regionCode: "ON", country: "CA"}).enter("K7QM-4TZP");
-  const pre = await handle(req("/__admin/summary", {method: "OPTIONS"}), env, next);
-  assert.equal(pre.status, 204);
-  assert.equal(pre.headers.get("Access-Control-Allow-Headers"), "Authorization");
-  assert.equal((await handle(req("/__admin/summary"), env, next)).status, 401);
-  assert.equal((await handle(req("/__admin/summary", {headers: {Authorization: "Bearer AAAA-BBBB-CCCC-DDDD"}}), env, next)).status, 401);
-  const res = await handle(req("/__admin/summary", {headers: {Authorization: "Bearer " + ADMIN_KEY.toLowerCase()}}), env, next);
-  assert.equal(res.status, 200);
-  assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
-  const text = await res.text(), j = JSON.parse(text);
-  assert.equal(j.inUse, 1);
-  assert.deepEqual(j.codes.map(c => [c.id, c.state, c.tries]), [["f01", "in", 1], ["f02", "new", 0]]);
-  assert.deepEqual(j.tries.map(t => [t.id, t.dev, t.where]), [["f01", "Android", "Toronto, ON"]]);
-  assert.doesNotMatch(text, /K7QM|4TZP|WX3N/);
+  // A fellow's own cookie gets the app there, never the codes.
+  assert.equal(await (await third.send(at)).text(), "the app");
+  // No admin key set: nothing answers.
+  assert.equal((await handle(req(at, {headers: {Authorization: "Bearer " + ADMIN_KEY}}), envWith({GI_ADMIN: ""}), next)).status, 401);
 });
 
 test("phones signed in before codes claimed a phone: the first claims its code, any other is out", async () => {

@@ -862,7 +862,7 @@ function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
-  if (act.startsWith("watch")) { if (watchDispatch(act) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("watch")) { if (watchDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }

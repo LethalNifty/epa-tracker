@@ -3,18 +3,17 @@
 //
 // Each fellow gets their own code, and a code opens GI Hub on one phone: the
 // first phone to enter it claims it; another phone that tries it is turned
-// away, and the attempt is noted. Whoever hands out the codes manages them at
-// /__admin: which phone each code is on, when it was last opened, attempts
-// from other phones, and buttons to free a code for a new phone, turn one off,
-// or add a new code.
+// away, and the attempt is noted. Whoever hands out the codes manages them from
+// their own GI Hub (watch.js in the full app), never from a page on this site:
+// which phone each code is on, when it was last opened, attempts from other
+// phones, and freeing a code for a new phone, turning one off or adding one.
 //
 // Where things live:
 //   GI_CODES  secret: the first codes, "f01:K7QM-4TZP f02:..." (an id, a colon,
 //             the code; any spaces or commas between).
 //   GI_KV     KV namespace: "acc:<id>" is a code's phone, state and attempts;
-//             "extra" holds the codes added at /__admin.
-//   GI_ADMIN  secret: the key that opens /__admin, and /__admin/summary (the
-//             same facts as JSON, for the owner's own GI Hub to show).
+//             "extra" holds the codes added from the owner's GI Hub.
+//   GI_ADMIN  secret: the owner's key, for their GI Hub's requests (below).
 // Without GI_KV no phone can claim a code, so the site stays closed to new
 // phones; phones already in keep working. Without GI_CODES (or with a code
 // taken out of it) that code fails everywhere.
@@ -28,7 +27,7 @@
 
 const OPEN = new Set(["/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-192.png", "/icon-512.png",
   "/fonts/outfit-var.woff2", "/robots.txt", "/sw.js", "/notify.js"]);
-const COOKIE = "gi_access", ADMIN = "gi_admin", YEAR_ISH = 400 * 86400, TRIES = 20;
+const COOKIE = "gi_access", YEAR_ISH = 400 * 86400, TRIES = 20;
 // Codes leave out letters and digits that read alike (I, L, O, 0, 1).
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const enc = new TextEncoder();
@@ -36,7 +35,6 @@ export const normCode = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g,
 const shown = c => c.length === 8 ? c.slice(0, 4) + "-" + c.slice(4) : c;
 const hex = a => [...a].map(b => b.toString(16).padStart(2, "0")).join("");
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[c]);
 const ID = /^[A-Za-z0-9_-]+$/;
 
 export function codesFrom(env) {
@@ -54,7 +52,7 @@ async function extra(env) {
   const x = await env.GI_KV.get("extra", "json");
   return x && typeof x === "object" ? x : {};
 }
-// Every code: the secret's first, then the ones added at /__admin.
+// Every code: the secret's first, then the ones added from the owner's GI Hub.
 async function allCodes(env) {
   const m = codesFrom(env);
   for (const [id, code] of Object.entries(await extra(env)))
@@ -138,12 +136,14 @@ const json = (status, body, headers = {}) => new Response(JSON.stringify(body), 
   headers: {"Content-Type": "application/json", ...NOINDEX, ...headers}});
 const page = (status, html, headers = {}) => new Response(html, {status,
   headers: {"Content-Type": "text/html; charset=utf-8", ...NOINDEX, ...headers}});
-const goTo = (where, headers = {}) => new Response(null, {status: 303, headers: {Location: where, ...NOINDEX, ...headers}});
 
 export async function handle(request, env, next) {
   env = env || {};
   const url = new URL(request.url);
-  if (url.pathname === "/__admin" || url.pathname.startsWith("/__admin/")) return admin(request, env, url);
+  // The owner's GI Hub asks from another site; nothing here answers differently for it.
+  if (request.method === "OPTIONS") return new Response(null, {status: 204, headers: {...CORS, ...NOINDEX}});
+  const mine = await owner(request, env, url);
+  if (mine) return mine;
   if (url.pathname === "/__access") return request.method === "POST" ? signIn(request, env) : check(request, env);
   if (OPEN.has(url.pathname) || await holder(request, env)) {
     const res = await next();
@@ -152,7 +152,7 @@ export async function handle(request, env, next) {
     return out;
   }
   const html = request.method === "GET" && (url.pathname === "/" || url.pathname.endsWith(".html") || /text\/html/.test(request.headers.get("Accept") || ""));
-  if (!html) return new Response("Invite code needed", {status: 401, headers: NOINDEX});
+  if (!html) return new Response("Invite code needed", {status: 401, headers: {...NOINDEX, "Access-Control-Allow-Origin": "*"}});
   return page(200, GATE);
 }
 
@@ -190,58 +190,52 @@ async function check(request, env) {
   return json(200, {ok: true});
 }
 
-// ---- /__admin ---------------------------------------------------------------------------------------
-async function admin(request, env, url) {
+// ---- The owner's GI Hub -----------------------------------------------------------------------------
+// There is no admin page on this site and nowhere to type a key. The owner's
+// own GI Hub asks one address worked out from the admin key, so it can't be
+// found without the key, and sends the key as a Bearer token. A wrong key, or
+// any other request there, gets what any unknown address gets.
+const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST", "Access-Control-Max-Age": "86400"};
+export const ownerPath = async key => "/__" + (await hmac(normCode(key), "gi-owner")).slice(0, 24);
+async function owner(request, env, url) {
   const key = normCode(env.GI_ADMIN);
-  if (key.length < 12) return page(404, "Not found");
-  if (url.pathname === "/__admin/summary") return summary(request, env, key);
-  const token = await hmac(key, "gi-admin");
-  if (request.method === "POST" && url.pathname === "/__admin/login") {
-    let typed = "";
-    try { typed = normCode((await request.formData()).get("key")); } catch (e) {}
-    if (typed && same(typed, key))
-      return goTo("/__admin", {"Set-Cookie": `${ADMIN}=${token}; Path=/__admin; Max-Age=${30 * 86400}; Secure; HttpOnly; SameSite=Lax`});
-    await wait(600);
-    return page(401, adminLogin("That key doesn't work."));
-  }
-  if (!same(cookie(request, ADMIN), token)) return page(200, adminLogin(""));
-  if (request.method === "POST" && url.pathname === "/__admin/act") {
-    let form = null;
-    try { form = await request.formData(); } catch (e) {}
-    if (!form || !env.GI_KV) return goTo("/__admin");
-    const act = String(form.get("act") || ""), id = String(form.get("id") || "");
-    if (act === "add") return goTo("/__admin?new=" + encodeURIComponent(await addCode(env)));
-    if (!(await allCodes(env)).has(id)) return goTo("/__admin");
-    const rec = await record(env, id);
-    if (act === "free") rec.phone = null;
-    else if (act === "off") rec.off = true;
-    else if (act === "on") rec.off = false;
-    else if (act === "clear") rec.tries = [];
-    else return goTo("/__admin");
-    await save(env, id, rec);
-    return goTo("/__admin#" + id);
-  }
-  return page(200, await adminPage(env, url.searchParams.get("new")));
-}
-// Every code's state and the attempts from other phones, newest first, for
-// the owner's GI Hub on another site: the admin key comes as a Bearer token
-// (no cookie), so any site may ask, and the codes themselves are left out.
-const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization",
-  "Access-Control-Allow-Methods": "GET", "Access-Control-Max-Age": "86400"};
-async function summary(request, env, key) {
-  if (request.method === "OPTIONS") return new Response(null, {status: 204, headers: {...CORS, ...NOINDEX}});
+  if (key.length < 12 || !/^\/__[0-9a-f]{24}$/.test(url.pathname) || url.pathname !== await ownerPath(key)) return null;
   const sent = normCode((/^Bearer\s+(.+)$/i.exec(request.headers.get("Authorization") || "") || [])[1]);
-  if (!sent || !same(sent, key)) { await wait(600); return json(401, {ok: false}, CORS); }
-  const codes = [...(await allCodes(env)).keys()].sort((a, b) => a.localeCompare(b, "en", {numeric: true}));
-  const recs = env.GI_KV ? await Promise.all(codes.map(id => record(env, id))) : codes.map(() => null);
-  const list = codes.map((id, i) => {
+  if (!sent || !same(sent, key)) return null;
+  let added = null;
+  if (request.method === "POST") {
+    if (!env.GI_KV) return json(503, {ok: false, why: "setup"}, CORS);
+    let body = {};
+    try { body = await request.json(); } catch (e) {}
+    const act = String(body.act || ""), id = String(body.id || "");
+    if (act === "add") added = await addCode(env);
+    else {
+      if (!(await allCodes(env)).has(id)) return json(404, {ok: false}, CORS);
+      const rec = await record(env, id);
+      if (act === "free") rec.phone = null;
+      else if (act === "off") rec.off = true;
+      else if (act === "on") rec.off = false;
+      else if (act === "clear") rec.tries = [];
+      else return json(400, {ok: false}, CORS);
+      await save(env, id, rec);
+    }
+  }
+  return json(200, {...(await summary(env)), added}, CORS);
+}
+// Every code (with the code itself, to send), its state, and the attempts
+// from other phones, newest first.
+async function summary(env) {
+  const all = await allCodes(env), ids = [...all.keys()].sort((a, b) => a.localeCompare(b, "en", {numeric: true}));
+  const recs = env.GI_KV ? await Promise.all(ids.map(id => record(env, id))) : ids.map(() => null);
+  const codes = ids.map((id, i) => {
     const r = recs[i], p = r && r.phone;
-    return {id, state: r && r.off ? "off" : p ? "in" : "new", dev: p ? p.dev : "", where: p ? p.where : "",
+    return {id, code: shown(all.get(id)), state: r && r.off ? "off" : p ? "in" : "new", dev: p ? p.dev : "", where: p ? p.where : "",
       since: p ? p.at : "", seen: p ? p.seen || p.at : "", tries: r ? r.tries.length : 0};
   });
-  const tries = codes.flatMap((id, i) => (recs[i] ? recs[i].tries : []).map(t => ({id, at: t.at, dev: t.dev, where: t.where})))
+  const tries = ids.flatMap((id, i) => (recs[i] ? recs[i].tries : []).map(t => ({id, at: t.at, dev: t.dev, where: t.where})))
     .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50);
-  return json(200, {ok: true, store: !!env.GI_KV, total: codes.length, inUse: list.filter(c => c.state === "in").length, codes: list, tries}, CORS);
+  return {ok: true, store: !!env.GI_KV, total: ids.length, inUse: codes.filter(c => c.state === "in").length, codes, tries};
 }
 function freshCode() {
   let out = "";
@@ -256,50 +250,7 @@ async function addCode(env) {
   const id = "f" + String(top + 1).padStart(2, "0");
   x[id] = freshCode();
   await env.GI_KV.put("extra", JSON.stringify(x));
-  return id;
-}
-const when = iso => `<time datetime="${esc(iso)}">${esc(String(iso || "").slice(0, 10))}</time>`;
-const where = (dev, at) => [dev, at].filter(Boolean).map(esc).join(" · ");
-function button(id, act, label, cls = "", ask = "") {
-  return `<form method="post" action="/__admin/act"${ask ? ` onsubmit="return confirm(${esc(JSON.stringify(ask))})"` : ""}>` +
-    `<input type="hidden" name="id" value="${esc(id)}"><input type="hidden" name="act" value="${act}">` +
-    `<button class="${cls}">${label}</button></form>`;
-}
-async function adminPage(env, fresh) {
-  const codes = [...(await allCodes(env))].sort((a, b) => a[0].localeCompare(b[0], "en", {numeric: true}));
-  const recs = env.GI_KV ? await Promise.all(codes.map(([id]) => record(env, id))) : codes.map(() => null);
-  const inUse = recs.filter(r => r && r.phone && !r.off).length, flagged = recs.filter(r => r && r.tries.length).length;
-  let h = `<p class="eyebrow">GI Hub · Invite codes</p><h1>Who's in</h1>` +
-    `<p>${inUse} of ${codes.length} codes in use${flagged ? ` · <b class="hot">${flagged} tried on another phone</b>` : ""}</p>`;
-  if (!env.GI_KV) h += `<p class="err">The storage (GI_KV) isn't connected, so no new phone can sign in. Connect it in the project's Settings, Bindings.</p>`;
-  const made = fresh && codes.find(([id]) => id === fresh);
-  if (made) h += `<div class="new">New code <b>${esc(made[0])}</b>: <span class="code">${esc(shown(made[1]))}</span><br>Send it privately, and write down who has it.</div>`;
-  codes.forEach(([id, code], i) => {
-    const r = recs[i] || {phone: null, off: false, tries: []}, p = r.phone;
-    const tag = r.off ? `<span class="tag off">Turned off</span>` : p ? `<span class="tag on">In use</span>` : `<span class="tag">Not used yet</span>`;
-    h += `<section class="row${r.tries.length ? " hot" : ""}" id="${esc(id)}"><div class="top"><b>${esc(id)}</b><span class="code">${esc(shown(code))}</span>${tag}</div>`;
-    if (p) h += `<p>${where(p.dev, p.where)} · since ${when(p.at)}<br>Last opened ${when(p.seen || p.at)}</p>`;
-    if (r.tries.length) {
-      h += `<div class="tries"><b>Tried on another phone ${r.tries.length === 1 ? "once" : r.tries.length + " times"}</b><ul>` +
-        r.tries.slice(-5).reverse().map(t => `<li>${where(t.dev, t.where)} · ${when(t.at)}</li>`).join("") + `</ul></div>`;
-    }
-    if (env.GI_KV) {
-      h += `<div class="acts">` +
-        (p ? button(id, "free", "Free for new phone", "", `Free ${id} for a new phone? The phone it's on now locks.`) : "") +
-        (r.off ? button(id, "on", "Turn back on") : button(id, "off", "Turn off", "danger", `Turn off ${id}? GI Hub locks on that phone.`)) +
-        (r.tries.length ? button(id, "clear", "Clear attempts") : "") + `</div>`;
-    }
-    h += `</section>`;
-  });
-  if (env.GI_KV) h += `<div class="acts add">${button("", "add", "Add a code", "primary")}</div>`;
-  h += `<p class="note">Keep the list of who has which code yourself; this page shows only the codes. Places are Cloudflare's rough guess from the network.</p>`;
-  return shell("GI Hub codes", h, `<script>for (const t of document.querySelectorAll("time")) { const d = new Date(t.dateTime);` +
-    ` if (!isNaN(d)) t.textContent = d.toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}); }</script>`);
-}
-function adminLogin(err) {
-  return shell("GI Hub codes", `<p class="eyebrow">GI Hub · Invite codes</p><h1>Admin key</h1>` +
-    `<form method="post" action="/__admin/login"><input name="key" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Admin key">` +
-    `<button class="primary">Open</button><div class="err">${esc(err)}</div></form>`);
+  return {id, code: shown(x[id])};
 }
 
 // ---- Pages ------------------------------------------------------------------------------------------
@@ -325,33 +276,11 @@ button:disabled { opacity: .6; }
 .note { margin-top: 26px; font-size: 13px; }
 ol { padding-left: 22px; } li + li { margin-top: 8px; } li b { color: #f5f2ff; font-weight: 520; }
 `;
-const ADMIN_STYLE = `
-.row { margin-top: 14px; padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, .045); border: 1px solid rgba(255, 255, 255, .08); }
-.row.hot { border-color: rgba(255, 127, 149, .55); }
-.row p { margin: 8px 0 0; font-size: 14px; }
-.top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.code { font-variant-numeric: tabular-nums; letter-spacing: .08em; user-select: all; -webkit-user-select: all; }
-.tag { margin-left: auto; padding: 3px 9px; border-radius: 99px; font-size: 12px; color: #b3aed0; background: rgba(255, 255, 255, .07); }
-.tag.on { color: #9ef0c4; background: rgba(80, 220, 150, .13); } .tag.off { color: #ff7f95; background: rgba(255, 127, 149, .13); }
-b.hot, .tries b { color: #ff9fb0; }
-.tries { margin-top: 10px; font-size: 14px; } .tries ul { margin: 4px 0 0; padding-left: 18px; }
-.acts { display: flex; gap: 8px; flex-wrap: wrap; } .acts form { flex: 1 1 140px; }
-.acts button { height: 42px; margin-top: 12px; font-size: 14px; }
-button.danger { color: #ff9fb0; }
-.add button { height: 52px; font-size: 16px; margin-top: 22px; }
-.new { margin-top: 18px; padding: 14px 16px; border-radius: 16px; background: rgba(139, 108, 255, .16); line-height: 1.6; }
-.new .code { font-size: 20px; color: #fff; }
-`;
 const HEAD = `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#0d0b1f">`;
-function shell(title, body, script = "") {
-  return `<!DOCTYPE html>\n<html lang="en">\n<head>\n${HEAD}\n<title>${title}</title>\n<style>${STYLE}${ADMIN_STYLE}</style>\n</head>\n` +
-    `<body>\n<main>\n${body}\n</main>\n${script}\n</body>\n</html>\n`;
-}
-
 // The page anyone without a code sees. It carries the manifest and icons, so
 // adding it to the home screen gives the real app's name and icon. On an
 // iPhone in Safari it asks for the home screen first: Safari and the
