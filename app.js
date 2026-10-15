@@ -788,7 +788,7 @@ async function exportBackup() {
 let enterNext = true;
 const scrollMemo = {};
 function render() {
-  const p = route.page, setup = FELLOWS && !!(felSetup || felNeedsSetup());
+  const p = route.page, setup = FELLOWS && !!(felLocked || felSetup || felNeedsSetup());
   // Opening the app (or coming back to it) on Week powers the monitor on.
   if (p === "week" && !introDone && !setup) { introDone = true; liveBootArm(); }
   // The sheet in view on the + closed (a save, a delete, Close): the + flow ends.
@@ -1051,8 +1051,9 @@ if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
 Store.load();
 CallStore.load();
 render();
-// The fellows' edition has no reminders or study questions.
+// The fellows' edition has no reminders or study questions; it checks its invite code instead.
 if (!FELLOWS) { remindInit(); studyqInit(); }
+else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------
 // A new version installs in the background. When it takes over, the app

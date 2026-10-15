@@ -193,3 +193,32 @@ test("finish line on Home: what is left, a month's worth, the pace, against an e
   // Set up before there was a finish date: Home asks for one.
   assert.match(fellow({state: setUp()}).html(), /Pick a finish date/);
 });
+
+test("an invite code that has ended locks the app, with a way back in and a backup", async () => {
+  const h = fellow({state: setUp({d1: many(1, "2026-09-01")})});
+  const settle = () => h.run("new Promise(r => setTimeout(r, 5))");
+  // No check here (the full app, a preview) or no signal: nothing locks.
+  h.run(`globalThis.fetch = async () => ({status: 404, ok: false}); felCheckAccess();`);
+  await settle();
+  assert.match(h.html(), /<span>Home<\/span>/);
+  h.run(`globalThis.fetch = async () => { throw new Error("offline"); }; felCheckAccess();`);
+  await settle();
+  assert.equal(h.val("felLocked"), false);
+  // The code was taken out: locked, no bar, a backup still possible.
+  h.run(`globalThis.fetch = async () => ({status: 401, ok: false}); felCheckAccess();`);
+  await settle();
+  assert.match(h.html(), /This invite code has ended/);
+  assert.doesNotMatch(h.html(), /class="bnav"/);
+  assert.match(h.html(), /data-action="export"/);
+  // A wrong new code says so; a right one reloads into the app.
+  h.run(`globalThis.__sent = []; globalThis.fetch = async (u, o) => { __sent.push(o && o.body); return {status: 401, ok: false}; };`);
+  h.run(`felField({dataset: {fel: "code"}, value: "WX3N-8HRB"})`);
+  h.click("felcode");
+  await settle();
+  assert.equal(h.val("__sent[0]"), JSON.stringify({code: "WX3N-8HRB"}));
+  assert.match(h.html(), /That code doesn't work/);
+  h.run(`globalThis.location = {reload() { globalThis.__reloaded = true; }}; globalThis.fetch = async () => ({status: 200, ok: true});`);
+  h.click("felcode");
+  await settle();
+  assert.equal(h.val("__reloaded"), true);
+});

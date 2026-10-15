@@ -77,7 +77,9 @@ Options: `--tag <feature>` names the rollback tag (default: the branch name; req
 
 ## The fellows' edition
 
-A trimmed GI Hub for the other fellows in the program: EPAs, Endo and Guides, with a Home tab, first-run setup and a catch-up from Entrada. Study, Pearls, the call card, reminders and the year plan are hidden. Same code: `fellows.js` reads `window.GI_EDITION = "fellows"` into `FELLOWS`, and that edition saves under `gihub-fellows-v1`.
+A trimmed GI Hub for the other fellows in the program: EPAs, Endo and Guides, with a Home tab (and a finish line toward the fellow's own date), first-run setup, a catch-up from Entrada and a calendar reminder (`reminder.ics`, built by the build script). Study, Pearls, the call card, push reminders and the year plan are hidden. Same code: `fellows.js` reads `window.GI_EDITION = "fellows"` into `FELLOWS`, and that edition saves under `gihub-fellows-v1`.
+
+- **Invite codes:** `functions/_middleware.js` runs `tools/fellows/access.mjs` on Cloudflare before every request: no valid code, no app (only the icons, manifest, font, `sw.js` and `notify.js` are open). The codes live only in the Cloudflare secret `GI_CODES` (`f01:ABCD-2345 f02:...`), never in the repo; the user's list of who has which is in `My Drive\Fellowship\GI Hub`. Ending one fellow's access = remove their entry, then redeploy (Deployments, Retry). The app asks `/__access` on each launch online and locks on a 401, keeping the data and Export backup.
 
 - **Hosting:** Cloudflare Pages builds the `fellows` branch (build command `node tools/fellows/build.mjs`, output `dist`) at an address that carries no GitHub name. Preview deployments are off.
 - **Promote, never push to it directly:** a change reaches fellows only after about a week on main without problems, and only on the user's yes: `git push origin origin/main:refs/heads/fellows` (plain push, fast-forward only). Cloudflare redeploys within a minute.

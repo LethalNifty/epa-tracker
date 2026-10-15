@@ -6,7 +6,8 @@
 // saves under its own key (KEY in app.js), so a phone with both never mixes
 // them. This file holds what only that edition has: first-run setup (the name
 // for the procedure log, the finish date, then catching up from Entrada), its
-// Home tab with the finish line, and the calendar reminder.
+// Home tab with the finish line, the calendar reminder, and the lock for an
+// invite code that has ended.
 
 const FELLOWS = typeof window !== "undefined" && window.GI_EDITION === "fellows";
 
@@ -38,6 +39,7 @@ function felFinish() {
 }
 
 function felSetupHTML() {
+  if (felLocked) return felLockHTML();
   if (!felSetup) felStart(false);
   return felSetup.step === 1 ? felWelcomeHTML() : felCatchUpHTML();
 }
@@ -185,6 +187,37 @@ function felFinishHTML(today) {
     `<p class="fin-goal">${status} Done reaches the goal line when everything is logged; keep it ahead of Today.</p></div></section>`;
 }
 
+// ---- Invite code ------------------------------------------------------------------------------------
+// On the fellows' site Cloudflare checks an invite code before serving anything
+// (tools/fellows/access.mjs). Once cached, the app opens without the network,
+// so each launch online asks /__access whether its code still works. A 401
+// locks the app: the data stays on the phone and a backup can still be made.
+// A 404 means there is no check here (the full app, a preview), and no answer
+// means no signal; neither locks anything.
+let felLocked = false, felCodeTyped = "", felCodeErr = null, felCodeBusy = false;
+function felCheckAccess() {
+  if (!FELLOWS || typeof fetch !== "function") return;
+  fetch("__access", {cache: "no-store"}).then(r => { if (r.status === 401 && !felLocked) { felLocked = true; render(); } }).catch(() => {});
+}
+function felLockHTML() {
+  return `<header class="ph felhead">${markSVG(58)}<p class="eyebrow mono">GI Hub · Adult Gastroenterology</p>` +
+    `<h1 class="title">This invite code has ended</h1></header>` +
+    `<p class="ph-note">Ask the person who invited you for a new code. Everything you logged is still on this phone; export a backup to keep it safe.</p>` +
+    `<label class="lbl mono">Invite code<input type="text" data-fel="code" value="${esc(felCodeTyped)}" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345"></label>` +
+    `<div class="felacts"><button class="btn primary" data-action="felcode"${felCodeBusy ? " disabled" : ""}>Open GI Hub</button>` +
+    `<button class="btn" data-action="export">${ic("share")}Export backup</button></div>` +
+    (felCodeErr ? `<div class="err">${esc(felCodeErr)}</div>` : "") + (backupError ? `<div class="err">${esc(backupError)}</div>` : "");
+}
+async function felSendCode() {
+  felCodeBusy = true; felCodeErr = null; route.keepScroll = true; render();
+  try {
+    const r = await fetch("__access", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({code: felCodeTyped})});
+    if (r.ok) { location.reload(); return; }
+    felCodeErr = "That code doesn't work. Check it, or ask the person who invited you.";
+  } catch (e) { felCodeErr = "No connection. Try again once you have signal."; }
+  felCodeBusy = false; route.keepScroll = true; render();
+}
+
 // ---- Settings ---------------------------------------------------------------------------------------
 function felSetHTML() {
   const g = Store.state.goal || felGoalFor("pgy4", getToday());
@@ -204,6 +237,7 @@ function felDispatch(act, d) {
   const s = felSetup;
   if (act === "felagain") { setSheet = null; felStart(true); window.scrollTo(0, 0); return; }
   if (act === "felgoalyear") { Store.state.goal = felGoalFor(d.year, getToday()); Store.save(); return; }
+  if (act === "felcode") { felSendCode(); return false; }
   if (!s) return;
   if (act === "felyear") { s.goal = felGoalFor(d.year, getToday()); return; }
   if (act === "felnext") { s.step = 2; window.scrollTo(0, 0); }
@@ -220,6 +254,7 @@ function felDispatch(act, d) {
 function felField(t) {
   const k = t.dataset && t.dataset.fel, iso = /^\d{4}-\d{2}-\d{2}$/.test(t.value || "");
   if (!k) return false;
+  if (k === "code") { felCodeTyped = t.value; return true; }
   if (k === "goalby") { if (iso && Store.state.goal) { Store.state.goal = {...Store.state.goal, by: t.value}; Store.save(); } return true; }
   if (!felSetup) return true;
   if (k === "name") felSetup.name = t.value;
