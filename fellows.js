@@ -5,7 +5,8 @@
 // window.GI_EDITION = "fellows" before the scripts load, and that edition
 // saves under its own key (KEY in app.js), so a phone with both never mixes
 // them. This file holds what only that edition has: first-run setup (the name
-// for the procedure log, then catching up from Entrada) and its Home tab.
+// for the procedure log, the finish date, then catching up from Entrada), its
+// Home tab with the finish line, and the calendar reminder.
 
 const FELLOWS = typeof window !== "undefined" && window.GI_EDITION === "fellows";
 
@@ -17,7 +18,8 @@ const felApproved = pid => (Store.state.obs[pid] || []).filter(o => o.status ===
 const felNeedsSetup = () => FELLOWS && !Store.state.setup && !Store.hasData();
 const felFloor = P => felSetup.again ? Math.min(felApproved(P.id), P.required) : 0;
 function felStart(again) {
-  felSetup = {step: again ? 2 : 1, name: Store.state.scopes.reportName || "", again: !!again, n: {}};
+  felSetup = {step: again ? 2 : 1, name: Store.state.scopes.reportName || "", again: !!again, n: {},
+    goal: {...(Store.state.goal || felGoalFor("pgy4", getToday()))}};
   for (const P of PARTS) felSetup.n[P.id] = Math.min(felApproved(P.id), P.required);
 }
 // Catching up adds approved observations with no date: Entrada has the dates.
@@ -27,7 +29,7 @@ function felFinish() {
   for (const P of PARTS)
     for (let k = felApproved(P.id); k < s.n[P.id]; k++, added++)
       (Store.state.obs[P.id] ||= []).push({d: "", a: "", n: "", status: "approved", pre: true, ts});
-  if (!s.again) { Store.state.scopes.reportName = s.name.trim(); Store.state.setup = {d: fmtDate(getToday())}; }
+  if (!s.again) { Store.state.scopes.reportName = s.name.trim(); Store.state.goal = s.goal; Store.state.setup = {d: fmtDate(getToday())}; }
   Store.save();
   felSetup = null;
   route = {page: "week"};
@@ -50,6 +52,9 @@ function felWelcomeHTML() {
     point("shield", "Private", "Everything stays on this phone. Nothing is sent anywhere, and no one else can see it.") + `</ul>` +
     `<label class="lbl mono">Your name, as it prints on the procedure log<input type="text" data-fel="name" value="${esc(felSetup.name)}" ` +
     `placeholder="Name, PGY-5 Adult Gastroenterology" autocomplete="name" autocapitalize="words"></label>` +
+    felGoalFieldsHTML(felSetup.goal, "felyear", "by") +
+    `<p class="felhint">${felSetup.goal.year === "pgy5" ? "The end of March leaves room before training ends." : "18 months is a good target for a PGY-4."} ` +
+    `You can change it any time in Settings.</p>` +
     `<div class="felacts"><button class="btn primary" data-action="felnext">Next: catch up from Entrada${ic("forward")}</button>` +
     `<button class="btn" data-action="importpick">${ic("download")}Restore a backup</button></div>` +
     `<input type="file" id="importfile" accept=".json,application/json" hidden>` +
@@ -88,7 +93,7 @@ function felHomeHTML() {
   let h = `<header class="ph has-gear"><button class="iconbtn phgear" data-action="setopen" aria-label="Settings">${ic("gear")}</button>` +
     (blk ? `<p class="eyebrow mono">Block ${blk.num}</p><h1 class="title">Week ${blk.week} of 4</h1>` :
       `<p class="eyebrow mono">GI Hub</p><h1 class="title">Home</h1>`) + `</header>`;
-  h += warningsHTML(today) + monitorHTML(today, cur) + stagesHTML(cur);
+  h += warningsHTML(today) + monitorHTML(today, cur) + stagesHTML(cur) + felFinishHTML(today);
   const chase = chaseList(Store.state.obs, today);
   if (chase.length) h += chaseHTML(chase);
   return h + felLeftHTML(cur) + felScopeHTML();
@@ -113,9 +118,83 @@ function felScopeHTML() {
     `<span>${esc(scopeSummary(last))}</span></span>${ic("forward")}</button></section>`;
 }
 
+// ---- Finish line ------------------------------------------------------------------------------------
+// The fellow's year gives the fellowship's start (July 1) and a first finish
+// date, which they can change: 18 months for a PGY-4, the end of March for a
+// PGY-5. The card is the full app's Year plan finish line: Done fills toward
+// the goal line as observations are logged and should stay ahead of Today;
+// Pace ends where the last 8 weeks' rate would finish.
+const felAY = d => d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+function felGoalFor(year, today) {
+  const ay = felAY(today);
+  return {year, start: `${year === "pgy5" ? ay - 1 : ay}-07-01`, by: year === "pgy5" ? `${ay + 1}-03-31` : `${ay + 1}-12-31`};
+}
+const felDay = iso => new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10), 12);
+function felGoalFieldsHTML(g, yearAct, byField) {
+  return `<div class="lbl mono">Your year</div><div class="segtabs felyear" role="group" aria-label="Your year">` +
+    [["pgy4", "PGY-4"], ["pgy5", "PGY-5"]].map(([y, label]) => `<button class="${g.year === y ? "on" : ""}" data-action="${yearAct}" data-year="${y}" ` +
+      `aria-pressed="${g.year === y}">${label}</button>`).join("") + `</div>` +
+    `<label class="lbl mono">Finish every EPA by<input type="date" data-fel="${byField}" min="${g.start}" value="${g.by}"></label>`;
+}
+// What is left, what that needs a month, and where the last 8 weeks' pace
+// would finish. Caught-up observations have no date: they count as logged,
+// never as pace.
+function felPace(g, today) {
+  const DAY = 864e5, req = PARTS.reduce((a, P) => a + P.required, 0);
+  const logged = PARTS.reduce((a, P) => a + Math.min((Store.state.obs[P.id] || []).length, P.required), 0), left = req - logged;
+  const t0 = felDay(g.start), t1 = new Date(Math.max(+felDay(g.by), +t0 + 30 * DAY));
+  const weeks = Math.max(1, Math.min(8, (today - t0) / DAY / 7));
+  let n = 0;
+  for (const pid in Store.state.obs) for (const o of Store.state.obs[pid]) {
+    if (!o.d) continue;
+    const age = (today - felDay(o.d)) / DAY;
+    if (age > -1 && age < weeks * 7) n++;
+  }
+  const monthsLeft = Math.max(0, (t1 - today) / DAY / 30.44);
+  return {req, logged, left, n, weeks: Math.round(weeks), t0, t1, monthsLeft,
+    finish: left && n ? new Date(+today + left / (n / weeks) * 7 * DAY) : null,
+    perMonth: Math.ceil(left / Math.max(1, monthsLeft)),
+    behind: Math.round(req * Math.min(1, Math.max(0, (today - t0) / (t1 - t0))) - logged)};
+}
+function felFinishHTML(today) {
+  const g = Store.state.goal;
+  if (!g) return `<section class="sec"><div class="sec-head"><h2>Finish line</h2></div><button class="card felscope" data-action="setopen">${ic("target")}` +
+    `<span><b>Pick a finish date</b><span>See the pace it takes to log every EPA in time.</span></span>${ic("forward")}</button></section>`;
+  const p = felPace(g, today), GOAL = 84, span = (p.t1 - p.t0) / (GOAL / 100);
+  const at = d => Math.max(0, Math.min(100, (d - p.t0) / span * 100)), now = at(today);
+  const ok = !p.left || (p.finish && p.finish <= p.t1);
+  const cell = (label, val, cls, note) => `<div><div class="fin-lbl mono">${label}</div><div class="fin-val${cls ? " " + cls : ""}">${val}</div>` +
+    (note ? `<div class="fin-note">${note}</div>` : "") + `</div>`;
+  const pace = !p.left ? cell("At your current pace", "Done", "ok") : p.finish ?
+    cell("At your current pace", `${MONTHS[p.finish.getMonth()]} ${p.finish.getFullYear()}`, ok ? "ok" : "warn", `${p.n} in the last ${p.weeks} week${p.weeks === 1 ? "" : "s"}`) :
+    cell("At your current pace", "–", "", "Log a few to estimate");
+  const months = Math.round(p.monthsLeft);
+  const need = !p.left ? cell("Left to log", "None", "ok") :
+    cell("To finish on time", `${p.perMonth} a month`, "", `${p.left} left · ${months} month${months === 1 ? "" : "s"}`);
+  const paceW = !p.left ? now : p.finish ? at(p.finish) : 0, over = p.finish && (p.finish - p.t0) / span > 1;
+  const status = !p.left ? "Every required observation is logged." : p.behind > 0 ? `Behind an even pace by ${p.behind}.` : "Ahead of an even pace.";
+  return `<section class="sec"><div class="sec-head"><h2>Finish line</h2><span class="mono">Goal ${MONTHS[p.t1.getMonth()]} ${p.t1.getDate()}, ${p.t1.getFullYear()}</span></div>` +
+    `<div class="card finish"><div class="fin-grid">${pace}${need}</div>` +
+    `<div class="lanes" aria-hidden="true"><div class="lane-lbl mono"><span>Done</span><span>Pace</span></div>` +
+    `<div class="lane-area"><div class="lane-bar"><i class="plan" style="width:${p.logged / p.req * GOAL}%"></i></div>` +
+    `<div class="lane-bar">${paceW ? `<i class="pace${ok ? " ok" : ""}${over ? " over" : ""}" style="width:${paceW}%"></i>` : ""}</div>` +
+    `<span class="goal-line" style="left:${GOAL}%"></span><span class="today-line" style="left:${now}%"></span>` +
+    `<div class="axis mono"><span>${MONTHS[p.t0.getMonth()]} ${p.t0.getFullYear()}</span>` +
+    (now > 22 && now < GOAL - 14 ? `<span class="t" style="left:${now}%">Today</span>` : "") +
+    `<span style="left:${GOAL}%">${MONTHS[p.t1.getMonth()]} ${p.t1.getDate()}</span></div></div></div>` +
+    `<p class="fin-goal">${status} Done reaches the goal line when everything is logged; keep it ahead of Today.</p></div></section>`;
+}
+
 // ---- Settings ---------------------------------------------------------------------------------------
 function felSetHTML() {
-  return `<div class="setgrp"><div class="set-h mono"><span>Entrada</span></div><div class="card pad">` +
+  const g = Store.state.goal || felGoalFor("pgy4", getToday());
+  return `<div class="setgrp"><div class="set-h mono"><span>Finish line</span></div><div class="card pad felgoal">` +
+    felGoalFieldsHTML(g, "felgoalyear", "goalby") + `</div></div>` +
+    // A calendar event, not a push: it needs no server, and it fires even when the app stays closed.
+    `<div class="setgrp"><div class="set-h mono"><span>Reminder</span></div><div class="card pad">` +
+    `<a class="btn" href="reminder.ics" target="_blank" rel="noopener">${ic("bell")}Add a reminder to my calendar</a>` +
+    `<p class="bnote mono">Every second Wednesday, 8 AM</p></div></div>` +
+    `<div class="setgrp"><div class="set-h mono"><span>Entrada</span></div><div class="card pad">` +
     `<button class="btn" data-action="felagain">${ic("epas")}Catch up from Entrada</button>` +
     `<p class="bnote mono">Adds approved observations; never removes any</p></div></div>`;
 }
@@ -124,7 +203,9 @@ function felSetHTML() {
 function felDispatch(act, d) {
   const s = felSetup;
   if (act === "felagain") { setSheet = null; felStart(true); window.scrollTo(0, 0); return; }
+  if (act === "felgoalyear") { Store.state.goal = felGoalFor(d.year, getToday()); Store.save(); return; }
   if (!s) return;
+  if (act === "felyear") { s.goal = felGoalFor(d.year, getToday()); return; }
   if (act === "felnext") { s.step = 2; window.scrollTo(0, 0); }
   else if (act === "felback") { s.step = 1; window.scrollTo(0, 0); }
   else if (act === "felcancel") felSetup = null;
@@ -137,7 +218,11 @@ function felDispatch(act, d) {
 }
 // The name box keeps what is typed without a redraw, so the keyboard stays up.
 function felField(t) {
-  if (!felSetup || !t.dataset || t.dataset.fel !== "name") return false;
-  felSetup.name = t.value;
+  const k = t.dataset && t.dataset.fel, iso = /^\d{4}-\d{2}-\d{2}$/.test(t.value || "");
+  if (!k) return false;
+  if (k === "goalby") { if (iso && Store.state.goal) { Store.state.goal = {...Store.state.goal, by: t.value}; Store.save(); } return true; }
+  if (!felSetup) return true;
+  if (k === "name") felSetup.name = t.value;
+  else if (k === "by" && iso) felSetup.goal.by = t.value;
   return true;
 }

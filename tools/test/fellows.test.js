@@ -157,3 +157,39 @@ test("Guides and Trials show no rotation chip in the fellows' edition", () => {
   h.click("guidestab", {tab: "t"});
   assert.doesNotMatch(h.html(), /data-chip="block"/);
 });
+
+test("finish line: the year sets a first finish date at setup, and it can be changed", () => {
+  const h = fellow();
+  assert.match(h.html(), /Finish every EPA by<input type="date" data-fel="by" min="2026-07-01" value="2027-12-31">/);
+  assert.match(h.html(), /18 months is a good target for a PGY-4/);
+  h.click("felyear", {year: "pgy5"});
+  assert.match(h.html(), /data-fel="by" min="2025-07-01" value="2027-03-31"/);
+  h.run(`felField({dataset: {fel: "by"}, value: "2027-02-28"})`);
+  h.run(`felField({dataset: {fel: "by"}, value: ""})`);
+  h.click("felnext");
+  h.click("feldone");
+  assert.deepEqual(h.saved().goal, {year: "pgy5", start: "2025-07-01", by: "2027-02-28"});
+  // Settings: the year resets the date to that year's first guess; the date can then be moved.
+  h.click("setopen");
+  assert.match(h.html(), /Finish line<\/span>[\s\S]*data-action="felgoalyear" data-year="pgy5" aria-pressed="true"/);
+  assert.match(h.html(), /<a class="btn" href="reminder\.ics" target="_blank" rel="noopener">[\s\S]*?Add a reminder to my calendar<\/a>/);
+  h.click("felgoalyear", {year: "pgy4"});
+  assert.deepEqual(h.saved().goal, {year: "pgy4", start: "2026-07-01", by: "2027-12-31"});
+  h.run(`felField({dataset: {fel: "goalby"}, value: "2027-09-30"})`);
+  assert.equal(h.saved().goal.by, "2027-09-30");
+});
+
+test("finish line on Home: what is left, a month's worth, the pace, against an even line", () => {
+  const pre = n => Array.from({length: n}, () => obs("", {pre: true}));
+  const st = setUp({d1: pre(4), d2a: pre(2), d2b: pre(4), f1a: pre(2), f2: pre(2), f3a: pre(6), f1b: many(10, "2026-09-20")});
+  st.goal = {year: "pgy4", start: "2026-07-01", by: "2027-12-31"};
+  const html = fellow({state: st}).html();
+  assert.match(html, /<h2>Finish line<\/h2><span class="mono">Goal Dec 31, 2027<\/span>/);
+  // 30 of 139 logged, 10 of them dated in the last 8 weeks: 109 left at 1.25 a week lands in June 2028.
+  assert.match(html, /<div class="fin-val warn">Jun 2028<\/div><div class="fin-note">10 in the last 8 weeks<\/div>/);
+  assert.match(html, /<div class="fin-val">8 a month<\/div><div class="fin-note">109 left · 15 months<\/div>/);
+  assert.match(html, /Ahead of an even pace\./);
+  assert.match(html, /<i class="plan" style="width:18\.1/);
+  // Set up before there was a finish date: Home asks for one.
+  assert.match(fellow({state: setUp()}).html(), /Pick a finish date/);
+});

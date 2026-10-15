@@ -1133,6 +1133,9 @@ a.src:active { background: var(--wall-3); }
 .felscope > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .felscope b { font-weight: 520; }
 .felscope span span { font-size: 13.5px; color: var(--dim); line-height: 1.4; }
+.felyear { margin-top: 8px; }
+.felhint { margin: 8px 2px 0; font-size: 13px; color: var(--dim); }
+.felgoal > .lbl:first-child { margin-top: 0; }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }

@@ -49,4 +49,17 @@ manifest.description = DESCRIPTION;
 fs.writeFileSync(path.join(OUT, "manifest.webmanifest"), JSON.stringify(manifest, null, 2) + "\n");
 
 fs.writeFileSync(path.join(OUT, "robots.txt"), "User-agent: *\nDisallow: /\n");
+
+// The reminder Settings links to: one event every second Wednesday at 8 AM
+// phone time (no time zone, so it follows the phone), with an alert. Opening it
+// on an iPhone offers "Add All" to Calendar; it then fires with the app closed.
+const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//GI Hub//Fellows//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+  "BEGIN:VEVENT", "UID:epa-reminder@gi-hub-fellows", "DTSTAMP:20261014T120000Z",
+  "DTSTART:20261021T080000", "DTEND:20261021T081500", "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE",
+  "SUMMARY:EPAs: ask for one this week",
+  "DESCRIPTION:Ask staff for an EPA this week\\, then log it in GI Hub. Forms pending 14+ days are on Home.",
+  "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:EPAs: ask for one this week", "TRIGGER:PT0M", "END:VALARM",
+  "END:VEVENT", "END:VCALENDAR"];
+fs.writeFileSync(path.join(OUT, "reminder.ics"), ics.join("\r\n") + "\r\n");
+fs.writeFileSync(path.join(OUT, "_headers"), "/reminder.ics\n  Content-Type: text/calendar; charset=utf-8\n");
 console.log(`fellows build: ${fs.readdirSync(OUT, {recursive: true}).length} files in ${OUT}`);

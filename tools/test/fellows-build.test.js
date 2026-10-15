@@ -27,6 +27,14 @@ test("the fellows' build: every cached file, the switch before any script, no st
     assert.equal(/const CACHE = "(epa-v\d+)"/.exec(sw)[1], /const CACHE = "(epa-v\d+)"/.exec(fs.readFileSync(path.join(ROOT, "sw.js"), "utf8"))[1]);
     assert.match(fs.readFileSync(path.join(out, "manifest.webmanifest"), "utf8"), /GI fellows/);
     assert.ok(!fs.existsSync(path.join(out, "tools")) && !fs.existsSync(path.join(out, "docs")));
+    // The calendar reminder: every second Wednesday from a Wednesday, with an alert, CRLF lines, served as a calendar.
+    const ics = fs.readFileSync(path.join(out, "reminder.ics"), "utf8");
+    assert.ok(ics.split("\r\n").length > 15 && !/[^\r]\n/.test(ics));
+    assert.match(ics, /\r\nRRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE\r\n/);
+    assert.match(ics, /\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\n/);
+    const start = /DTSTART:(\d{4})(\d{2})(\d{2})T080000/.exec(ics);
+    assert.equal(new Date(+start[1], +start[2] - 1, +start[3]).getDay(), 3);
+    assert.match(fs.readFileSync(path.join(out, "_headers"), "utf8"), /\/reminder\.ics\n  Content-Type: text\/calendar/);
   } finally {
     fs.rmSync(out, {recursive: true, force: true});
   }
