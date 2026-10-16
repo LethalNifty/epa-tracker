@@ -21,7 +21,10 @@ self.addEventListener("activate", e => {
 // phone when it's offline.
 const LIVE = ["/studyq.json", "/guides.json"];
 self.addEventListener("fetch", e => {
-  const path = new URL(e.request.url).pathname;
+  const url = new URL(e.request.url), path = url.pathname;
+  // Only this app's own files: another site (the fellows' codes the full app
+  // asks about) and anything but a plain GET go straight to the network.
+  if (e.request.method !== "GET" || url.origin !== new URL(self.registration.scope).origin) return;
   // Settings asks the server which version it serves by reading sw.js, and the
   // fellows' app asks whether its invite code still works at /__access; those
   // answers must never come from, or be kept in, this cache.

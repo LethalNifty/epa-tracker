@@ -217,8 +217,21 @@ function worker(brief) {
 test("the service worker never answers for its own script, so Settings' update check reads the live one", async () => {
   const w = worker();
   const answered = [];
-  const ask = url => w.handlers.fetch({request: {url}, respondWith: p => answered.push(url)});
+  const ask = url => w.handlers.fetch({request: {url, method: "GET"}, respondWith: p => answered.push(url)});
   ask("https://lethalnifty.github.io/epa-tracker/sw.js");
+  assert.deepEqual(answered, []);
+  ask("https://lethalnifty.github.io/epa-tracker/app.js");
+  assert.deepEqual(answered, ["https://lethalnifty.github.io/epa-tracker/app.js"]);
+  await new Promise(r => setTimeout(r, 5));
+});
+
+test("the service worker leaves other sites and anything but GET alone, so the fellows' codes are never a stale copy", async () => {
+  const w = worker();
+  const answered = [];
+  const ask = (url, method = "GET") => w.handlers.fetch({request: {url, method}, respondWith: p => answered.push(url)});
+  ask("https://gi-hub-fellows.pages.dev/__0123456789abcdef01234567");
+  ask("https://gi-hub-fellows.pages.dev/__0123456789abcdef01234567", "POST");
+  ask("https://lethalnifty.github.io/epa-tracker/app.js", "POST");
   assert.deepEqual(answered, []);
   ask("https://lethalnifty.github.io/epa-tracker/app.js");
   assert.deepEqual(answered, ["https://lethalnifty.github.io/epa-tracker/app.js"]);
