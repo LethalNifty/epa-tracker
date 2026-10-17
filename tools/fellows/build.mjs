@@ -5,10 +5,11 @@
 //   node tools/fellows/build.mjs [outDir]
 //
 // The same files as the full app, minus the study questions and the owner's
-// watch on the codes (watch.js), with three changes:
+// watch on the codes (watch.js), with four changes:
 // index.html sets window.GI_EDITION = "fellows" before any script runs and asks
 // search engines to stay away; sw.js stops caching studyq.json; the manifest
-// describes the fellows' edition. robots.txt keeps crawlers out too.
+// describes the fellows' edition; app.css loses the styles for the owner's list
+// of codes. robots.txt keeps crawlers out too.
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -44,6 +45,11 @@ html = must(html, "<body>\n", `<body>\n<script>window.GI_EDITION = "fellows";</s
 html = must(html, /<meta name="description" content="[^"]*">/.exec(html)?.[0] ?? "<meta name=\"description\"",
   `<meta name="description" content="${DESCRIPTION}">\n<meta name="robots" content="noindex, nofollow">`, "the description");
 fs.writeFileSync(path.join(OUT, "index.html"), html);
+
+// Nothing of the owner's list of codes reaches the fellows, not even its styles:
+// the block from its heading comment to the next blank line.
+const css = read("app.css"), codes = /\/\* Fellows' codes [^*]*\*\/\n[\s\S]*?\n\n/.exec(css);
+fs.writeFileSync(path.join(OUT, "app.css"), must(css, codes ? codes[0] : "/* Fellows' codes", "", "the codes styles in app.css"));
 
 fs.writeFileSync(path.join(OUT, "sw.js"), must(must(sw, ` "studyq.json",`, "", "studyq.json in ASSETS"), ` "watch.js",`, "", "watch.js in ASSETS"));
 

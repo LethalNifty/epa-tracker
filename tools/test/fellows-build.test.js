@@ -24,6 +24,16 @@ test("the fellows' build: every cached file, the switch before any script, no st
     // The owner's watch on the codes never reaches the fellows.
     assert.ok(!assets.includes("watch.js") && !fs.existsSync(path.join(out, "watch.js")));
     assert.doesNotMatch(html, /watch\.js/);
+    // Not even the styles for the owner's list of codes.
+    const css = fs.readFileSync(path.join(out, "app.css"), "utf8");
+    assert.doesNotMatch(css, /Fellows' codes|\.watch/);
+    assert.match(css, /\.pick \.pn/, "the rest of the stylesheet is still there");
+    // No file in the build carries the owner's admin: the fellows' site address it
+    // asks, the saved key, the hidden owner path, the key field or the codes list.
+    const walk = d => fs.readdirSync(d, {withFileTypes: true}).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+    for (const f of walk(out).filter(f => /\.(js|css|html|json|webmanifest|txt|ics)$|_headers$/.test(f)))
+      assert.doesNotMatch(fs.readFileSync(f, "utf8"), /WATCH_SITE|gi-watch-v1|gi-owner|watchPathFor|Admin key|Fellows' codes|GI_ADMIN/,
+        "admin in " + path.relative(out, f));
     assert.ok(!fs.existsSync(path.join(out, "studyq.json")));
     for (const f of assets) if (f !== "./") assert.ok(fs.existsSync(path.join(out, f)), "missing " + f);
     // The version the Settings check reads is the full app's.
