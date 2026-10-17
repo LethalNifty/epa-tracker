@@ -1167,6 +1167,42 @@ a.src:active { background: var(--wall-3); }
 .watchnew .textbtn { justify-self: start; padding: 0; }
 .watchalert b { font-weight: 600; }
 
+/* Next pass: the log sheet's named chips and the picked EPA in full, Log
+   another on the save toast, spare forms in the chase list, the weekday note on
+   What to ask for, the EPAs list in short names, and the pace under the dial. */
+.pick .pn { margin-left: 6px; font-family: var(--sans); font-weight: 480; color: var(--light); }
+.pick.on .pn { color: inherit; }
+.picked { margin: 10px 2px 0; font-size: 13px; line-height: 1.4; color: var(--dim); }
+.picked b { font: 500 13px/1 var(--mono); color: var(--nbi-ink); margin-right: 2px; }
+.toast.next { flex-wrap: wrap; row-gap: 0; padding-bottom: 2px; }
+.toastnext { flex-basis: 100%; display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; padding: 0 6px 0 0;
+  border-top: 1px solid rgba(235, 201, 255, .14); color: var(--nbi-ink); font-weight: 540; }
+.toastnext .ic { width: 16px; height: 16px; stroke-width: 2.2; }
+.toastnext small { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--dim); }
+.crow.spare .cmain { opacity: .55; }
+.sparetag { font-size: 11px; color: var(--faint); margin-right: 2px; }
+.sec-head .mono.auto { color: var(--nbi-ink); }
+.asklook { margin: 14px 2px 8px; }
+.elist { overflow: hidden; margin-bottom: 8px; }
+.eli { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 54px; padding: 10px 14px; border-top: 1px solid var(--fold);
+  transition: background .15s; }
+.eli:first-child { border-top: 0; }
+.eli:active { background: var(--wall-2); }
+.ering { flex: none; width: 26px; height: 26px; transform: rotate(-90deg); }
+.ering circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+.ering .rb { stroke: var(--fold-2); }
+.ering .ra { stroke: var(--c); }
+.ering .rp { stroke: var(--capillary); }
+.ecode { flex: 0 0 30px; font: 500 14px/1 var(--mono); color: var(--c); }
+.emid { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.ename { font-size: 15px; font-weight: 450; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.etags { display: flex; flex-wrap: wrap; gap: 5px; }
+.ecount { flex: 0 0 auto; min-width: 38px; text-align: right; font: 500 13px/1 var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; }
+.ecount.done { color: var(--nbi-ink); }
+.dial-pace { display: table; margin: 2px auto 12px; padding: 5px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; }
+.dial-pace.ok { color: var(--offlabel); background: var(--offlabel-wash); }
+.dial-pace.warn { color: var(--capillary); background: var(--capillary-wash); }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

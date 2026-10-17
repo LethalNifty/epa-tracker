@@ -15,6 +15,11 @@ const Store = {
   migrate() {
     delete this.state.celebrated;
     if (this.state.recapSeen === undefined) this.state.recapSeen = null;
+    // What to ask for: a setting saved before it had a day counts as today's pick.
+    if (this.state.ask && !this.state.askOn) this.state.askOn = fmtDate(getToday());
+    const ad = this.state.askDays;
+    this.state.askDays = {};
+    if (ad && typeof ad === "object") for (const k in ad) if (ASK.some(x => x.id === ad[k])) this.state.askDays[k] = ad[k];
     const sd = this.state.study;
     this.state.study = {log: sd && typeof sd.log === "object" && sd.log ? sd.log : {},
       q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : [],
@@ -84,7 +89,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -301,19 +306,25 @@ function warningsHTML(today) {
   return h;
 }
 let toast = null, toastFresh = false, toastTimer = null;
-function showToast(msg, undo) {
-  toast = {msg, undo: undo || null};
+// next: after logging an observation, {d, a, ask} for Log another (stays up longer).
+function showToast(msg, undo, next) {
+  toast = {msg, undo: undo || null, next: next || null};
   toastFresh = true;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast = null;
     const el = document.getElementById("toast");
     if (el) el.remove();
-  }, 5000);
+  }, next ? 8000 : 5000);
 }
 function toastHTML() {
-  return `<div class="toast${toastFresh ? " fresh" : ""}" id="toast" role="status">${ic("check")}<span>${esc(toast.msg)}</span>` +
-    (toast.undo ? `<button class="textbtn" data-action="undo">Undo</button>` : "") + `</div>`;
+  const nx = toast.next, today = getToday();
+  const when = nx && (nx.d === fmtDate(today) ? "today"
+    : nx.d === fmtDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)) ? "yesterday" : dayLabel(nx.d));
+  return `<div class="toast${nx ? " next" : ""}${toastFresh ? " fresh" : ""}" id="toast" role="status">${ic("check")}<span>${esc(toast.msg)}</span>` +
+    (toast.undo ? `<button class="textbtn" data-action="undo">Undo</button>` : "") +
+    (nx ? `<button class="toastnext" data-action="another">${ic("plus")}${nx.a ? "Another with " + esc(nx.a) : "Log another"}<small>${esc(when)}</small></button>` : "") +
+    `</div>`;
 }
 function markSVG(size) {
   const n = 44, lit = 17, c = 32, step = 2 * Math.PI / n;
@@ -343,7 +354,16 @@ function monitorHTML(today, cur) {
     `<div class="dial-wrap arc">${dialSVG(stageSegs(cur), {size: 320, r2: 138, r1: 114, r1off: 125, gap: 3, rings: [153], arc: true, cls: liveBootClass() ? "intro" : ""})}` +
     `<div class="dial-center"><div class="dial-num" data-count="${t.logged}">${t.logged}</div><div class="dial-lbl">of ${t.req} logged</div>` +
     (cur ? `<div class="dial-sub mono st-${cur}">${STAGE_NAMES[cur]} ${curT.logged}/${curT.req}</div>` : `<div class="dial-sub mono">Every stage logged</div>`) +
-    `</div></div><div class="ov mono"><span class="ok">${t.approved} approved</span><span class="pend">${t.pending} pending</span></div></div></section>`;
+    `</div></div>` + (FELLOWS ? "" : paceLineHTML(today)) +
+    `<div class="ov mono"><span class="ok">${t.approved} approved</span><span class="pend">${t.pending} pending</span></div></div></section>`;
+}
+// Under the dial: when the last weeks' pace would finish, against the June 30 goal.
+const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function paceLineHTML(today) {
+  const p = paceFinish(Store.state.obs, today);
+  if (!p.date) return "";
+  const when = LONG_MONTHS[p.date.getMonth()] + " " + p.date.getFullYear();
+  return p.onTrack ? `<div class="dial-pace ok">On pace for ${when}</div>` : `<div class="dial-pace warn">At this pace: ${when} · goal June 30</div>`;
 }
 function stagesHTML(cur) {
   return `<div class="stages">` + STAGE_ORDER.map(st => {
@@ -383,14 +403,25 @@ function thisWeekHTML(rows, stage) {
   }
   return h + `</div></section>`;
 }
+// Where you are today: what you picked today; on call, Ward and call;
+// otherwise where you were the last time it was this weekday.
+const ASK_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function askToday(today, cs) {
+  const st = Store.state;
+  if (st.askOn === fmtDate(today)) return {set: st.ask || null, why: "pick"};
+  if (cs && cs.cur) return {set: "ward", why: "call"};
+  const set = (st.askDays || {})[today.getDay()] || null;
+  return {set, why: set ? "day" : null};
+}
 // What to ask for where you are today: tap where, see the EPAs that suit it and
 // the checklist lines still open; a row opens the log sheet with the setting ticked.
-function askHTML() {
-  const cur = Store.state.ask || null;
-  let h = `<section class="sec ask"><div class="sec-head"><h2>What to ask for</h2><span class="mono">Where are you today?</span></div>` +
+// Before you pick, the cases this week still needs (look: lookFor's list).
+function askHTML(a, look) {
+  const cur = a.set, note = a.why === "day" ? `Like last ${ASK_DAYS[getToday().getDay()]}` : a.why === "call" ? "On call now" : "Where are you today?";
+  let h = `<section class="sec ask"><div class="sec-head"><h2>What to ask for</h2><span class="mono${a.why === "day" || a.why === "call" ? " auto" : ""}">${note}</span></div>` +
     `<div class="pickrow askset">` + ASK.map(s => `<button class="pick ghost${cur === s.id ? " on" : ""}" data-action="askset" data-set="${s.id}" ` +
       `aria-pressed="${cur === s.id}">${s.n}</button>`).join("") + `</div>`;
-  if (!cur) return h + `</section>`;
+  if (!cur) return h + (look.length ? `<div class="lbl mono asklook">Cases you still need</div>` + lookRowsHTML(look) : "") + `</section>`;
   const rows = askRows(cur, Store.state.obs, id => Store.lineVal(id));
   if (!rows.length) return h + `<div class="card empty">Everything that suits this is logged.</div></section>`;
   const left = g => g.total - g.done > 1 ? ` ×${g.total - g.done}` : "";
@@ -400,25 +431,28 @@ function askHTML() {
       `${r.open.length > 5 ? ` · ${r.open.length - 5} more` : ""}</span>` : "") +
     `</span><span class="wn">${r.logged}/${r.required}</span></button>`).join("") + `</div></section>`;
 }
-function lookHTML(items) {
-  return `<section class="sec"><div class="sec-head"><h2>Look for</h2><span class="mono">Cases you still need</span></div><div class="card list">` +
+function lookRowsHTML(items) {
+  return `<div class="card list">` +
     items.map(x => `<button class="lrow" data-action="open" data-code="${PART_BY_ID[x.pid].code}">${ic("target")}` +
       `<span class="wname">${esc(x.name)}</span><span class="cc sm st-${PART_BY_ID[x.pid].stage}">${x.part}</span>` +
-      (x.left > 1 ? `<span class="wn">×${x.left}</span>` : "") + `</button>`).join("") + `</div></section>`;
+      (x.left > 1 ? `<span class="wn">×${x.left}</span>` : "") + `</button>`).join("") + `</div>`;
 }
+// A spare (a form the EPA no longer needs) is listed last and not counted.
 function chaseHTML(list) {
+  const n = list.filter(c => !c.spare).length;
   return `<section class="sec"><details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
-    `<b>${list.length} form${list.length > 1 ? "s" : ""} pending 14+ days</b><span class="mono">Entrada</span>${ic("chev", "chev")}</summary>` +
-    list.map(c => {
+    `<b>${n} form${n > 1 ? "s" : ""} pending 14+ days</b><span class="mono">Entrada</span>${ic("chev", "chev")}</summary>` +
+    [...list.filter(c => !c.spare), ...list.filter(c => c.spare)].map(c => {
       // No assessor on the form: the scope log may know who it was with.
       const sc = Store.state.scopes, g = c.a ? {ids: []} : scopeStaffOn(sc.cases, c.date, c.pid);
       const names = g.ids.map(id => scopeStaffName(sc.staff, id)).filter(Boolean).slice(0, 2);
       const who = c.a ? esc(scopeBare(c.a)) : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
       const note = c.n.startsWith(SCOPE_EPA_NOTE) ? c.n.slice(SCOPE_EPA_NOTE.length) : c.n;
-      return `<div class="crow"><button class="cmain" data-action="sheet" data-part="${c.pid}" data-obs="${c.i}" data-chase="1"` +
+      return `<div class="crow${c.spare ? " spare" : ""}"><button class="cmain" data-action="sheet" data-part="${c.pid}" data-obs="${c.i}" data-chase="1"` +
         `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
         `<span class="cmeta"><b>${esc(PART_SHORT[c.pid] || "")}</b>` +
         `<span class="cwho"><span class="num">${esc(scopeShortDate(c.date))}</span> · ${who}${note ? " · " + esc(note) : ""}</span></span></button>` +
+        (c.spare ? `<span class="sparetag mono">Spare</span>` : "") +
         `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`;
     }).join("") +
     `</details></section>`;
@@ -447,7 +481,16 @@ function finishHTML(pace, plan, today) {
     `<span style="left:${goal}%">Jun 30</span></div></div></div>` +
     `<p class="fin-goal">Goal: everything logged by Jun 30, 2027.</p></div></section>`;
 }
-// On call, the Call panel leads the page; otherwise the Call card follows This week.
+// What Week puts first under the dial: on a call day from noon until the shift
+// starts, the Call card; on a reading night from 17:00 until its pages are read,
+// Study; otherwise What to ask for.
+function weekLead(now, cs) {
+  const d = new Date(now), nx = cs.next;
+  if (!cs.cur && nx && new Date(nx.s).toDateString() === d.toDateString() && d.getHours() >= 12) return "call";
+  if (d.getHours() >= 17 && studyDueTonight()) return "study";
+  return "ask";
+}
+// On call, the Call panel leads the page; otherwise Week follows the day (weekLead).
 // Week keeps to today: the finish line is on Year plan.
 function viewWeek() {
   if (FELLOWS) return felHomeHTML();
@@ -463,18 +506,19 @@ function viewWeek() {
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
       (cs.cur ? "" : callCardHTML(cs, now)) + remindRowHTML();
   }
-  const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
-  h += thisWeekHTML(rows, cp.active) + askHTML() + studyCardHTML();
+  const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today), lead = weekLead(now, cs);
+  const part = {ask: askHTML(askToday(today, cs), lookFor(rows, id => Store.lineVal(id))), week: thisWeekHTML(rows, cp.active),
+    study: studyCardHTML(), call: cs.cur ? "" : callCardHTML(cs, now)};
+  if (lead !== "ask") h += part[lead];
+  h += part.ask + part.week + (lead === "study" ? "" : part.study);
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
   }
-  if (!cs.cur) h += callCardHTML(cs, now);
+  if (lead !== "call") h += part.call;
   h += remindRowHTML();
-  const look = lookFor(rows, id => Store.lineVal(id));
-  if (look.length) h += lookHTML(look);
   const chase = chaseList(obsBy, today);
-  if (chase.length) h += chaseHTML(chase);
+  if (chase.some(c => !c.spare)) h += chaseHTML(chase);
   return h;
 }
 
@@ -489,6 +533,24 @@ function epaRowHTML(e, focus) {
     `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span></span>` +
     `<span class="epa-count${t.approved >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
 }
+// The full app's EPA row: a ring (approved in the stage colour, pending in
+// peach), the code, the short name, tags and the count; the EPA's page has the
+// Royal College title.
+function epaItemHTML(e, focus) {
+  const t = tally(PARTS.filter(P => P.code === e.code)), C = 2 * Math.PI * 9;
+  const pend = e.parts.reduce((a, pt) => a + Store.partPending(pt.id), 0);
+  const arc = (n, from, cls) => n ? `<circle class="${cls}" cx="12" cy="12" r="9" stroke-dasharray="${(C * n / t.req).toFixed(2)} ${C.toFixed(2)}"` +
+    ` stroke-dashoffset="${(-C * from / t.req).toFixed(2)}"/>` : "";
+  return `<button class="eli st-${e.stage}" data-action="open" data-code="${e.code}" aria-label="${e.code}: ${esc(e.title)}">` +
+    `<svg class="ering" viewBox="0 0 24 24" aria-hidden="true"><circle class="rb" cx="12" cy="12" r="9"/>${arc(t.approved, 0, "ra")}${arc(t.pending, t.approved, "rp")}</svg>` +
+    `<span class="ecode">${e.code}</span><span class="emid"><span class="ename">${esc(epaShort(e))}</span>` +
+    (focus.includes(e.code) || pend ? `<span class="etags">${focus.includes(e.code) ? `<span class="tag">this block</span>` : ""}` +
+      `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span>` : "") + `</span>` +
+    `<span class="ecount${t.approved >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
+}
+// One stage's EPAs: a single list in the full app, a card each in the fellows' edition.
+const epaListHTML = (list, focus) => !list.length ? "" : FELLOWS ? list.map(e => epaRowHTML(e, focus)).join("")
+  : `<div class="card elist">${list.map(e => epaItemHTML(e, focus)).join("")}</div>`;
 // EPAs and the year plan share a tab, with a switch under the header.
 function epaSwitchHTML(on) {
   const b = (page, label) => `<button class="${on === page ? "on" : ""}" data-action="tab" data-page="${page}"` +
@@ -513,8 +575,8 @@ function viewEpas() {
       (st === "ttd" && state !== "done" && !FELLOWS ? `<p class="stagenote">${ic("forward")}<span>Earlier stage: the coach won't suggest these. ` +
         `Log anything Entrada has that's missing here so your totals match.</span></p>` : "") +
       (state === "locked" ? `<p class="stagenote">${ic("lock")}<span>${LOCK_NOTE[st]} You can still log these any time.</span></p>` : "") +
-      list.filter(e => !done.includes(e)).map(e => epaRowHTML(e, focus)).join("");
-    if (done.length) h += `<details class="donegrp"><summary>${ic("chev")}Done (${done.length})</summary>${done.map(e => epaRowHTML(e, focus)).join("")}</details>`;
+      epaListHTML(list.filter(e => !done.includes(e)), focus);
+    if (done.length) h += `<details class="donegrp"><summary>${ic("chev")}Done (${done.length})</summary>${epaListHTML(done, focus)}</details>`;
     h += `</section>`;
   }
   return h;
@@ -708,6 +770,11 @@ const plusShows = k => !plusOn || plusOn === k;
 
 // ---- Log sheet -----------------------------------------------------------------
 let sheet = null, sheetError = null, sheetFresh = false;
+// A What to ask for setting's own checklist line (outpatient, inpatient), when the part still needs it.
+function askPreTick(pid, askId) {
+  const ask = askId && ASK.find(x => x.id === askId);
+  return ask && ask.pre && pid && checklistGroups(pid, id => Store.lineVal(id)).some(g => g.name === ask.pre && g.done < g.total) ? [ask.pre] : [];
+}
 function openSheet(pid, i) {
   const o = pid && i !== undefined && Store.state.obs[pid] && Store.state.obs[pid][+i];
   sheet = o
@@ -725,9 +792,11 @@ function saveSheet() {
   const tk = mode === "new" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
   if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
+  // Log another: same day and assessor, and the same What to ask for setting (the full app).
+  const next = mode === "new" && !FELLOWS ? {d: sheet.d, a: meta.a, ask: sheet.ask || null} : null;
   sheet = null; sheetError = null;
   if (mode === "new") showToast(`${PART_BY_ID[pid].label} logged as ${status}${tk.length ? `, ${tk.length} checklist line${tk.length > 1 ? "s" : ""} ticked` : ""}`,
-    () => { Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); });
+    () => { Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); }, next);
   else showToast("Changes saved");
 }
 // Every assessor name used so far, most recently logged first, one spelling each.
@@ -752,7 +821,9 @@ function suggHTML(typed) {
 }
 function sheetHTML() {
   const s = sheet, today = getToday();
-  const chip = pid => `<button class="pick st-${PART_BY_ID[pid].stage}${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">${PART_BY_ID[pid].label}</button>`;
+  // The full app names each EPA beside its code, and the picked one in full.
+  const chip = pid => `<button class="pick st-${PART_BY_ID[pid].stage}${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">` +
+    (FELLOWS ? PART_BY_ID[pid].label : `<span class="pc">${PART_BY_ID[pid].label}</span><span class="pn">${esc(PART_SHORT[pid] || "")}</span>`) + `</button>`;
   let picker;
   if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
   else {
@@ -781,6 +852,7 @@ function sheetHTML() {
     `<div class="sheet${sheetFresh ? " fresh" : ""}" role="dialog" aria-modal="true" aria-label="${edit ? "Edit" : "Log"} observation">` +
     (plusOn ? plusHeadHTML("closesheet") : `<div class="grab"></div><div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
       `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>`) + picker +
+    (!FELLOWS && s.pid ? `<div class="picked"><b>${PART_BY_ID[s.pid].label}</b> ${esc(partTitle(s.pid))}</div>` : "") +
     `<label class="lbl mono">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
@@ -940,18 +1012,27 @@ function dispatch(act, d) {
   else if (act === "sheet") {
     scopeSheet = null; openSheet(d.part, d.obs);
     // From What to ask for: the setting's own line (outpatient, inpatient) is ticked to start.
-    const ask = d.ask && ASK.find(x => x.id === d.ask);
-    if (ask && ask.pre && sheet.mode === "new" && checklistGroups(d.part, id => Store.lineVal(id)).some(g => g.name === ask.pre && g.done < g.total))
-      sheet.tick = [ask.pre];
+    if (d.ask && sheet.mode === "new") { sheet.ask = d.ask; sheet.tick = askPreTick(d.part, d.ask); }
     // From the pending list: it stays open behind the sheet, and the scope log's guess is offered.
     if (d.chase) chaseOpen = true;
     if (d.a && sheet.mode === "edit" && !sheet.a) sheet.a = d.a;
     route.keepScroll = true; render(); }
   else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
-  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheet.tick = []; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheet.tick = askPreTick(d.part, sheet.ask); sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "another") {
+    const nx = toast && toast.next;
+    toast = null; clearTimeout(toastTimer);
+    if (nx) { scopeSheet = null; openSheet(); sheet.d = nx.d; sheet.a = nx.a; sheet.ask = nx.ask; }
+    route.keepScroll = true; render(); }
   else if (act === "sheettick") { const t = sheet.tick ||= [], k = t.indexOf(d.name);
     if (k >= 0) t.splice(k, 1); else t.push(d.name); route.keepScroll = true; render(); }
-  else if (act === "askset") { Store.state.ask = Store.state.ask === d.set ? null : d.set; Store.save(); route.keepScroll = true; render(); }
+  else if (act === "askset") {
+    // Today's pick, remembered for this weekday; tapping the lit one clears both.
+    const today = getToday(), on = askToday(today, callStatus(CallStore.list(), callNow())).set, set = on === d.set ? null : d.set;
+    const days = Store.state.askDays || (Store.state.askDays = {});
+    Store.state.ask = set; Store.state.askOn = fmtDate(today);
+    if (set) days[today.getDay()] = set; else delete days[today.getDay()];
+    Store.save(); route.keepScroll = true; render(); }
   else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
   else if (act === "pickassessor") { sheet.a = d.name; route.keepScroll = true; render(); }
   else if (act === "sheetdate") { sheet.d = d.date; route.keepScroll = true; render(); }
@@ -1097,6 +1178,7 @@ if (window.visualViewport && window.visualViewport.addEventListener) {
 // iOS keeps the app alive in the background, so this is what opening it looks like.
 let hiddenAt = 0;
 if (document.addEventListener) document.addEventListener("visibilitychange", () => {
+  if (!FELLOWS) remindOpened();
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
   if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) watchCheck(); }
@@ -1126,7 +1208,7 @@ CallStore.load();
 render();
 // The fellows' edition has no reminders or study questions; it checks its invite code instead.
 // The full app looks in on the fellows' codes (watch.js).
-if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); }
+if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); }
 else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------

@@ -50,6 +50,8 @@ self.addEventListener("push", e => {
     const n = noticeFor(msg, brief, Date.now());
     try { await (await caches.open(BRIEF)).put("__gi-push.json", new Response(JSON.stringify({at: Date.now(), kind: msg.kind || null}))); } catch (err) {}
     await self.registration.showNotification(n.title, {body: n.body, tag: n.tag, data: {url: n.url}, icon: "icon-192.png"});
+    const count = badgeCount(brief, Date.now());
+    try { if (count && self.navigator && self.navigator.setAppBadge) await self.navigator.setAppBadge(count); } catch (err) {}
   })());
 });
 self.addEventListener("notificationclick", e => {

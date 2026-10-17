@@ -8,7 +8,7 @@ test("EPAs tab: stage groups, done EPAs folded, pending shown as text", () => {
   h.click("tab", {page: "epas"});
   const html = h.html();
   assert.match(html, /<h1 class="title">EPAs<\/h1>/);
-  assert.match(html, /<details class="donegrp"><summary>[\s\S]*?Done \(1\)<\/summary><button class="epa st-ttd" data-action="open" data-code="D1">/);
+  assert.match(html, /<details class="donegrp"><summary>[\s\S]*?Done \(1\)<\/summary><div class="card elist"><button class="eli st-ttd" data-action="open" data-code="D1"/);
   assert.match(html, /<span class="tag warn">1 pending<\/span>/);
   assert.doesNotMatch(html, /[\u23F3\u{1F680}\u{1F3C5}\u{1F512}\u{1F389}]/u);
 });
@@ -17,10 +17,10 @@ test("an EPA moves to Done only once every observation is approved, not just log
   const withD1 = list => { const h = load({today: "2026-09-24", state: state({d1: list})}); h.click("tab", {page: "epas"}); return h.html(); };
   const pending = withD1([...many(3, "2026-07-10"), obs("2026-07-11", {status: "pending"})]);
   assert.doesNotMatch(pending, /class="donegrp"/);
-  assert.match(pending, /data-code="D1">[\s\S]*?<span class="tag warn">1 pending<\/span>[\s\S]*?<span class="epa-count">4\/4<\/span>/);
+  assert.match(pending, /data-code="D1"[\s\S]*?<span class="tag warn">1 pending<\/span>[\s\S]*?<span class="ecount">4\/4<\/span>/);
   const approved = withD1(many(4, "2026-07-10"));
-  assert.match(approved, /Done \(1\)<\/summary><button class="epa st-ttd" data-action="open" data-code="D1">/);
-  assert.match(approved, /<span class="epa-count done">4\/4<\/span>/);
+  assert.match(approved, /Done \(1\)<\/summary><div class="card elist"><button class="eli st-ttd" data-action="open" data-code="D1"/);
+  assert.match(approved, /<span class="ecount done">4\/4<\/span>/);
 });
 
 test("bottom bar: Week, EPAs, Study, Endo, Guides with the log button floating; current tab highlighted", () => {
@@ -158,9 +158,9 @@ test("estimated completion shows both dates", () => {
   assert.match(h.html(), /If you hit the plan<\/div><div class="fin-val ok">Jun 30, 2027<\/div>/);
 });
 
-test("look for lists case types for this week's parts", () => {
+test("look for lists case types for this week's parts, inside What to ask for", () => {
   const h = load({today: "2026-09-24"});
-  assert.match(h.html(), /<h2>Look for<\/h2>/);
+  assert.match(h.html(), /<h2>What to ask for<\/h2>[^]*?Cases you still need/);
   assert.match(h.html(), /Upper GI tract disease/);
 });
 

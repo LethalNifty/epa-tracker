@@ -19,16 +19,18 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 
 **Week (home):**
 - the block and week ("Block 4 · Week 3 of 4")
-- a "monitor" at the top with the current stage's progress dial
+- a "monitor" at the top with the current stage's progress dial, and when the last weeks' pace would finish against June 30
+- what comes first under it follows the day: What to ask for in the daytime, tonight's reading on a reading-night evening, the Call card on a call afternoon
+- What to ask for: pick where you are (follow-ups, new patients, scopes, ward and call) for the EPAs and checklist lines that suit it; it remembers where you were on each weekday and picks Ward and call during a call shift; before you pick, it lists the cases this week still needs
 - this week's EPAs to aim for, from a coach that recalculates the block plan from what's logged
 - tonight's reading
 - the next call shift and who's on at each site
 - a weekly recap
-- a list of forms still pending in Entrada after 14+ days, so you can chase them
+- a list of forms still pending in Entrada after 14+ days, so you can chase them; a spare form (one an EPA no longer needs) is shown but not counted
 - a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, and reminders
 
 **EPAs:**
-- the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) with approved and pending against the required count
+- the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording
 - the Year plan: the block calendar and the finish line
 
 **Study** (Tonight | Plan):
@@ -49,7 +51,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - one search box that finds guidelines, trials, drugs, biopsy protocols and your pearls together
 - a weekly check adds new guidelines without an app update
 
-**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending or approved.
+**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending or approved. After saving, the toast offers Log another with the same day and assessor.
 
 **Reminders (Web Push):**
 - Monday 8 AM: the week's EPAs
@@ -57,6 +59,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - an hour before call: who's on
 - 8 PM on reading nights: tonight's pages
 - Sunday 5 PM: pearls still to send (or a nudge to catch this week's)
+- each reminder also puts a badge on the app icon for forms that passed 14 days pending since the app was last open; opening it clears the badge
 
 ## How it's built
 

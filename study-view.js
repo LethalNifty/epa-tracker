@@ -13,6 +13,11 @@ let studyRevealed = new Set();
 
 const studyDay = d => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 const studyStretchList = () => callStretches(CallStore.list());
+// Tonight is a reading night and its pages aren't read yet (Week leads with them in the evening).
+function studyDueTonight() {
+  const {t} = studyState();
+  return t.kind === "read" && !t.ahead && !t.done;
+}
 function studyState() {
   const today = getToday(), s = Store.state.study, str = studyStretchList();
   return {today, s, str, t: studyTonight(today, s, str)};

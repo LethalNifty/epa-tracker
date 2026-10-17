@@ -97,7 +97,7 @@ function felHomeHTML() {
       `<p class="eyebrow mono">GI Hub</p><h1 class="title">Home</h1>`) + `</header>`;
   h += warningsHTML(today) + monitorHTML(today, cur) + stagesHTML(cur) + felFinishHTML(today);
   const chase = chaseList(Store.state.obs, today);
-  if (chase.length) h += chaseHTML(chase);
+  if (chase.some(c => !c.spare)) h += chaseHTML(chase);
   return h + felLeftHTML(cur) + felScopeHTML();
 }
 function felLeftHTML(cur) {

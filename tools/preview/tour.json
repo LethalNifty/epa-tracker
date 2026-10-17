@@ -2,7 +2,7 @@
   {"name": "tour", "demo": true, "settle": 300, "steps": [
     {"wait": 3500, "shot": "01_week", "full": true},
     {"click": "[data-action=tab][data-page=epas]", "wait": 1200, "shot": "02_epas", "full": true},
-    {"click": ".epa", "wait": 1200, "shot": "03_epa_detail", "full": true},
+    {"click": ".eli", "wait": 1200, "shot": "03_epa_detail", "full": true},
     {"click": "[data-action=tab][data-page=study]", "wait": 1200, "shot": "04_study", "full": true},
     {"click": "[data-action=pearlsopen]", "wait": 1200, "shot": "05_pearls", "full": true},
     {"click": "[data-action=tab][data-page=endo]", "wait": 1200, "shot": "06_endo", "full": true},

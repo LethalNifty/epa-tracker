@@ -64,6 +64,8 @@ const PART_SHORT = {d1:"GI emergencies", d2a:"Consent", d2b:"Scope preparation",
   c2:"Chronic care", c3:"Exacerbations", c4:"Referrals", c5:"Complex nutrition", c6:"Colonoscopy",
   c7:"Endoscopic findings", c8a:"Therapeutics", c8b:"Therapeutic note", c9a:"Inpatient lead",
   c9b:"Interprofessional care", p1:"Endoscopy list"};
+// An EPA's short name: its one part's, or its own when it has two.
+const EPA_SHORT = {D2: "Pre-procedure assessment", F1: "Uncomplicated patients", F3: "EGD", C8: "Therapeutic endoscopy", C9: "Inpatient service"};
 // Every part in EPA order: {id, code, label, stage, required, items}.
 const PARTS = [];
 const PART_BY_ID = {};
@@ -74,6 +76,13 @@ for (const e of EPA_DATA) {
     PARTS.push(P);
     PART_BY_ID[p.id] = P;
   });
+}
+
+const epaShort = e => EPA_SHORT[e.code] || PART_SHORT[e.parts[0].id] || "";
+// A part's full Royal College title: its EPA's, then the part's own name.
+function partTitle(pid) {
+  const e = EPA_DATA.find(x => x.parts.some(p => p.id === pid)), p = e.parts.find(x => x.id === pid);
+  return e.title + (e.parts.length > 1 && p.name ? ": " + p.name.replace(/^Part [AB]:\s*/, "") : "");
 }
 
 function fmtDate(d) {
@@ -284,15 +293,30 @@ function planFinish(cp) {
   return {date, block: last, onTrack: dayIndex(date) <= dayIndex(YEAR1_END)};
 }
 
-// Pending observations more than 14 days old, oldest first.
+// A part's pending forms, oldest first, each marked spare when the EPA
+// already has enough without it: the forms still needed are the oldest ones.
+function pendingForms(P, list) {
+  let need = Math.max(0, P.required - list.filter(o => o.status === "approved").length);
+  return list.map((o, i) => ({o, i, d: attrDate(o)})).filter(x => x.o.status !== "approved" && x.d)
+    .sort((x, y) => dayIndex(x.d) - dayIndex(y.d)).map(x => ({...x, spare: need-- <= 0}));
+}
+// Pending observations more than 14 days old, oldest first. A spare isn't
+// worth chasing: it's listed, but not counted.
 function chaseList(obsByPart, today) {
   const t = dayIndex(today), out = [];
-  for (const P of PARTS) (obsByPart[P.id] || []).forEach((o, i) => {
-    const d = attrDate(o);
-    if (o.status === "approved" || !d || t - dayIndex(d) <= 14) return;
-    out.push({pid: P.id, i, label: P.label, date: fmtDate(d), a: o.a || "", n: o.n || "", age: t - dayIndex(d)});
-  });
+  for (const P of PARTS) for (const {o, i, d, spare} of pendingForms(P, obsByPart[P.id] || [])) {
+    if (t - dayIndex(d) <= 14) continue;
+    out.push({pid: P.id, i, label: P.label, date: fmtDate(d), a: o.a || "", n: o.n || "", age: t - dayIndex(d), spare});
+  }
   return out.sort((x, y) => y.age - x.age);
+}
+// When each pending form worth chasing passes 14 days (the start of its 15th
+// day), soonest first: the service worker counts these for the icon badge.
+function chaseDue(obsByPart) {
+  const out = [];
+  for (const P of PARTS) for (const {d, spare} of pendingForms(P, obsByPart[P.id] || []))
+    if (!spare) out.push(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 15).getTime());
+  return out.sort((a, b) => a - b);
 }
 
 // Context lines that say who assessed, not what case to find.

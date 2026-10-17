@@ -14,6 +14,8 @@ const REMIND_CACHE = "gi-brief";
 // Tests set window.__vapid to stand in for the key.
 const remindKey = () => window.__vapid || REMIND_VAPID;
 let remindSub = null, remindLast = null, remindErr = null, remindReady = false, remindCopied = false, remindBriefKey = "";
+// When GI Hub was last on screen: the icon badge counts only forms that passed 14 days since.
+let remindSeenAt = 0;
 
 const RemindStore = {
   state: {dismissed: false},
@@ -115,7 +117,15 @@ function remindBrief(now) {
   const study = {nights, week: studyLastWeek(day, Store.state.study, str)};
   // How many pearls wait to be sent: never their words or who said them.
   const pearls = {unsent: Store.state.pearls.filter(p => !p.sent).length};
-  return {v: 1, at: now, weeks, call, study, pearls};
+  // When each form worth chasing passes 14 days, for the icon badge: dates only.
+  return {v: 1, at: now, weeks, call, study, pearls, chase: chaseDue(Store.state.obs), seen: remindSeenAt};
+}
+// GI Hub opened or put away: clear the icon badge, and count everything up to
+// now as seen so a later reminder badges only what's new.
+function remindOpened() {
+  remindSeenAt = callNow();
+  try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); } catch (e) {}
+  remindAfterRender();
 }
 function remindAfterRender() {
   if (!remindSub || typeof caches === "undefined") return;

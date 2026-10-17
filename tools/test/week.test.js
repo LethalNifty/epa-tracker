@@ -84,14 +84,14 @@ test("plan finish is the end of the last block with anything left", () => {
   assert.equal(pf(ALL), "done");
 });
 
-test("chase list: pending more than 14 days, oldest first", () => {
+test("chase list: pending more than 14 days, oldest first (none spare: each EPA still needs them)", () => {
   const h = load({today: "2026-09-24", state: state({
     c2: [obs("2026-09-09", {status: "pending", a: "Dr. A"}), obs("2026-09-10", {status: "pending"})],
     c3: [obs("2026-08-01", {status: "pending"}), obs("2026-08-01")],
   })});
   assert.deepEqual(h.val(`chaseList(Store.state.obs, ${dateExpr("2026-09-24")})`), [
-    {pid: "c3", i: 0, label: "C3", date: "2026-08-01", a: "", n: "", age: 54},
-    {pid: "c2", i: 0, label: "C2", date: "2026-09-09", a: "Dr. A", n: "", age: 15},
+    {pid: "c3", i: 0, label: "C3", date: "2026-08-01", a: "", n: "", age: 54, spare: false},
+    {pid: "c2", i: 0, label: "C2", date: "2026-09-09", a: "Dr. A", n: "", age: 15, spare: false},
   ]);
 });
 

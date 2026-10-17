@@ -89,3 +89,9 @@ function noticeFor(msg, brief, now) {
   }
   return {title: "GI Hub", body: "Open GI Hub for this week.", tag: "gi-hub", url: "./"};
 }
+// The icon badge: forms worth chasing that passed 14 days since GI Hub was last
+// open (the brief's chase and seen, from remind.js). Opening the app clears it.
+function badgeCount(brief, now) {
+  const seen = (brief && brief.seen) || 0;
+  return ((brief && brief.chase) || []).filter(t => t > seen && t <= now).length;
+}
