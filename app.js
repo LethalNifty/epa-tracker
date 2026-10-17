@@ -861,9 +861,12 @@ function render() {
   app.innerHTML = html;
   liveAfterSwap();
   enterNext = false; sheetFresh = false; toastFresh = false;
+  const up = anySheet();
+  if (!up) holdPage(false);
   if (route.restoreY !== undefined) { window.scrollTo(0, route.restoreY); delete route.restoreY; }
   else if (!route.keepScroll) window.scrollTo(0, 0);
   route.keepScroll = false;
+  if (up) holdPage(true);
   liveBootKick();
   callAfterRender();
   studyAfterRender();
@@ -873,6 +876,17 @@ function render() {
   pearlsAfterRender();
   setAfterRender();
   liveAfterRender(p);
+}
+// A sheet up holds the page still behind it. On iPhone a drag that runs past
+// the end of a sheet, or starts on one too short to scroll, would otherwise
+// scroll the page underneath; the body is fixed where it was (html.held), and
+// letting go scrolls the page back to the same place.
+let heldY = null;
+function holdPage(on) {
+  const root = document.documentElement, b = document.body;
+  if (!root || !root.classList || !b || !b.style) return;
+  if (on && heldY === null) { heldY = window.scrollY || 0; b.style.top = -heldY + "px"; root.classList.add("held"); }
+  else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
 const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet);

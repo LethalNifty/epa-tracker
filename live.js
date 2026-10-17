@@ -135,6 +135,8 @@ function liveTopbar() {
 }
 function liveScrolled() {
   const y = window.scrollY || 0, root = document.documentElement;
+  // A sheet holding the page reads as no scroll; the bar keeps its look until it lets go.
+  if (root.classList.contains("held")) return;
   root.classList.toggle("scrolled", y > 4);
   root.classList.toggle("titled", liveTitleEnd > 0 && y > liveTitleEnd);
 }
