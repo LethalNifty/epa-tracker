@@ -321,6 +321,60 @@ function lookFor(rows, lineVal, max) {
   return out;
 }
 
+// A part's context checklist as groups: numbered lines ("1 Assessor",
+// "2 Assessor") are one group. kase: a kind of case, not an assessor or an
+// observed visit. lineVal(id) is how many times a line is ticked.
+function checklistGroups(pid, lineVal) {
+  const out = [];
+  for (const it of PART_BY_ID[pid].items) {
+    if (!it.id) continue;
+    const name = it.label.replace(/^\d+\s+/, "");
+    let g = out.find(x => x.name === name);
+    if (!g) out.push(g = {name, ids: [], done: 0, total: 0, kase: !NOT_A_CASE.test(name)});
+    g.ids.push(it.id); g.total += it.target; g.done += Math.min(it.target, lineVal(it.id));
+  }
+  return out;
+}
+const itemTarget = id => { for (const P of PARTS) for (const it of P.items) if (it.id === id) return it.target; return 1; };
+// A checklist line as a chip: the Royal College wording, less any bracketed
+// examples, and a short name for the longest (the EPA page keeps the full wording).
+const ITEM_SHORT = {
+  "Chronic liver disease and / or liver transplant recipients": "Chronic liver disease or transplant",
+  "Refractory disease such as GERD, H. pylori, cystic fibrosis": "Refractory GERD, H. pylori or CF",
+  "Celiac disease /eosinophilic disorders": "Celiac or eosinophilic disease",
+  "Functional abdominal pain/irritable bowel syndrome": "Functional pain or IBS",
+  "Ambiguity in presentation, investigations and/or treatment": "Ambiguity in the picture or plan",
+  "Extraintestinal manifestations of intestinal disease": "Extraintestinal manifestations",
+  "Extrahepatic manifestations of liver disease": "Extrahepatic manifestations",
+  "Significant family history of malignancy": "Family history of cancer",
+  "Esophageal foreign body/caustic ingestion": "Foreign body or caustic",
+};
+const askName = name => {
+  const s = name.replace(/\s*\([^)]*\)\s*/g, " ").trim(), cap = s.charAt(0).toUpperCase() + s.slice(1);
+  return ITEM_SHORT[cap] || cap;
+};
+
+// What to ask for, by where you are today: the parts that suit each setting,
+// best fit first, the checklist line that can't happen there, and the one
+// that does (ticked to start when you log from here).
+const ASK = [
+  {id: "fu", n: "Follow-ups", parts: ["c2", "c3", "c4", "c5", "f2"], not: /^inpatient$/i, pre: "outpatient"},
+  {id: "new", n: "New patients", parts: ["f1b", "f1a", "c1", "c4", "c5", "f2"], not: /^inpatient$/i, pre: "outpatient"},
+  {id: "scope", n: "Scopes", parts: ["f3a", "f3b", "f4", "c6", "c7", "c8a", "c8b", "p1", "d2a", "d2b"], not: null, pre: null},
+  {id: "ward", n: "Ward and call", parts: ["c9a", "c9b", "c1", "c3", "d1", "c8a", "c8b", "f1b", "f1a", "c4", "c5", "f2"], not: /^outpatient$/i, pre: "inpatient"},
+];
+// The parts still short of their count for a setting, each with its open
+// checklist groups (kinds of case first).
+function askRows(setId, obsByPart, lineVal) {
+  const s = ASK.find(x => x.id === setId);
+  if (!s) return [];
+  return s.parts.map(pid => PART_BY_ID[pid]).filter(P => P && (obsByPart[P.id] || []).length < P.required).map(P => {
+    const open = checklistGroups(P.id, lineVal).filter(g => g.done < g.total && !(s.not && s.not.test(g.name)));
+    return {pid: P.id, label: P.label, short: PART_SHORT[P.id] || "", logged: (obsByPart[P.id] || []).length, required: P.required,
+      open: [...open.filter(g => g.kase), ...open.filter(g => !g.kase)]};
+  });
+}
+
 function loggedInBlock(obsByPart, pid, num) {
   return (obsByPart[pid] || []).filter(o => {
     const d = attrDate(o), b = d && blockFor(d);

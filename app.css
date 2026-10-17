@@ -1137,6 +1137,16 @@ a.src:active { background: var(--wall-3); }
 .felhint { margin: 8px 2px 0; font-size: 13px; color: var(--dim); }
 .felgoal > .lbl:first-child { margin-top: 0; }
 
+/* What to ask for (Week) and checklist ticks in the log sheet */
+.ask .askset { margin: 0 0 12px; }
+.arow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; text-align: left; border-top: 1px solid var(--fold); }
+.arow:active { background: var(--wall-2); }
+.ameta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.ameta b { font-size: 15px; font-weight: 480; }
+.aopen { font-size: 13px; line-height: 1.4; color: var(--dim); }
+.pickrow.ticks .pick { height: auto; min-height: 38px; padding: 8px 12px; line-height: 1.25; text-align: left; }
+.pickrow.ticks .tn { margin-left: 8px; font: 500 11px/1 var(--mono); opacity: .7; }
+
 /* Fellows' codes (watch.js, the full app only) */
 .watchset .lbl { margin-top: 0; }
 .watchset > .btn { margin-top: 12px; }

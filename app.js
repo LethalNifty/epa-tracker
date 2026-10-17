@@ -56,6 +56,25 @@ const Store = {
     else (this.state.lines[id] ||= {}).v = nv;
     this.save(); return nv; },
   lineVal(id) { return (this.state.lines[id] && this.state.lines[id].v) || 0; },
+  // Moves checklist lines up (by 1) or back (by -1), within 0 and each line's target.
+  bumpLines(ids, by) {
+    for (const id of ids) {
+      const v = Math.max(0, Math.min(itemTarget(id), this.lineVal(id) + by)), meta = this.state.lines[id];
+      if (v) (this.state.lines[id] ||= {}).v = v;
+      else if (meta && (meta.d || meta.n)) meta.v = 0;
+      else delete this.state.lines[id];
+    }
+    this.save(); },
+  // Ticks the next open line of each named checklist group; returns the lines ticked.
+  tickGroups(pid, names) {
+    const ids = [];
+    for (const g of checklistGroups(pid, id => this.lineVal(id))) {
+      if (!names.includes(g.name)) continue;
+      const id = g.ids.find(x => this.lineVal(x) < itemTarget(x));
+      if (id) ids.push(id);
+    }
+    if (ids.length) this.bumpLines(ids, 1);
+    return ids; },
   setLineMeta(id, m) { Object.assign(this.state.lines[id] ||= {v:0}, m); this.save(); },
   partDone(p) { return (this.state.obs[p]||[]).length; },
   exportJSON() { return JSON.stringify(this.state, null, 1); },
@@ -65,7 +84,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -186,9 +205,11 @@ function stageState(st, cur) {
   const t = stageTally(st);
   if (t.logged >= t.req) return "done";
   if (st === "ttd") return "behind";
-  return st === cur ? "now" : "locked";
+  if (st === cur) return "now";
+  // A later stage with forms already logged is open: they count, and more can come.
+  return t.logged ? "open" : "locked";
 }
-const STATE_LABEL = {done: "Done", now: "Now", locked: "Locked", behind: "Earlier"};
+const STATE_LABEL = {done: "Done", now: "Now", open: "Open", locked: "Locked", behind: "Earlier"};
 
 // Sunset colours for the Week arc, first logged tick to latest: violet,
 // orchid, apricot. Worked out here rather than mixed in CSS, so the power-on
@@ -362,6 +383,23 @@ function thisWeekHTML(rows, stage) {
   }
   return h + `</div></section>`;
 }
+// What to ask for where you are today: tap where, see the EPAs that suit it and
+// the checklist lines still open; a row opens the log sheet with the setting ticked.
+function askHTML() {
+  const cur = Store.state.ask || null;
+  let h = `<section class="sec ask"><div class="sec-head"><h2>What to ask for</h2><span class="mono">Where are you today?</span></div>` +
+    `<div class="pickrow askset">` + ASK.map(s => `<button class="pick ghost${cur === s.id ? " on" : ""}" data-action="askset" data-set="${s.id}" ` +
+      `aria-pressed="${cur === s.id}">${s.n}</button>`).join("") + `</div>`;
+  if (!cur) return h + `</section>`;
+  const rows = askRows(cur, Store.state.obs, id => Store.lineVal(id));
+  if (!rows.length) return h + `<div class="card empty">Everything that suits this is logged.</div></section>`;
+  const left = g => g.total - g.done > 1 ? ` ×${g.total - g.done}` : "";
+  return h + `<div class="card list">` + rows.map(r => `<button class="arow" data-action="sheet" data-part="${r.pid}" data-ask="${cur}">` +
+    `<span class="cc st-${PART_BY_ID[r.pid].stage}">${r.label}</span><span class="ameta"><b>${esc(r.short)}</b>` +
+    (r.open.length ? `<span class="aopen">${r.open.slice(0, 5).map(g => esc(askName(g.name)) + left(g)).join(" · ")}` +
+      `${r.open.length > 5 ? ` · ${r.open.length - 5} more` : ""}</span>` : "") +
+    `</span><span class="wn">${r.logged}/${r.required}</span></button>`).join("") + `</div></section>`;
+}
 function lookHTML(items) {
   return `<section class="sec"><div class="sec-head"><h2>Look for</h2><span class="mono">Cases you still need</span></div><div class="card list">` +
     items.map(x => `<button class="lrow" data-action="open" data-code="${PART_BY_ID[x.pid].code}">${ic("target")}` +
@@ -426,7 +464,7 @@ function viewWeek() {
       (cs.cur ? "" : callCardHTML(cs, now)) + remindRowHTML();
   }
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today);
-  h += thisWeekHTML(rows, cp.active) + studyCardHTML();
+  h += thisWeekHTML(rows, cp.active) + askHTML() + studyCardHTML();
   if (Store.state.recapSeen !== blk.num + "-" + blk.week) {
     const rc = recapFor(obsBy, today);
     if (rc) h += recapHTML(rc, rows);
@@ -674,7 +712,7 @@ function openSheet(pid, i) {
   const o = pid && i !== undefined && Store.state.obs[pid] && Store.state.obs[pid][+i];
   sheet = o
     ? {mode: "edit", pid, i: +i, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
-    : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false};
+    : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false, tick: []};
   sheetError = null;
   sheetFresh = true;
 }
@@ -683,9 +721,13 @@ function saveSheet() {
   const {pid, mode, status} = sheet;
   const meta = {d: sheet.d, a: sheet.a.trim(), n: sheet.n.trim(), status};
   const i = mode === "new" ? Store.logObs(pid) : sheet.i;
+  // Checklist lines ticked with it go back if it's undone or deleted.
+  const tk = mode === "new" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
+  if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
   sheet = null; sheetError = null;
-  if (mode === "new") showToast(`${PART_BY_ID[pid].label} logged as ${status}`, () => Store.removeObs(pid, i));
+  if (mode === "new") showToast(`${PART_BY_ID[pid].label} logged as ${status}${tk.length ? `, ${tk.length} checklist line${tk.length > 1 ? "s" : ""} ticked` : ""}`,
+    () => { Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); });
   else showToast("Changes saved");
 }
 // Every assessor name used so far, most recently logged first, one spelling each.
@@ -727,6 +769,12 @@ function sheetHTML() {
         PARTS.filter(P => P.stage === st).map(P => chip(P.id)).join("") + `</div>`).join("");
   }
   const edit = s.mode === "edit";
+  // A new observation can tick its checklist lines as it's logged (the full app).
+  const groups = !FELLOWS && !edit && s.pid ? checklistGroups(s.pid, id => Store.lineVal(id)).filter(g => g.done < g.total).sort((a, b) => b.kase - a.kase) : [];
+  const ticks = groups.length ? `<div class="lbl mono">Also tick on the checklist</div><div class="pickrow ticks">` +
+    groups.map(g => { const on = (s.tick || []).includes(g.name);
+      return `<button class="pick ghost${on ? " on" : ""}" data-action="sheettick" data-name="${esc(g.name)}" aria-pressed="${on}">` +
+        `${esc(askName(g.name))}<span class="tn">${g.done}/${g.total}</span></button>`; }).join("") + `</div>` : "";
   const iso = fmtDate(today), yest = fmtDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
   const dchip = (d, label) => `<button class="pick ghost${s.d === d ? " on" : ""}" data-action="sheetdate" data-date="${d}">${label}</button>`;
   return `<div class="scrim${sheetFresh ? " fresh" : ""}" data-action="closesheet"></div>` +
@@ -737,7 +785,7 @@ function sheetHTML() {
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
     `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
-    `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` +
+    `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` + ticks +
     `<div class="seg" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
     `<button class="approved${s.status === "approved" ? " on" : ""}" data-action="sheetstatus" data-status="approved">${ic("check")}Approved</button></div>` +
     (sheetError ? `<div class="err" role="alert">${esc(sheetError)}</div>` : "") +
@@ -877,21 +925,28 @@ function dispatch(act, d) {
   else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo({top: 0, behavior: "smooth"}); }
   else if (act === "sheet") {
     scopeSheet = null; openSheet(d.part, d.obs);
+    // From What to ask for: the setting's own line (outpatient, inpatient) is ticked to start.
+    const ask = d.ask && ASK.find(x => x.id === d.ask);
+    if (ask && ask.pre && sheet.mode === "new" && checklistGroups(d.part, id => Store.lineVal(id)).some(g => g.name === ask.pre && g.done < g.total))
+      sheet.tick = [ask.pre];
     // From the pending list: it stays open behind the sheet, and the scope log's guess is offered.
     if (d.chase) chaseOpen = true;
     if (d.a && sheet.mode === "edit" && !sheet.a) sheet.a = d.a;
     route.keepScroll = true; render(); }
   else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
-  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheet.tick = []; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "sheettick") { const t = sheet.tick ||= [], k = t.indexOf(d.name);
+    if (k >= 0) t.splice(k, 1); else t.push(d.name); route.keepScroll = true; render(); }
+  else if (act === "askset") { Store.state.ask = Store.state.ask === d.set ? null : d.set; Store.save(); route.keepScroll = true; render(); }
   else if (act === "pickall") { sheet.all = true; route.keepScroll = true; render(); }
   else if (act === "pickassessor") { sheet.a = d.name; route.keepScroll = true; render(); }
   else if (act === "sheetdate") { sheet.d = d.date; route.keepScroll = true; render(); }
   else if (act === "sheetstatus") { sheet.status = d.status; route.keepScroll = true; render(); }
   else if (act === "sheetsave") { saveSheet(); route.keepScroll = true; render(); }
   else if (act === "sheetdelete") {
-    const {pid, i} = sheet, removed = Store.state.obs[pid][i];
-    Store.removeObs(pid, i); sheet = null;
-    showToast("Observation deleted", () => Store.restoreObs(pid, i, removed));
+    const {pid, i} = sheet, removed = Store.state.obs[pid][i], tk = removed.tk || [];
+    Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); sheet = null;
+    showToast("Observation deleted", () => { Store.restoreObs(pid, i, removed); if (tk.length) Store.bumpLines(tk, 1); });
     route.keepScroll = true; render(); }
   else if (act === "togglestatus") { Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
   else if (act === "dismissrecap") { Store.setRecapSeen(d.key); route.keepScroll = true; render(); }
