@@ -6,7 +6,7 @@
 // The fellows' edition (fellows.js) saves apart from the full app.
 const KEY = FELLOWS ? "gihub-fellows-v1" : "epa-state-v1";
 // Matches the service worker's cache name; shown at the foot of EPAs.
-const APP_VERSION = "epa-v48";
+const APP_VERSION = "epa-v49";
 const Store = {
   state: {v:1, obs:{}, lines:{}, lastBackup:null, recapSeen:null},
   persistFailed: false,
