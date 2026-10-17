@@ -523,19 +523,9 @@ function viewWeek() {
 }
 
 // ---- EPAs --------------------------------------------------------------------
-function epaRowHTML(e, focus) {
-  const t = tally(PARTS.filter(P => P.code === e.code));
-  const pend = e.parts.reduce((a, pt) => a + Store.partPending(pt.id), 0);
-  return `<button class="epa st-${e.stage}" data-action="open" data-code="${e.code}"><span class="code">${e.code}</span>` +
-    `<span class="epa-mid"><span class="epa-title">${esc(e.title)}</span>` +
-    `<span class="bar"><i style="width:${pct(t.approved, t.req)}%"></i><i class="pend" style="width:${pct(t.pending, t.req)}%"></i></span>` +
-    `<span class="epa-tags">${focus.includes(e.code) ? `<span class="tag">this block</span>` : ""}` +
-    `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span></span>` +
-    `<span class="epa-count${t.approved >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
-}
-// The full app's EPA row: a ring (approved in the stage colour, pending in
-// peach), the code, the short name, tags and the count; the EPA's page has the
-// Royal College title.
+// An EPA's row: a ring (approved in the stage colour, pending in peach), the
+// code, the short name, tags and the count; the EPA's page has the Royal
+// College title.
 function epaItemHTML(e, focus) {
   const t = tally(PARTS.filter(P => P.code === e.code)), C = 2 * Math.PI * 9;
   const pend = e.parts.reduce((a, pt) => a + Store.partPending(pt.id), 0);
@@ -548,9 +538,8 @@ function epaItemHTML(e, focus) {
       `${pend ? `<span class="tag warn">${pend} pending</span>` : ""}</span>` : "") + `</span>` +
     `<span class="ecount${t.approved >= t.req ? " done" : ""}">${t.logged}/${t.req}</span></button>`;
 }
-// One stage's EPAs: a single list in the full app, a card each in the fellows' edition.
-const epaListHTML = (list, focus) => !list.length ? "" : FELLOWS ? list.map(e => epaRowHTML(e, focus)).join("")
-  : `<div class="card elist">${list.map(e => epaItemHTML(e, focus)).join("")}</div>`;
+// One stage's EPAs as a single list.
+const epaListHTML = (list, focus) => list.length ? `<div class="card elist">${list.map(e => epaItemHTML(e, focus)).join("")}</div>` : "";
 // EPAs and the year plan share a tab, with a switch under the header.
 function epaSwitchHTML(on) {
   const b = (page, label) => `<button class="${on === page ? "on" : ""}" data-action="tab" data-page="${page}"` +
@@ -792,8 +781,8 @@ function saveSheet() {
   const tk = mode === "new" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
   if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
-  // Log another: same day and assessor, and the same What to ask for setting (the full app).
-  const next = mode === "new" && !FELLOWS ? {d: sheet.d, a: meta.a, ask: sheet.ask || null} : null;
+  // Log another: same day and assessor, and the same What to ask for setting.
+  const next = mode === "new" ? {d: sheet.d, a: meta.a, ask: sheet.ask || null} : null;
   sheet = null; sheetError = null;
   if (mode === "new") showToast(`${PART_BY_ID[pid].label} logged as ${status}${tk.length ? `, ${tk.length} checklist line${tk.length > 1 ? "s" : ""} ticked` : ""}`,
     () => { Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); }, next);
@@ -821,9 +810,9 @@ function suggHTML(typed) {
 }
 function sheetHTML() {
   const s = sheet, today = getToday();
-  // The full app names each EPA beside its code, and the picked one in full.
+  // Each EPA is named beside its code, and the picked one in full.
   const chip = pid => `<button class="pick st-${PART_BY_ID[pid].stage}${s.pid === pid ? " on" : ""}" data-action="pickpart" data-part="${pid}">` +
-    (FELLOWS ? PART_BY_ID[pid].label : `<span class="pc">${PART_BY_ID[pid].label}</span><span class="pn">${esc(PART_SHORT[pid] || "")}</span>`) + `</button>`;
+    `<span class="pc">${PART_BY_ID[pid].label}</span><span class="pn">${esc(PART_SHORT[pid] || "")}</span></button>`;
   let picker;
   if (s.mode === "edit") picker = `<div class="pickrow">${chip(s.pid)}</div>`;
   else {
@@ -852,7 +841,7 @@ function sheetHTML() {
     `<div class="sheet${sheetFresh ? " fresh" : ""}" role="dialog" aria-modal="true" aria-label="${edit ? "Edit" : "Log"} observation">` +
     (plusOn ? plusHeadHTML("closesheet") : `<div class="grab"></div><div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
       `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>`) + picker +
-    (!FELLOWS && s.pid ? `<div class="picked"><b>${PART_BY_ID[s.pid].label}</b> ${esc(partTitle(s.pid))}</div>` : "") +
+    (s.pid ? `<div class="picked"><b>${PART_BY_ID[s.pid].label}</b> ${esc(partTitle(s.pid))}</div>` : "") +
     `<label class="lbl mono">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +

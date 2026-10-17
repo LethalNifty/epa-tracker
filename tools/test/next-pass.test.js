@@ -1,8 +1,8 @@
 "use strict";
 // The October next pass: EPA chips that say what they are, Log another, the
 // chase list without spare forms and the icon badge, Week following the day,
-// the EPAs list in short names, and the pace under the dial. Full app only;
-// the fellows' edition keeps what it had.
+// the EPAs list in short names, and the pace under the dial. The fellows'
+// edition gets the chips, Log another and the EPAs list (2026-10-17), not the rest.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -45,13 +45,13 @@ test("log sheet: every EPA chip carries its short name, and the picked one shows
   assert.match(h.html(), /<div class="picked"><b>F3-B<\/b> Performing esophagogastroduodenoscopy: Procedure note<\/div>/);
 });
 
-test("the fellows' edition keeps code-only chips and no full title", () => {
+test("the fellows' edition gets the named chips and the full title too", () => {
   const h = fellow();
   h.click("sheet");
-  assert.match(h.html(), /data-action="pickpart" data-part="\w+">[A-Z]\d(-[AB])?<\/button>/);
-  assert.doesNotMatch(h.html(), /class="pc"/);
-  h.click("pickpart", {part: "c2"});
-  assert.doesNotMatch(h.html(), /class="picked"/);
+  assert.doesNotMatch(h.html(), /data-action="pickpart" data-part="\w+">[A-Z]\d(-[AB])?<\/button>/);
+  assert.match(h.html(), /data-action="pickpart" data-part="f1b"><span class="pc">F1-B<\/span><span class="pn">Assessment and plan<\/span><\/button>/);
+  h.click("pickpart", {part: "f1b"});
+  assert.match(h.html(), /<div class="picked"><b>F1-B<\/b> Assessing and initiating management for uncomplicated patients: Clinical assessment and management<\/div>/);
 });
 
 // ---- Log another --------------------------------------------------------------------------
@@ -100,12 +100,15 @@ test("Log another from What to ask for keeps the setting: the next EPA starts wi
   assert.deepEqual(h.val("sheet.tick"), []);
 });
 
-test("the fellows' edition offers no Log another", () => {
+test("the fellows' edition offers Log another too", () => {
   const h = fellow();
   h.click("sheet", {part: "c2"});
+  h.run(`sheet.a = "Brook";`);
   h.click("sheetsave");
   assert.match(h.html(), /C2 logged as pending/);
-  assert.doesNotMatch(h.html(), /data-action="another"/);
+  assert.match(h.html(), /data-action="another">[^]*?Another with Brook<small>today<\/small>/);
+  h.click("another");
+  assert.deepEqual(h.val(`[sheet.mode, sheet.pid, sheet.d, sheet.a]`), ["new", null, TODAY, "Brook"]);
 });
 
 // ---- Chase only what counts -----------------------------------------------------------------
@@ -310,11 +313,12 @@ test("EPAs list: short names, a ring and the count; the EPA's page keeps the Roy
   assert.match(h.html(), /Providing ongoing management for patients with stable, chronic and\/or complex conditions/);
 });
 
-test("the fellows' edition keeps its EPA rows", () => {
-  const h = fellow();
+test("the fellows' edition gets the short-name EPA list too", () => {
+  const h = fellow(state({c3: [obs("2026-10-02", {status: "pending"})]}, {setup: {d: "2026-10-01"}}));
   h.click("tab", {page: "epas"});
-  assert.match(h.html(), /class="epa-title"/);
-  assert.doesNotMatch(h.html(), /class="eli /);
+  assert.doesNotMatch(h.html(), /class="epa-title"/);
+  assert.match(h.html(), /<div class="card elist"><button class="eli st-/);
+  assert.match(h.html(), /data-code="C3"[^]*?<span class="ename">Exacerbations<\/span><span class="etags"><span class="tag warn">1 pending<\/span>/);
 });
 
 // ---- Pace under the dial ----------------------------------------------------------------------
@@ -341,4 +345,10 @@ test("behind pace, it says when this pace would finish against June 30, in peach
 test("no pace line with nothing recent, and none in the fellows' edition", () => {
   assert.doesNotMatch(owner().html(), /dial-pace/);
   assert.doesNotMatch(fellow(state({f1b: many(1, "2026-10-10")}, {setup: {d: "2026-10-01"}})).html(), /dial-pace/);
+});
+
+test("tapping an EPA row grows its small ring into the EPA's ring", () => {
+  const h = owner();
+  h.run(`liveLastTap = {isConnected: true, dataset: {action: "open"}, querySelector: sel => sel.split(", ").includes(".ering") ? "ring" : null};`);
+  assert.equal(h.val(`liveHeroFrom("push")`), "ring");
 });

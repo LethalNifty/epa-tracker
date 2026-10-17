@@ -29,19 +29,19 @@ function liveKind(from, to) {
   return "fade";
 }
 // One element per page may carry a shared name, so it morphs into its
-// counterpart on the next page: the open segment, or an EPA's code chip
-// growing into its ring.
+// counterpart on the next page: the open segment, or an EPA's code chip or
+// small ring growing into its ring.
 function liveName(el, name) { if (el && el.style) el.style.viewTransitionName = name; }
 function liveHeroFrom(kind) {
   const t = liveLastTap;
-  if (kind === "push" && t && t.isConnected && t.dataset.action === "open") return t.querySelector(".code, .cc") || t;
+  if (kind === "push" && t && t.isConnected && t.dataset.action === "open") return t.querySelector(".code, .cc, .ering") || t;
   if (kind === "pop") return document.querySelector(".epa-hero .dial-wrap");
   return null;
 }
 function liveHeroTo(kind, code) {
   if (kind === "push") return document.querySelector(".epa-hero .dial-wrap");
   const row = kind === "pop" && code ? document.querySelector(`[data-action="open"][data-code="${code}"]`) : null;
-  if (row) return row.querySelector(".code, .cc") || row;
+  if (row) return row.querySelector(".code, .cc, .ering") || row;
   return null;
 }
 let liveMoving = false;
