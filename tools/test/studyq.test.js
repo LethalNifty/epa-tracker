@@ -61,22 +61,41 @@ test("locked until the password is typed; then the phone remembers it", async ()
   assert.equal(await h.run(`studyqUnlock(${JSON.stringify(PW)})`), true);
   assert.equal(JSON.parse(h.store.get("gi-studyq-v1")).pw, PW);
   h.run("render()");
-  assert.match(h.html(), /Before you read/);
+  assert.match(h.html(), /After you read/);
   // The password is never in the backup.
   assert.doesNotMatch(h.val("Store.exportJSON()"), new RegExp(PW));
 });
 
-test("tonight's questions are the ones on tonight's pages", async () => {
+test("tonight's quiz waits until you start it, and asks only tonight's pages", async () => {
   const h = await phone("2026-09-30", undefined, {pw: PW});
-  const html = h.html();
+  let html = h.html();
   assert.equal(h.val("StudyQ.status"), "ready");
-  assert.match(html, /<span class="mono">Before you read<\/span><span class="mono">2 questions · 1.5 marks<\/span>/);
+  assert.match(html, /<span class="mono">After you read<\/span><span class="mono">2 questions · 1.5 marks<\/span>/);
+  assert.match(html, /Read pp\. 35–38 first, then answer each question from memory before you show its answer\./);
+  assert.doesNotMatch(html, /List TWO example questions\./);   // not seen before reading
+  h.click("studyquiz", {key: "0-4"});
+  html = h.html();
   assert.match(html, /List TWO example questions\./);
   assert.match(html, /Name one more\./);
   assert.doesNotMatch(html, /A question for a later night/);   // p. 40 is a later night
-  assert.match(html, /Answer in your head first, even a guess, then read pp\. 35–38 to check\./);
+  assert.doesNotMatch(html, /Start the quiz/);
   h.click("tab", {page: "week"});
-  assert.match(h.html(), /2 questions first · Ch 3 · Esophageal Motility/);
+  assert.match(h.html(), /2 questions after · Ch 3 · Esophageal Motility/);
+});
+
+test("Done opens tonight's quiz without a tap", async () => {
+  const h = await phone("2026-09-30", withStudy({"2026-09-30": 4}), {pw: PW});
+  const html = h.html();
+  assert.match(html, /<span class="mono">Tonight's quiz<\/span>/);
+  assert.match(html, /List TWO example questions\./);
+  assert.doesNotMatch(html, /Start the quiz/);
+});
+
+test("the 20:00 reminder puts the questions after the pages", async () => {
+  const h = await phone("2026-09-30", undefined, {pw: PW});
+  h.setNow("2026-09-30T20:00");
+  const n = h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
+  assert.equal(n.body, "Ch 3 · Esophageal Motility. 4 pages, then 2 questions.");
 });
 
 test("Show answer, then Got it or Missed; tapping the same mark clears it", async () => {
@@ -111,7 +130,7 @@ test("Not tonight moves tonight's pages and questions to the next reading night,
   assert.doesNotMatch(h.html(), /class="prow"/);   // not listed as a pause
   h.click("studyunskip");
   assert.deepEqual(h.saved().study.pauses, []);
-  assert.match(h.html(), /Before you read/);
+  assert.match(h.html(), /After you read/);
 });
 
 test("a question on a page number two books share lands in its own reading", async () => {
@@ -123,6 +142,7 @@ test("a question on a page number two books share lands in its own reading", asy
   const h = await phone("2026-10-06", withStudy({"2026-10-05": 13}), {pw: PW, file: encrypt({v: 1, q: qs}, PW, {iter: 1000})});
   assert.deepEqual(h.val("StudyQ.list.map(x => [x.id, x.i])"), [["n-1", 13], ["g-1", h.val("studyItemStart(STUDY_BY_ID.c40)") + 11]]);
   // Tonight is Yamada pp. 466-469: only the nutrition question is asked.
+  h.click("studyquiz", {key: h.html().match(/data-action="studyquiz" data-key="([^"]+)"/)[1]});
   assert.match(h.html(), /A nutrition question\./);
   assert.doesNotMatch(h.html(), /A gallstones question\./);
 });

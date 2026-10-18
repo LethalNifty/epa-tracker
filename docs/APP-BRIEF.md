@@ -35,7 +35,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 
 **Study** (Tonight | Plan):
 - pass 1 of Mayo Board Review across Blocks 4 to 12, with Yamada pages where Mayo is thin, turned into tonight's pages
-- three or four Royal College-style short-answer questions on those pages, answered before reading
+- three or four Royal College-style short-answer questions on those pages, a quiz after reading (hidden until Done or Start the quiz)
 - buttons for Done, Stopped elsewhere and Not tonight; the plan reflows from a bookmark
 - Pearls: teaching points caught on the wards, searchable, sent on as a text file to become Anki cards (`docs/PEARLS.md`)
 - Plan: the block's reading, the whole book, the finish, question scores and the bank, and pausing

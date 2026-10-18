@@ -1,6 +1,6 @@
 "use strict";
 // GI Hub study questions: Royal College-style short-answer questions on the
-// plan's pages, three or four a night, answered before reading. The file,
+// plan's pages, three or four a night, as a quiz after reading. The file,
 // studyq.json, is encrypted, because this site is public: the phone decrypts
 // it with a password typed once and kept on this phone only (never in the
 // backup). tools/studyq/build.js writes the file from the private questions.

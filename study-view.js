@@ -10,6 +10,7 @@ let studySheet = null, studySheetFresh = false, studyStain = null, studyIntroDon
 const STUDY_WHY = {thu: "Thursday: soccer night.", weekend: "The weekend.", call: "You're on call tonight.",
   pause: "Reading is paused.", skip: "Skipped tonight.", after: "Year 1 is over.", before: "The plan starts Wednesday."};
 let studyRevealed = new Set();
+let studyQuizOpen = null;   // "from-to" of a quiz started before the pages were marked read
 
 const studyDay = d => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 const studyStretchList = () => callStretches(CallStore.list());
@@ -136,7 +137,7 @@ function studyTipHTML(t) {
     `For a whole table or figure, highlight its title. Aim for 3 to 6 marks a page.</p>`;
 }
 
-// ---- Questions: before you read, and the bank --------------------------------------------
+// ---- Questions: a quiz after you read, and the bank ----------------------------------------
 // One question: its text and marks; Show answer; then Got it or Missed.
 function studyQiHTML(x, n, s) {
   const mk = s.qa && s.qa[x.id], open = studyRevealed.has(x.id) || !!mk;
@@ -151,10 +152,10 @@ function studyQiHTML(x, n, s) {
 // The range tonight's questions come from, and what to call them.
 function studyQRange(t) {
   if (t.kind === "complete" || t.kind === "after") return null;
-  if (t.kind === "read" && !t.ahead) return {from: t.from, to: t.to, head: t.done ? "Tonight's questions" : "Before you read"};
+  if (t.kind === "read" && !t.ahead) return {from: t.from, to: t.to, done: t.done, head: t.done ? "Tonight's quiz" : "After you read"};
   const r = t.keep || t.next;
   if (!r) return null;
-  return {from: r.from, to: r.to, head: t.kind === "before" ? "First night's questions" : "If you read tonight"};
+  return {from: r.from, to: r.to, done: false, head: t.kind === "before" ? "First night's quiz" : "If you read tonight"};
 }
 function studyQCardHTML(st) {
   const {s, t} = st, r = studyQRange(t);
@@ -168,12 +169,15 @@ function studyQCardHTML(st) {
   }
   const qs = studyqFor(r.from, r.to);
   if (!qs.length) return "";
-  const marks = qs.reduce((a, x) => a + (x.marks || 0), 0);
-  return `<section class="card qcard"><div class="qc-head"><span class="mono">${esc(r.head)}</span>` +
-    `<span class="mono">${qs.length} question${qs.length === 1 ? "" : "s"}${marks ? " · " + marks + " marks" : ""}</span></div>` +
-    `<ol class="qc-list">${qs.map((x, k) => studyQiHTML(x, k + 1, s)).join("")}</ol>` +
-    (r.head === "Before you read" ? `<p class="qc-foot">Answer in your head first, even a guess, then read pp. ${studyPP(r.from, r.to)} to check.</p>` : "") +
-    `</section>`;
+  const marks = qs.reduce((a, x) => a + (x.marks || 0), 0), key = r.from + "-" + r.to, qa = s.qa || {};
+  const head = `<section class="card qcard"><div class="qc-head"><span class="mono">${esc(r.head)}</span>` +
+    `<span class="mono">${qs.length} question${qs.length === 1 ? "" : "s"}${marks ? " · " + marks + " marks" : ""}</span></div>`;
+  // The questions stay out of sight until the pages are read: Done opens the
+  // quiz, or Start the quiz does; one already answered keeps it open.
+  const open = r.done || studyQuizOpen === key || qs.some(x => qa[x.id] || studyRevealed.has(x.id));
+  if (!open) return head + `<p class="qc-note">Read pp. ${studyPP(r.from, r.to)} first, then answer each question from memory before you show its answer.</p>` +
+    `<button class="btn fluline qc-start" data-action="studyquiz" data-key="${key}">${ic("target")}Start the quiz</button></section>`;
+  return head + `<ol class="qc-list">${qs.map((x, k) => studyQiHTML(x, k + 1, s)).join("")}</ol></section>`;
 }
 function studyBankHTML(st) {
   const {s, t} = st;
@@ -374,7 +378,7 @@ function studyCardHTML() {
   else if (t.kind === "read" && !t.ahead && !t.done) {
     const w = studyWhat(t.from, t.to);
     const nq = studyqFor(t.from, t.to).length;
-    lbl = "Tonight"; main = "pp. " + studyPP(t.from, t.to); sub = (nq ? `${nq} questions first · ` : "") + w.lbl + " · " + w.title;
+    lbl = "Tonight"; main = "pp. " + studyPP(t.from, t.to); sub = (nq ? `${nq} questions after · ` : "") + w.lbl + " · " + w.title;
   } else if (t.kind === "read" && t.done) {
     lbl = "Tonight"; main = "Reading done"; cls = " done";
     sub = t.next ? `Next ${studyDay(t.next.day)} · pp. ${studyPP(t.next.from, t.next.to)}` : "Nothing more tonight";
@@ -511,6 +515,7 @@ function studyDispatch(act, d) {
     const k = fmtDate(getToday()), i = Store.state.study.pauses.findIndex(p => p.skip && p.a <= k && k <= p.b);
     if (i >= 0) Store.removePause(i);
   }
+  else if (act === "studyquiz") studyQuizOpen = d.key;
   else if (act === "studyreveal") studyRevealed.add(d.id);
   else if (act === "studymark") {
     const cur = (Store.state.study.qa || {})[d.id], ok = d.ok === "1";

@@ -53,7 +53,7 @@ function noteStudy(brief, now) {
   if (n.kind === "complete") return {title: "Mayo pass 1 is read", body: "All the pages are done. Questions next.", tag, url};
   if (n.kind === "read" && n.done) return {title: "Reading done for tonight", body: next || "Nothing more tonight.", tag, url};
   if (n.kind === "read" && n.pp) return {title: `Tonight: ${n.book ? n.book + " " : ""}pp. ${n.pp}`,
-    body: `${n.what}. ${n.n} page${n.n === 1 ? "" : "s"}` + (n.qn ? `, ${n.qn} question${n.qn === 1 ? "" : "s"} first.` : "."), tag, url};
+    body: `${n.what}. ${n.n} page${n.n === 1 ? "" : "s"}` + (n.qn ? `, then ${n.qn} question${n.qn === 1 ? "" : "s"}.` : "."), tag, url};
   if (n.kind === "skip") return {title: "Skipped tonight", body: next || "The pages move to the next reading night.", tag, url};
   if (n.kind === "ahead") return {title: "You're ahead of plan", body: "Tonight is free. " + (next || "Keep going in GI Hub if you like."), tag, url};
   if (n.kind === "pause") return {title: "Reading paused", body: "No pages tonight.", tag, url};
