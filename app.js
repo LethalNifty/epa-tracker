@@ -38,10 +38,14 @@ const Store = {
     this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
   restoreObs(p, i, o) { (this.state.obs[p] ||= []).splice(i, 0, o); this.save(); },
-  setObsMeta(p, i, m) { Object.assign(this.state.obs[p][i], m); this.save(); },
-  setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.state.obs[p][i].status = s; this.save(); } },
+  // A pending form turning approved keeps the day it did (ok), for its assessor's
+  // usual turnaround; a form just being logged (no date yet), or one going back
+  // to pending, keeps none.
+  statusTo(o, s) { if (s === "approved" && o.status !== "approved" && o.d) o.ok = fmtDate(getToday()); if (s !== "approved") delete o.ok; o.status = s; },
+  setObsMeta(p, i, m) { const o = this.state.obs[p][i]; if (m.status) this.statusTo(o, m.status); Object.assign(o, m); this.save(); },
+  setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.statusTo(this.state.obs[p][i], s); this.save(); } },
   toggleObsStatus(p, i) { const o = this.state.obs[p][i];
-    o.status = o.status === "approved" ? "pending" : "approved"; this.save(); return o.status; },
+    this.statusTo(o, o.status === "approved" ? "pending" : "approved"); this.save(); return o.status; },
   setRecapSeen(key) { this.state.recapSeen = key; this.save(); },
   toggleGuidePin(id) { const p = this.state.guides.pins, i = p.indexOf(id);
     if (i >= 0) p.splice(i, 1); else p.push(id); this.save(); return i < 0; },
@@ -439,14 +443,15 @@ function lookRowsHTML(items) {
 }
 // A spare (a form the EPA no longer needs) is listed last and not counted.
 function chaseHTML(list) {
-  const n = list.filter(c => !c.spare).length;
+  const n = list.filter(c => !c.spare).length, sp = FELLOWS ? {} : assessorSpeed();
   return `<section class="sec"><details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
     `<b>${n} form${n > 1 ? "s" : ""} pending 14+ days</b><span class="mono">Entrada</span>${ic("chev", "chev")}</summary>` +
     [...list.filter(c => !c.spare), ...list.filter(c => c.spare)].map(c => {
       // No assessor on the form: the scope log may know who it was with.
       const sc = Store.state.scopes, g = c.a ? {ids: []} : scopeStaffOn(sc.cases, c.date, c.pid);
       const names = g.ids.map(id => scopeStaffName(sc.staff, id)).filter(Boolean).slice(0, 2);
-      const who = c.a ? esc(scopeBare(c.a)) : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
+      const usual = c.a && sp[scopeBare(c.a).toLowerCase()];
+      const who = c.a ? esc(scopeBare(c.a)) + (usual ? `<span class="usual"> · ${speedText(usual)}</span>` : "") : names.length ? `<i>${esc(names.join(" or "))}?</i> from your scope log` : "No assessor yet · tap to add";
       const note = c.n.startsWith(SCOPE_EPA_NOTE) ? c.n.slice(SCOPE_EPA_NOTE.length) : c.n;
       return `<div class="crow${c.spare ? " spare" : ""}"><button class="cmain" data-action="sheet" data-part="${c.pid}" data-obs="${c.i}" data-chase="1"` +
         `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
@@ -800,13 +805,33 @@ function assessorNames() {
   }
   return out;
 }
+// Each assessor's usual turnaround: the median days from an observation to the
+// day it was marked approved (o.ok), once there are two; keyed by lower-case surname.
+function assessorSpeed() {
+  const by = {};
+  for (const k in Store.state.obs) for (const o of Store.state.obs[k]) {
+    const name = scopeBare(o.a).toLowerCase(), d = attrDate(o);
+    if (!o.ok || !name || !d) continue;
+    const days = dayIndex(attrDate({d: o.ok})) - dayIndex(d);
+    if (days >= 0) (by[name] ||= []).push(days);
+  }
+  const out = {};
+  for (const name in by) {
+    const xs = by[name].sort((a, b) => a - b), m = xs.length >> 1;
+    if (xs.length >= 2) out[name] = {days: xs.length % 2 ? xs[m] : Math.round((xs[m - 1] + xs[m]) / 2), n: xs.length};
+  }
+  return out;
+}
+const speedText = s => s.days === 0 ? "usually the same day" : s.days < 14 ? `usually ${s.days} day${s.days > 1 ? "s" : ""}` : `usually ${Math.round(s.days / 7)} weeks`;
+const speedShort = s => s.days === 0 ? "same day" : s.days < 14 ? `${s.days} d` : `${Math.round(s.days / 7)} wk`;
 function assessorSuggestions(typed) {
   const t = (typed || "").trim().toLowerCase();
   return assessorNames().filter(n => !t || (n.toLowerCase().includes(t) && n.toLowerCase() !== t)).slice(0, 4);
 }
 function suggHTML(typed) {
-  return assessorSuggestions(typed).map(x =>
-    `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}</button>`).join("");
+  const sp = FELLOWS ? {} : assessorSpeed();
+  return assessorSuggestions(typed).map(x => { const s = sp[x.toLowerCase()];
+    return `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}${s ? `<span class="sp">${speedShort(s)}</span>` : ""}</button>`; }).join("");
 }
 function sheetHTML() {
   const s = sheet, today = getToday();

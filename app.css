@@ -1183,6 +1183,9 @@ a.src:active { background: var(--wall-3); }
 .etags { display: flex; flex-wrap: wrap; gap: 5px; }
 .ecount { flex: 0 0 auto; min-width: 38px; text-align: right; font: 500 13px/1 var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; }
 .ecount.done { color: var(--nbi-ink); }
+/* Who signs quickly: an assessor's usual turnaround. */
+.pick .sp { margin-left: 7px; font: 500 11px/1 var(--mono); color: var(--dim); }
+.usual { color: var(--faint); }
 .dial-pace { display: table; margin: 2px auto 12px; padding: 5px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; }
 .dial-pace.ok { color: var(--offlabel); background: var(--offlabel-wash); }
 .dial-pace.warn { color: var(--capillary); background: var(--capillary-wash); }
