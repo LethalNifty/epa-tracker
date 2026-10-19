@@ -47,8 +47,7 @@ test("the trial file: 48 cards, each complete, each under a real guideline topic
     // Limitations: two or three short points, in place of the old one-line catch.
     assert.ok(Array.isArray(t.lim) && t.lim.length >= 2 && t.lim.length <= 3, t.id + " limitations");
     for (const l of t.lim) assert.ok(typeof l === "string" && l.length > 8 && l.length <= 170, t.id + " limitation: " + l);
-    // The old one-line catch stays for the fellows' edition, which keeps the old card.
-    assert.ok(typeof t.catch === "string" && t.catch.length > 8, t.id + " catch");
+    assert.equal(t.catch, undefined, t.id + " still has a catch");
     assert.ok(t.y >= 1950 && t.y <= 2026, t.id + " year " + t.y);
     assert.ok(t.key && t.key.v && t.key.l, t.id + " key result");
     assert.match(t.pmid, /^\d{6,9}$/, t.id + " PubMed id");
@@ -96,6 +95,11 @@ test("search finds a trial by its name, author, drug or condition", () => {
   assert.equal(ids(h, "tranexamic")[0], "halt-it");
   assert.equal(ids(h, "TXA")[0], "halt-it");
   assert.equal(ids(h, "biosimilar")[0], "nor-switch");
+  // Why they did it, who it's for and the limitations are searched too; nothing reads "undefined".
+  assert.ok(ids(h, "photodynamic").includes("aim-dysplasia"));
+  assert.ok(ids(h, "AVOD").includes("diabolo"));
+  assert.ok(ids(h, "clarithromycin resistance").includes("choi-2020"));
+  assert.deepEqual(ids(h, "undefined"), []);
   assert.equal(ids(h, "LIR!C")[0], "lirc");
   assert.deepEqual(ids(h, "Villanueva").slice(0, 2).sort(), ["predesci", "villanueva-2013"]);
   assert.deepEqual(ids(h, "zzqx"), []);
@@ -166,22 +170,20 @@ test("tapping a trial opens its card: why, the question, who and who it's for, r
   assert.doesNotMatch(card(h.html(), "confirm"), /Limitations/);
 });
 
-test("the fellows' edition keeps the old card: the question, who, the catch; no why, use or limitations", () => {
+test("the fellows' edition opens trials the same way: why, use for, limitations, landmark and weekly alike", () => {
   const h = load({today: "2026-10-12", edition: "fellows", state: state({}, {setup: {d: "2026-10-01"}})});
   h.run(`guidesAccept(${JSON.stringify(LIB)}); guidesRedraw();`);
   h.click("tab", {page: "guides"});
   h.click("guidestab", {tab: "t"});
   h.click("guidestrtoggle", {id: "confirm"});
   const c = card(h.html(), "confirm");
-  assert.match(c, /The catch<\/h4><p>/);
-  assert.ok(c.includes(esc(h.val("TRIALS_BY_ID.confirm.catch"))));
-  assert.match(c, /class="lt-q"/);
-  assert.doesNotMatch(c, /Why they did it|Use for|Limitations/);
-  // A weekly-watch trial opens to its note alone.
+  assert.match(c, /Why they did it/);
+  assert.match(c, /<dt class="mono">Use for<\/dt>/);
+  assert.match(c, /Limitations<\/h4><ul class="dl">/);
+  assert.doesNotMatch(c, /The catch/);
   h.click("guidestrwtoggle", {id: "42815507"});
   const body = h.html().slice(h.html().indexOf('class="ltw-body"'));
-  assert.match(body, /^class="ltw-body"><p>Noninferiority trial/);
-  assert.doesNotMatch(body.slice(0, body.indexOf("</article>")), /Why they did it|Use for|Limitations/);
+  assert.match(body.slice(0, body.indexOf("</article>")), /Why they did it[^]*Use for[^]*What they found[^]*Limitations/);
 });
 
 test("an IBD trial card links to its drugs", () => {

@@ -75,14 +75,13 @@ function trialsCardHTML(t, opts = {}) {
   if (!open) return h + `</article>`;
   h += `<div class="lt-body">`;
   h += `<p class="lt-design mono">${esc(t.au)} · ${esc(t.design)}</p>`;
-  // The fellows' edition keeps the old card: no why, use or limitations.
-  h += FELLOWS ? `<p class="lt-q">${esc(t.q)}</p>` : trialsWhyHTML(t);
+  h += trialsWhyHTML(t);
   h += `<dl class="lt-pico"><dt class="mono">Who</dt><dd>${esc(t.who)}</dd><dt class="mono">Arms</dt><dd>${esc(t.arms)}</dd>` +
-    (FELLOWS ? "" : `<dt class="mono">Use for</dt><dd>${esc(t.use)}</dd>`) + `</dl>`;
+    `<dt class="mono">Use for</dt><dd>${esc(t.use)}</dd></dl>`;
   h += `<div class="lt-key${t.key.v.length > 14 ? " long" : ""}"><span class="v">${esc(t.key.v)}</span><span class="l">${esc(t.key.l)}</span></div>`;
   h += `<p class="lt-res">${esc(t.res)}</p>`;
   h += `<section class="ds lt-sec"><h4 class="mono">What it changed</h4><p>${esc(t.now)}</p></section>`;
-  h += FELLOWS ? `<section class="ds lt-sec differ"><h4 class="mono">${ic("alert", "sm")}The catch</h4><p>${esc(t.catch)}</p></section>` : trialsLimHTML(t.lim);
+  h += trialsLimHTML(t.lim);
   if (t.since) h += `<section class="ds lt-sec"><h4 class="mono">Since</h4><p>${esc(t.since)}</p></section>`;
   if (t.canada) h += `<div class="lt-ca"><p class="mono">In Canada</p><p>${esc(t.canada)}</p></div>`;
   h += trialsChipsHTML(t);
@@ -120,7 +119,7 @@ function trialsWatchRowHTML(r, fresh) {
     `${trialsHi(esc(r.t))}${topic ? `<span class="tp">${esc(topic.n)}</span>` : ""}</span>` +
     `${fresh ? '<i class="gdot" aria-label="Not seen yet"></i>' : ""}${ic("chev", "sm chev")}</button>`;
   if (!open) return h + `</article>`;
-  const full = !FELLOWS && r.why && r.q && r.lim && r.lim.length;
+  const full = r.why && r.q && r.lim && r.lim.length;
   h += `<div class="ltw-body">` + (!full ? (r.x ? `<p>${trialsHi(esc(r.x))}</p>` : "") : trialsWhyHTML(r, trialsHi) +
     `<dl class="lt-pico">${r.who ? `<dt class="mono">Who</dt><dd>${esc(r.who)}</dd>` : ""}${r.use ? `<dt class="mono">Use for</dt><dd>${esc(r.use)}</dd>` : ""}</dl>` +
     (r.x ? `<section class="ds lt-sec"><h4 class="mono">What they found</h4><p>${trialsHi(esc(r.x))}</p></section>` : "") + trialsLimHTML(r.lim));

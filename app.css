@@ -901,7 +901,7 @@ a.src:active { background: var(--wall-3); }
 /* Landmark trials, the second Guides view. The timeline is the evidence under
    white light: one bead per trial by year, Canadian-led in NBI cyan, the last
    five years brightest. A card opens to the question, the number to remember,
-   what it changed and the catch; Canada's note keeps NBI cyan. */
+   what it changed and the limitations; Canada's note keeps NBI cyan. */
 .segtabs.four { grid-template-columns: repeat(4, 1fr); }
 .segtabs.four button { padding: 0 2px; font-size: 13px; }
 .ltmon .monitor-in { padding-bottom: 10px; }
@@ -1759,11 +1759,6 @@ html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .depth-empty { position: absolute; left: 56px; right: 14px; top: 34%; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px;
   border-radius: 12px; background: rgba(13, 11, 31, .82); box-shadow: inset 0 0 0 1px var(--fold-2); font-size: 13px; color: var(--dim); line-height: 1.4; }
 .depth-empty b { color: var(--light); font-size: 14px; font-weight: 540; }
-/* The line under the chart (the fellows' edition). */
-.readout { display: flex; align-items: baseline; gap: 10px; margin: 4px 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(13, 11, 31, .6);
-  box-shadow: inset 0 0 0 1px var(--fold); font-size: 13px; color: var(--dim); }
-.readout .mono { color: var(--nbi-ink); font-size: 10px; }
-.readout b { color: var(--light); font-weight: 540; }
 .ch-bg { fill: transparent; }
 /* The note a tapped dot opens beside it, its point on the dot. */
 .dotpop { position: absolute; left: var(--x); top: var(--y); z-index: 2; display: flex; flex-direction: column; gap: 2px; width: max-content; max-width: min(232px, 74%);
