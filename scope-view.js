@@ -11,7 +11,7 @@ let scopeTab = "log";
 let scopeCap = {text: "", cards: [], removed: 0};
 let scopeSheet = null, scopeSheetFresh = false;   // {kind: "capture" | "edit" | "staff" | "report"}
 let scopePick = null, scopePickFresh = false;     // {key, kind, q, teach}
-let scopeSearch = "", scopeAllRecent = false, scopeDot = null, scopePeriod = "since";
+let scopeSearch = "", scopeAllRecent = false, scopeDot = null, scopeDotFresh = false, scopePeriod = "since";
 let scopeCardsFresh = false, scopeIntroDone = false, scopeLit = null, scopeErr = null, scopeKeySeq = 0, scopeFocus = null;
 
 // ---- Small helpers ------------------------------------------------------------------------
@@ -265,7 +265,7 @@ function scopeLogHTML() {
 // ---- Progress --------------------------------------------------------------------------------------
 function scopeSceneSVG(sc, o = {}) {
   const f = v => v;
-  let h = "";
+  let h = o.tap && o.sel ? `<rect class="ch-bg" x="0" y="0" width="${sc.w}" height="${sc.h}" data-action="scopedot" data-id=""/>` : "";
   for (const it of sc.items) {
     if (it.t === "line") h += `<line class="ch-${it.c}" x1="${f(it.x1)}" y1="${f(it.y1)}" x2="${f(it.x2)}" y2="${f(it.y2)}"/>`;
     else if (it.t === "path") h += `<polyline class="ch-${it.c}" points="${it.pts.map(p => p.join(",")).join(" ")}"/>`;
@@ -287,20 +287,34 @@ function scopeRanges() {
     year: ["2026-07-01", "2027-06-30"],
   };
 }
+// The note a tapped dot opens beside it: the day, how far, who with, and the
+// rest of the case in a few words. A tap on the note opens the case.
+function scopeDotNoteHTML(c, p, dot, sc, last) {
+  const d = scopeIsoDate(c.d), who = scopeWho(c.staff);
+  const tx = (c.procs || []).filter(x => scopeFam(x) === "colo" && SCOPE_PROC[x] && !SCOPE_PROC[x].base)
+    .map(x => /^[A-Z]{2,}$/.test(SCOPE_PROC[x].label) ? SCOPE_PROC[x].label : SCOPE_PROC[x].label.toLowerCase()).join(", ");
+  const sub = [tx && tx[0].toUpperCase() + tx.slice(1), ...(c.found || []).filter(x => x !== "normal").slice(0, 2).map(scopeFoundLabel),
+    ...scopeFams(c).filter(f => f !== "colo").map(f => "+ " + scopeFamShort(f)),
+    scopeSiteShort(c.site), c.loc && c.loc !== "suite" ? scopeLocShort(c.loc) : "", c.urg === "urgent" ? "Urgent" : ""].filter(Boolean).join(" · ");
+  const fx = dot.x / sc.w, fy = dot.y / sc.h;
+  return `<button class="dotpop ${fx < .3 ? "l" : fx > .7 ? "r" : "c"} ${fy < .45 ? "dn" : "up"}${scopeDotFresh ? " in" : ""}" style="--x:${SC_R(fx * 100)}%;--y:${SC_R(fy * 100)}%" ` +
+    `data-action="scopeedit" data-id="${esc(c.id)}">${ic("forward", "sm dp-go")}` +
+    `<span class="mono">${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${last ? "Latest" : "Case " + p.i}</span>` +
+    `<b>${esc(scopeReachLabel(p.reach))}${who ? " with " + esc(who) : ""}</b>${sub ? `<span class="dp-s">${esc(sub)}</span>` : ""}</button>`;
+}
 function scopeDepthHTML() {
   const s = scopeData(), series = scopeReachSeries(s.cases), n = series.length;
   const sc = scopeDepthScene(series, {w: 330, h: 206});
   const last20 = series.slice(-20), cec = last20.filter(x => x.rank >= 5).length;
-  const sel = scopeDot && series.find(x => x.id === scopeDot) ? series.find(x => x.id === scopeDot) : series[n - 1];
-  const selC = sel ? s.cases.find(c => c.id === sel.id) : null;
-  const read = selC ? `<div class="readout"><span class="mono">${sel === series[n - 1] && !scopeDot ? "Latest" : "Case " + sel.i}</span>` +
-    `<b>${esc(scopeReachLabel(sel.reach))}</b><span>${esc(scopeShortDate(sel.d))}${selC.staff ? " · " + esc(scopeWho(selC.staff)) : ""}</span></div>` : "";
+  const sel = scopeDot ? series.find(x => x.id === scopeDot) : null;
+  const selC = sel ? s.cases.find(c => c.id === sel.id) : null, dot = sel ? sc.items.find(it => it.t === "dot" && it.id === sel.id) : null;
+  const note = selC && dot ? scopeDotNoteHTML(selC, sel, dot, sc, sel === series[n - 1]) : "";
   const desc = n ? `${n} colonoscopies by how far you got; ${cec} of the last ${last20.length} reached the cecum.` : "No colonoscopies yet.";
   return `<section class="monitor depthmon" aria-label="Colon depth"><div class="monitor-in">` +
     `<div class="ov mono"><span>Colon depth</span><span>${n} colonoscop${n === 1 ? "y" : "ies"}</span></div>` +
-    `<div class="depth-wrap">${scopeSceneSVG(sc, {cls: "depth" + (scopeIntroDone ? "" : " intro"), tap: true, sel: scopeDot, intro: !scopeIntroDone, label: desc})}` +
+    `<div class="depth-wrap">${scopeSceneSVG(sc, {cls: "depth" + (scopeIntroDone ? "" : " intro"), tap: true, sel: note ? scopeDot : null, intro: !scopeIntroDone, label: desc})}` + note +
     (n ? "" : `<div class="depth-empty"><b>Every colonoscopy you drive lands here</b><span>placed at how far you got, so you can watch the dots climb toward the cecum.</span></div>`) + `</div>` +
-    (n ? read + `<div class="ov mono legend"><span><i class="lgd hi"></i>Cecum or TI</span><span><i class="lgd lo"></i>Before the cecum</span>` +
+    (n ? `<div class="ov mono legend"><span><i class="lgd hi"></i>Cecum or TI</span><span><i class="lgd lo"></i>Before the cecum</span>` +
       `<span class="ok">${cec}/${last20.length} last ${last20.length}</span></div>` : "") + `</div></section>`;
 }
 function scopeTotalsHTML() {
@@ -614,7 +628,7 @@ function scopeDispatch(act, d = {}) {
   }
   else if (act === "scopehintoff") { scopeData().hintOff = fmtDate(getToday()); Store.save(); }
   else if (act === "scopemore") scopeAllRecent = true;
-  else if (act === "scopedot") scopeDot = scopeDot === d.id ? null : d.id;
+  else if (act === "scopedot") { scopeDot = scopeDot === d.id ? null : d.id || null; scopeDotFresh = !!scopeDot; }
   else if (act === "scopeperiod") scopePeriod = d.p;
   else if (act === "scopereport") { scopeExportReport(); return false; }
   else if (act === "scopecsv") { scopeExportCSV(); return false; }
@@ -690,7 +704,7 @@ function scopeAfterRender() {
     const box = document.getElementById("scopebox-sheet");
     if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {}
   }
-  scopeSheetFresh = false; scopePickFresh = false;
+  scopeSheetFresh = false; scopePickFresh = false; scopeDotFresh = false;
   if (document.querySelectorAll) for (const el of document.querySelectorAll(".capbox")) scopeGrow(el);
   if (route.page === "endo" && scopeTab === "progress") scopeIntroDone = true;
   if (scopeCardsFresh) setTimeout(() => { scopeCardsFresh = false; }, 50);

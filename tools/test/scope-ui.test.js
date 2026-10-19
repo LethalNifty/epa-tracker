@@ -295,7 +295,45 @@ test("Progress: colon depth, totals, the cecum share, therapeutics, firsts, brea
   assert.match(html, /<h2>Breadth<\/h2>/);
   assert.match(html, /Export report \(PDF\)/);
   h.click("scopedot", {id: "2"});
-  assert.match(h.html(), /Case 2<\/span><b>Sigmoid<\/b>/);
+  assert.match(h.html(), /Case 2<\/span><b>Sigmoid with Brook<\/b>/);
+});
+
+test("a tap on a colon-depth dot opens a note by it: the day, how far, who with, what else; a tap on it opens the case", () => {
+  const mk = (id, d, reach, extra = {}) => ({id, d, staff: "sb", site: "hsc", loc: "suite", urg: "elective", procs: ["colo.dx"], reach, why: [], found: [], ts: id, ...extra});
+  const cases = [mk("1", "2026-07-22", "sig", {staff: "sa"}),
+    mk("2", "2026-10-21", "cecum", {procs: ["colo.dx", "colo.poly", "colo.hem.clip", "egd.dx"], found: ["normal", "polyp"], site: "stb", loc: "ed", urg: "urgent"}),
+    mk("3", "2026-10-22", "hf", {staff: ""})];
+  const h = endo("2026-10-28", withScopes(cases));
+  h.click("scopetab", {tab: "progress"});
+  const pop = () => (h.html().match(/<button class="dotpop[\s\S]*?<\/button>/) || [""])[0];
+  // Nothing until a dot is tapped, and no line under the chart any more.
+  assert.equal(pop(), "");
+  assert.doesNotMatch(h.html(), /class="readout|class="ch-bg"/);
+  h.click("scopedot", {id: "2"});
+  assert.match(pop(), /^<button class="dotpop c dn in" style="--x:55\.2%;--y:18\.9%" data-action="scopeedit" data-id="2">/);
+  // It pops in once, not on every redraw.
+  h.run("render()");
+  assert.match(pop(), /^<button class="dotpop c dn" style/);
+  assert.match(pop(), /<span class="mono">Wed 21 Oct · Case 2<\/span>/);
+  assert.match(pop(), /<b>Cecum with Brook<\/b>/);
+  assert.match(pop(), /<span class="dp-s">Polypectomy, clip · Polyp · \+ EGD · St\. B · ED · Urgent<\/span>/);
+  assert.match(h.html(), /class="ch-dothi sel"/);
+  // The same dot again closes it; so does a tap anywhere else on the chart.
+  h.click("scopedot", {id: "2"});
+  assert.equal(pop(), "");
+  h.click("scopedot", {id: "1"});
+  assert.match(pop(), /^<button class="dotpop l up in"/);
+  assert.match(pop(), /<b>Sigmoid with Attending<\/b><span class="dp-s">HSC<\/span>/);
+  assert.match(h.html(), /<rect class="ch-bg" x="0" y="0" width="330" height="206" data-action="scopedot" data-id=""\/>/);
+  h.click("scopedot", {id: ""});
+  assert.equal(pop(), "");
+  // No staff: just how far.
+  h.click("scopedot", {id: "3"});
+  assert.match(pop(), /^<button class="dotpop r dn in"/);
+  assert.match(pop(), /<span class="mono">Thu 22 Oct · Latest<\/span><b>Hepatic flexure<\/b>/);
+  // The note opens the case.
+  h.click("scopeedit", {id: "3"});
+  assert.equal(h.val("scopeSheet.id"), "3");
 });
 
 test("Progress with nothing logged invites logging", () => {

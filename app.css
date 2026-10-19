@@ -1754,10 +1754,24 @@ html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .depth-empty { position: absolute; left: 56px; right: 14px; top: 34%; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px;
   border-radius: 12px; background: rgba(13, 11, 31, .82); box-shadow: inset 0 0 0 1px var(--fold-2); font-size: 13px; color: var(--dim); line-height: 1.4; }
 .depth-empty b { color: var(--light); font-size: 14px; font-weight: 540; }
-.readout { display: flex; align-items: baseline; gap: 10px; margin: 4px 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(13, 11, 31, .6);
-  box-shadow: inset 0 0 0 1px var(--fold); font-size: 13px; color: var(--dim); }
-.readout .mono { color: var(--nbi-ink); font-size: 10px; }
-.readout b { color: var(--light); font-weight: 540; }
+.ch-bg { fill: transparent; }
+/* The note a tapped dot opens beside it, its point on the dot. */
+.dotpop { position: absolute; left: var(--x); top: var(--y); z-index: 2; display: flex; flex-direction: column; gap: 2px; width: max-content; max-width: min(232px, 74%);
+  padding: 8px 30px 9px 11px; border: 0; border-radius: 12px; background: #221c42; color: var(--dim); font: inherit; font-size: 12.5px; line-height: 1.35; text-align: left;
+  box-shadow: 0 0 0 1px var(--fold-2), 0 10px 28px rgba(5, 3, 18, .55); --tx: -50%; --ty: calc(-100% - 13px); --ox: 50%; --oy: 100%;
+  transform: translate(var(--tx), var(--ty)); transform-origin: var(--ox) var(--oy); }
+.dotpop.l { --tx: -19px; --ox: 19px; }
+.dotpop.r { --tx: calc(-100% + 19px); --ox: calc(100% - 19px); }
+.dotpop.dn { --ty: 13px; --oy: 0; }
+.dotpop::after { content: ""; position: absolute; left: calc(var(--ox) - 5px); bottom: -5px; width: 10px; height: 10px; background: #221c42; background-clip: padding-box;
+  border: solid var(--fold-2); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+.dotpop.dn::after { top: -5px; bottom: auto; border-width: 1px 0 0 1px; }
+.dotpop .mono { color: var(--nbi-ink); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.dotpop b { color: var(--light); font-size: 14px; font-weight: 540; }
+.dotpop .dp-go { position: absolute; top: 9px; right: 9px; color: var(--faint); }
+.dotpop:active { background: #2a2350; }
+.dotpop.in { animation: dotPop .2s var(--ease-out) both; }
+@keyframes dotPop { from { opacity: 0; scale: .9; } }
 .legend { font-size: 10px; flex-wrap: wrap; row-gap: 4px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .lgd { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
