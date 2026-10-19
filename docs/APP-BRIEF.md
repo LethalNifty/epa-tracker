@@ -42,12 +42,13 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 
 **Endo:**
 - a scope log: say the case out loud and the app reads the procedure, staff surname, findings, interventions and how far you got; confirm and save
-- Progress charts
+- Progress charts; a tap on a colon-depth dot shows that case: the day, how far you got, who with, and what else was done
 - a PDF procedure log (totals, therapeutic techniques including EMR and ESD, cecal intubation, milestones, every case in full) for the program or a job application, and a spreadsheet export, both built in the app
 
 **Guides** (Guidelines | Trials | IBD drugs | Biopsy):
 - a guideline library (titles, years, links and our own one-line notes), opening on this block's topics with every section folded to one row
 - landmark trials, every IBD drug sold in Canada, and the local biopsy protocol
+- each trial opens to why they did it, the question, who was in it, who to use it for, the result, what it changed and two or three limitations; the trials the weekly check adds open the same way
 - one search box that finds guidelines, trials, drugs, biopsy protocols and your pearls together
 - a weekly check adds new guidelines without an app update
 

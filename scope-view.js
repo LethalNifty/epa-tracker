@@ -265,7 +265,7 @@ function scopeLogHTML() {
 // ---- Progress --------------------------------------------------------------------------------------
 function scopeSceneSVG(sc, o = {}) {
   const f = v => v;
-  let h = o.tap && o.sel ? `<rect class="ch-bg" x="0" y="0" width="${sc.w}" height="${sc.h}" data-action="scopedot" data-id=""/>` : "";
+  let h = o.tap && o.sel && o.bg ? `<rect class="ch-bg" x="0" y="0" width="${sc.w}" height="${sc.h}" data-action="scopedot" data-id=""/>` : "";
   for (const it of sc.items) {
     if (it.t === "line") h += `<line class="ch-${it.c}" x1="${f(it.x1)}" y1="${f(it.y1)}" x2="${f(it.x2)}" y2="${f(it.y2)}"/>`;
     else if (it.t === "path") h += `<polyline class="ch-${it.c}" points="${it.pts.map(p => p.join(",")).join(" ")}"/>`;
@@ -308,13 +308,17 @@ function scopeDepthHTML() {
   const last20 = series.slice(-20), cec = last20.filter(x => x.rank >= 5).length;
   const sel = scopeDot ? series.find(x => x.id === scopeDot) : null;
   const selC = sel ? s.cases.find(c => c.id === sel.id) : null, dot = sel ? sc.items.find(it => it.t === "dot" && it.id === sel.id) : null;
-  const note = selC && dot ? scopeDotNoteHTML(selC, sel, dot, sc, sel === series[n - 1]) : "";
+  const note = selC && dot && !FELLOWS ? scopeDotNoteHTML(selC, sel, dot, sc, sel === series[n - 1]) : "";
+  // The fellows' edition keeps the line under the chart: the tapped dot, or the latest.
+  const rp = FELLOWS && n ? sel || series[n - 1] : null, rc = rp ? s.cases.find(c => c.id === rp.id) : null;
+  const read = rc ? `<div class="readout"><span class="mono">${sel ? "Case " + rp.i : "Latest"}</span>` +
+    `<b>${esc(scopeReachLabel(rp.reach))}</b><span>${esc(scopeShortDate(rp.d))}${rc.staff ? " · " + esc(scopeWho(rc.staff)) : ""}</span></div>` : "";
   const desc = n ? `${n} colonoscopies by how far you got; ${cec} of the last ${last20.length} reached the cecum.` : "No colonoscopies yet.";
   return `<section class="monitor depthmon" aria-label="Colon depth"><div class="monitor-in">` +
     `<div class="ov mono"><span>Colon depth</span><span>${n} colonoscop${n === 1 ? "y" : "ies"}</span></div>` +
-    `<div class="depth-wrap">${scopeSceneSVG(sc, {cls: "depth" + (scopeIntroDone ? "" : " intro"), tap: true, sel: note ? scopeDot : null, intro: !scopeIntroDone, label: desc})}` + note +
+    `<div class="depth-wrap">${scopeSceneSVG(sc, {cls: "depth" + (scopeIntroDone ? "" : " intro"), tap: true, sel: note || read ? scopeDot : null, bg: !!note, intro: !scopeIntroDone, label: desc})}` + note +
     (n ? "" : `<div class="depth-empty"><b>Every colonoscopy you drive lands here</b><span>placed at how far you got, so you can watch the dots climb toward the cecum.</span></div>`) + `</div>` +
-    (n ? `<div class="ov mono legend"><span><i class="lgd hi"></i>Cecum or TI</span><span><i class="lgd lo"></i>Before the cecum</span>` +
+    (n ? read + `<div class="ov mono legend"><span><i class="lgd hi"></i>Cecum or TI</span><span><i class="lgd lo"></i>Before the cecum</span>` +
       `<span class="ok">${cec}/${last20.length} last ${last20.length}</span></div>` : "") + `</div></section>`;
 }
 function scopeTotalsHTML() {

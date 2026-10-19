@@ -937,7 +937,8 @@ a.src:active { background: var(--wall-3); }
 .lt.fresh .lt-body { animation: drOpen .34s var(--ease-out) both; }
 .lt-design { margin: 0; color: var(--dim); font-size: 10px; line-height: 1.55; letter-spacing: .04em; }
 .lt-q { margin: 8px 0 0; color: var(--light); font-size: 15px; line-height: 1.45; font-weight: 520; }
-.lt-pico { display: grid; grid-template-columns: 42px 1fr; gap: 7px 10px; margin: 12px 0 0; }
+.lt-pico { display: grid; grid-template-columns: minmax(42px, max-content) 1fr; gap: 7px 12px; margin: 12px 0 0; }
+.lt-pico dt { white-space: nowrap; }
 .lt-pico dt { padding-top: 3px; color: var(--dim); font-size: 10px; }
 .lt-pico dd { margin: 0; color: #dbd7ef; font-size: 14px; line-height: 1.45; }
 .lt-key { margin-top: 14px; padding: 12px 14px 11px; border-radius: 12px; background: var(--field);
@@ -982,6 +983,10 @@ a.src:active { background: var(--wall-3); }
 .ltw-body { padding: 0 0 12px 54px; }
 .ltw-body p { margin: 0; color: #c3d0ce; font-size: 13.5px; line-height: 1.45; }
 .ltw-body .lt-chips { margin-top: 10px; }
+/* Opened like a landmark card: the question stands out under why they did it. */
+.ltw-body .lt-why { margin-top: 2px; }
+.ltw-body .lt-q { margin-top: 10px; color: var(--light); font-size: 14.5px; }
+.ltw-body .lt-pico dd { font-size: 13.5px; }
 .ltw mark { background: rgba(217, 232, 255, .2); color: inherit; border-radius: 3px; padding: 0 1px; }
 .ltw-more { display: block; width: 100%; padding: 11px 0; border-top: 1px solid var(--fold); color: var(--wli); font-size: 13px; text-align: left; }
 .segtabs .gdot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: 2px; }
@@ -1754,6 +1759,11 @@ html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .depth-empty { position: absolute; left: 56px; right: 14px; top: 34%; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px;
   border-radius: 12px; background: rgba(13, 11, 31, .82); box-shadow: inset 0 0 0 1px var(--fold-2); font-size: 13px; color: var(--dim); line-height: 1.4; }
 .depth-empty b { color: var(--light); font-size: 14px; font-weight: 540; }
+/* The line under the chart (the fellows' edition). */
+.readout { display: flex; align-items: baseline; gap: 10px; margin: 4px 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(13, 11, 31, .6);
+  box-shadow: inset 0 0 0 1px var(--fold); font-size: 13px; color: var(--dim); }
+.readout .mono { color: var(--nbi-ink); font-size: 10px; }
+.readout b { color: var(--light); font-weight: 540; }
 .ch-bg { fill: transparent; }
 /* The note a tapped dot opens beside it, its point on the dot. */
 .dotpop { position: absolute; left: var(--x); top: var(--y); z-index: 2; display: flex; flex-direction: column; gap: 2px; width: max-content; max-width: min(232px, 74%);

@@ -5,7 +5,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const {load, ROOT} = require("./harness");
+const {load, state, ROOT} = require("./harness");
 
 const LIB = JSON.parse(fs.readFileSync(path.join(ROOT, "guides.json"), "utf8"));
 // A phone with the guideline library loaded, on the Guides tab unless told otherwise.
@@ -26,6 +26,8 @@ function card(html, id) {
   assert.ok(at > 0, "no card for " + id);
   return html.slice(html.lastIndexOf("<article", at), html.indexOf("</article>", at));
 }
+// The app's own escaping, to find a field's text in the markup.
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const ids = (h, q) => h.val(`trialsSearch(TRIALS, ${JSON.stringify(q)}).map(t => t.id)`);
 
 // ---- The cards -------------------------------------------------------------------------------
@@ -40,8 +42,13 @@ test("the trial file: 48 cards, each complete, each under a real guideline topic
     assert.ok(!seen.has(t.id), "duplicate id " + t.id); seen.add(t.id);
     assert.ok(t.tp.length >= 1 && t.tp.every(x => topics.has(x)), t.id + " topics " + t.tp);
     assert.equal(t.s, topics.get(t.tp[0]).s, t.id + " sits in its first topic's section");
-    for (const f of ["n", "au", "j", "line", "design", "q", "who", "arms", "res", "now", "catch"])
+    for (const f of ["n", "au", "j", "line", "design", "why", "q", "who", "use", "arms", "res", "now"])
       assert.ok(typeof t[f] === "string" && t[f].length > 2, t.id + " is missing " + f);
+    // Limitations: two or three short points, in place of the old one-line catch.
+    assert.ok(Array.isArray(t.lim) && t.lim.length >= 2 && t.lim.length <= 3, t.id + " limitations");
+    for (const l of t.lim) assert.ok(typeof l === "string" && l.length > 8 && l.length <= 170, t.id + " limitation: " + l);
+    // The old one-line catch stays for the fellows' edition, which keeps the old card.
+    assert.ok(typeof t.catch === "string" && t.catch.length > 8, t.id + " catch");
     assert.ok(t.y >= 1950 && t.y <= 2026, t.id + " year " + t.y);
     assert.ok(t.key && t.key.v && t.key.l, t.id + " key result");
     assert.match(t.pmid, /^\d{6,9}$/, t.id + " PubMed id");
@@ -135,19 +142,46 @@ test("the monitor spans the trials' years and counts the Canadian-led ones", () 
   assert.match(html, /48 trials/);
 });
 
-test("tapping a trial opens its card: result, what changed, the catch, Canada and links", () => {
+test("tapping a trial opens its card: why, the question, who and who it's for, result, what changed, limitations, Canada and links", () => {
   const h = trialsTab();
   h.click("guidestrtoggle", {id: "confirm"});
   const c = card(h.html(), "confirm");
+  const t = h.val("TRIALS_BY_ID.confirm");
   assert.match(c, /<article class="lt open/);
+  // Why they did it and what they asked come first, before who was in it.
+  const why = c.indexOf("Why they did it"), q = c.indexOf('class="lt-q"'), who = c.indexOf(">Who<");
+  assert.ok(why > 0 && why < q && q < who, "why, then the question, then who");
+  assert.ok(c.includes(t.why.slice(0, 30)));
+  assert.match(c, /<dt class="mono">Use for<\/dt><dd>/);
   assert.match(c, /32% vs 17%/);
-  assert.match(c, /The catch/);
+  assert.doesNotMatch(c, /The catch/);
+  const lims = /<h4 class="mono">[^]*?Limitations<\/h4><ul class="dl">([^]*?)<\/ul>/.exec(c);
+  assert.ok(lims, "a Limitations list");
+  assert.equal((lims[1].match(/<li>/g) || []).length, t.lim.length);
   assert.match(c, /In Canada/);
   assert.match(c, /pubmed\.ncbi\.nlm\.nih\.gov\/33657294/);
   assert.match(c, /doi\.org\/10\.1056\/NEJMoa2008290/);
   assert.match(c, /data-action="guidesopen" data-id="ascites"/);
   h.click("guidestrtoggle", {id: "confirm"});
-  assert.doesNotMatch(card(h.html(), "confirm"), /The catch/);
+  assert.doesNotMatch(card(h.html(), "confirm"), /Limitations/);
+});
+
+test("the fellows' edition keeps the old card: the question, who, the catch; no why, use or limitations", () => {
+  const h = load({today: "2026-10-12", edition: "fellows", state: state({}, {setup: {d: "2026-10-01"}})});
+  h.run(`guidesAccept(${JSON.stringify(LIB)}); guidesRedraw();`);
+  h.click("tab", {page: "guides"});
+  h.click("guidestab", {tab: "t"});
+  h.click("guidestrtoggle", {id: "confirm"});
+  const c = card(h.html(), "confirm");
+  assert.match(c, /The catch<\/h4><p>/);
+  assert.ok(c.includes(esc(h.val("TRIALS_BY_ID.confirm.catch"))));
+  assert.match(c, /class="lt-q"/);
+  assert.doesNotMatch(c, /Why they did it|Use for|Limitations/);
+  // A weekly-watch trial opens to its note alone.
+  h.click("guidestrwtoggle", {id: "42815507"});
+  const body = h.html().slice(h.html().indexOf('class="ltw-body"'));
+  assert.match(body, /^class="ltw-body"><p>Noninferiority trial/);
+  assert.doesNotMatch(body.slice(0, body.indexOf("</article>")), /Why they did it|Use for|Limitations/);
 });
 
 test("an IBD trial card links to its drugs", () => {
@@ -231,7 +265,11 @@ test("the watch's trials in guides.json: our own gist, a real topic, a link, new
     assert.ok(["NEJM", "Lancet", "JAMA"].includes(r.w), r.w);
     assert.ok(r.t && r.t.length <= 80, r.k + " gist");
     assert.ok(topics.has(r.tp), r.k + " topic " + r.tp);
-    assert.deepEqual([r.n, r.t, r.x].filter(s => /[—–]/.test(s)), [], r.k + " has a long dash");
+    // The same few lines as a landmark card: why, the question, who, who it's for, limitations.
+    for (const f of ["why", "q", "who", "use"]) assert.ok(typeof r[f] === "string" && r[f].length > 8, r.k + " is missing " + f);
+    assert.ok(Array.isArray(r.lim) && r.lim.length >= 2 && r.lim.length <= 3, r.k + " limitations");
+    for (const l of r.lim) assert.ok(typeof l === "string" && l.length > 8 && l.length <= 170, r.k + " limitation: " + l);
+    assert.deepEqual([r.n, r.t, r.x, r.why, r.q, r.who, r.use, ...r.lim].filter(s => /[—–]/.test(s)), [], r.k + " has a long dash");
   }
   assert.deepEqual(WATCH.map(r => r.d), WATCH.map(r => r.d).slice().sort().reverse());
 });
@@ -254,14 +292,21 @@ test("Trials opens with the running list from the weekly watch, newest first, fo
   assert.doesNotMatch(h.html(), /New from the weekly watch/);
 });
 
-test("a watch trial opens to our note, its guideline topic and the paper", () => {
+test("a watch trial opens like a landmark card: why, the question, who, who it's for, what they found, limitations, its topic and the paper", () => {
   const h = watchPhone("guides");
   h.click("guidestab", {tab: "t"});
   assert.doesNotMatch(h.html(), /class="ltw-body"/);
   h.click("guidestrwtoggle", {id: "42815507"});
   const html = h.html();
+  const r = WATCH.find(x => x.k === "42815507");
   assert.match(html, /<article class="ltw open" id="tw-42815507">/);
-  assert.match(html, /SVR12 was 98.8%/);
+  const body = html.slice(html.indexOf('class="ltw-body"'), html.indexOf("</article>", html.indexOf('class="ltw-body"')));
+  const at = s => body.indexOf(s);
+  assert.ok(at("Why they did it") > 0 && at("Why they did it") < at('class="lt-q"') && at('class="lt-q"') < at(">Who<") &&
+    at(">Who<") < at(">Use for<") && at(">Use for<") < at("What they found") && at("What they found") < at("Limitations"), "in order");
+  assert.ok(body.includes(esc(r.why).slice(0, 30)) && body.includes(esc(r.q)));
+  assert.match(body, /SVR12 was 98.8%/);
+  assert.equal((/Limitations<\/h4><ul class="dl">([^]*?)<\/ul>/.exec(body)[1].match(/<li>/g) || []).length, r.lim.length);
   assert.match(html, /data-action="guidesopen" data-id="hcv"/);
   assert.match(html, /href="https:\/\/doi.org\/10.1016\/S0140-6736\(26\)01380-2"/);
   assert.match(html, /href="https:\/\/pubmed.ncbi.nlm.nih.gov\/42815507\/"/);
@@ -307,7 +352,8 @@ test("searching Trials finds the watch's trials too", () => {
 test("the library takes only well-formed watch trials, and one with a landmark card is left to the card", () => {
   const h = load({today: "2026-10-12"});
   const lib = {...LIB, tr: [
-    {k: "1", w: "NEJM", d: "2026-10-01", n: "OK", t: "Kept", x: "", u: "https://doi.org/x", tp: "hcv"},
+    {k: "1", w: "NEJM", d: "2026-10-01", n: "OK", t: "Kept", x: "", u: "https://doi.org/x", tp: "hcv",
+      why: "Because", q: 7, lim: ["One", 2, "Three", "Four"]},
     {k: "2", w: "NEJM", d: "2026-10-02", n: "Bad link", t: "Dropped", u: "javascript:alert(1)", tp: "hcv"},
     {k: "3", w: "NEJM", d: "Oct 2026", n: "Bad date", t: "Dropped", u: "https://doi.org/y", tp: "hcv"},
     {k: "4", w: "Lancet", d: "2026-09-01", n: "No topic", t: "Kept, no topic", u: "https://doi.org/z", tp: "nowhere"},
@@ -316,6 +362,16 @@ test("the library takes only well-formed watch trials, and one with a landmark c
   assert.deepEqual(h.val("Guides.data.trials.map(r => r.k)"), ["1", "19474425", "4"]);
   assert.equal(h.val("Guides.data.trials[2].tp"), null);
   assert.deepEqual(h.val("trialsWatch(Guides.data).map(r => r.k)"), ["1", "4"]);
+  // The extra lines keep only text, and three limitations at most.
+  const r = h.val("Guides.data.trials[0]");
+  assert.deepEqual([r.why, r.q, r.who, r.use, r.lim], ["Because", "", "", "", ["One", "Three", "Four"]]);
+  // An older entry with none of them still opens to its note alone.
+  h.run(`guidesAccept(${JSON.stringify({...LIB, tr: [{k: "5", w: "NEJM", d: "2026-10-01", t: "Gist", x: "The note.", u: "https://doi.org/v", tp: "hcv"}]})}); trialsWatchOpen.add("5");`);
+  h.click("tab", {page: "guides"});
+  h.click("guidestab", {tab: "t"});
+  const open = h.html().slice(h.html().indexOf('id="tw-5"'));
+  assert.match(open, /<div class="ltw-body"><p>The note\.<\/p>/);
+  assert.doesNotMatch(open.slice(0, open.indexOf("</article>")), /Why they did it|Limitations/);
   const old = {...LIB};
   delete old.tr;
   h.run(`guidesAccept(${JSON.stringify(old)});`);

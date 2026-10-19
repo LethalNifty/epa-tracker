@@ -10,7 +10,7 @@ const {load, state} = require("./harness");
 
 // Placeholder staff only.
 const STAFF = [{id: "sa", name: "Attending, Alpha", aliases: [], hidden: false}, {id: "sb", name: "Brook, Casey", aliases: [], hidden: false}];
-const withScopes = (cases = [], extra = {}) => state({}, {scopes: {cases, staff: STAFF, learned: [], lastReport: null, reportName: "", hintOff: null, ...extra}});
+const withScopes = (cases = [], extra = {}, more = {}) => state({}, {scopes: {cases, staff: STAFF, learned: [], lastReport: null, reportName: "", hintOff: null, ...extra}, ...more});
 function endo(today = "2026-09-28", st) {
   const h = load({today, state: st});
   h.click("tab", {page: "endo"});
@@ -334,6 +334,17 @@ test("a tap on a colon-depth dot opens a note by it: the day, how far, who with,
   // The note opens the case.
   h.click("scopeedit", {id: "3"});
   assert.equal(h.val("scopeSheet.id"), "3");
+});
+
+test("the fellows' edition keeps the line under the chart, not the note by the dot", () => {
+  const mk = (id, d, reach) => ({id, d, staff: "sb", site: "hsc", loc: "suite", urg: "elective", procs: ["colo.dx"], reach, why: [], found: [], ts: id});
+  const h = load({today: "2026-10-28", edition: "fellows", state: withScopes([mk("1", "2026-10-20", "sig"), mk("2", "2026-10-21", "cecum")], {}, {setup: {d: "2026-10-01"}})});
+  h.click("tab", {page: "endo"});
+  h.click("scopetab", {tab: "progress"});
+  assert.match(h.html(), /<div class="readout"><span class="mono">Latest<\/span><b>Cecum<\/b><span>21 Oct · Brook<\/span><\/div>/);
+  h.click("scopedot", {id: "1"});
+  assert.match(h.html(), /<div class="readout"><span class="mono">Case 1<\/span><b>Sigmoid<\/b><span>20 Oct · Brook<\/span><\/div>/);
+  assert.doesNotMatch(h.html(), /class="dotpop|class="ch-bg"/);
 });
 
 test("Progress with nothing logged invites logging", () => {

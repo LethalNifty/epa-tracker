@@ -19,6 +19,13 @@ const GUIDES_FAMILY_LABEL = {consults: "Consults", hepatology: "Hepatology", mot
 // yet (first open without signal); "ready" once it is loaded.
 const Guides = {status: "idle", data: null, byId: {}};
 
+// A watch trial's few lines, as on a landmark card: why they did it, what they
+// asked, who was in it, who it's for, and up to three limitations. Text only.
+function guidesTrialLines(r) {
+  const str = v => typeof v === "string" ? v : "";
+  return {why: str(r.why), q: str(r.q), who: str(r.who), use: str(r.use),
+    lim: (Array.isArray(r.lim) ? r.lim : []).filter(l => typeof l === "string" && l).slice(0, 3)};
+}
 // Checks the file's shape and indexes it. Returns false (and keeps whatever
 // was loaded before) when the file isn't a library.
 function guidesAccept(json) {
@@ -42,7 +49,7 @@ function guidesAccept(json) {
   const trials = (Array.isArray(json.tr) ? json.tr : [])
     .filter(r => r && r.k && r.w && r.t && /^\d{4}-\d{2}-\d{2}$/.test(r.d || "") && /^https:\/\//.test(r.u || ""))
     .map(r => ({k: String(r.k), w: r.w, d: r.d, y: +r.d.slice(0, 4), n: r.n || "", t: r.t, x: r.x || "", u: r.u,
-      tp: byId[r.tp] ? r.tp : null}))
+      tp: byId[r.tp] ? r.tp : null, ...guidesTrialLines(r)}))
     .sort((a, b) => (b.d > a.d ? 1 : b.d < a.d ? -1 : 0));
   Guides.data = {checked: json.checked || null, sections: json.sections.filter(s => secs[s.id]), topics, secs, trials};
   Guides.byId = byId;

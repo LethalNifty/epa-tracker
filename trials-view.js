@@ -75,12 +75,14 @@ function trialsCardHTML(t, opts = {}) {
   if (!open) return h + `</article>`;
   h += `<div class="lt-body">`;
   h += `<p class="lt-design mono">${esc(t.au)} · ${esc(t.design)}</p>`;
-  h += `<p class="lt-q">${esc(t.q)}</p>`;
-  h += `<dl class="lt-pico"><dt class="mono">Who</dt><dd>${esc(t.who)}</dd><dt class="mono">Arms</dt><dd>${esc(t.arms)}</dd></dl>`;
+  // The fellows' edition keeps the old card: no why, use or limitations.
+  h += FELLOWS ? `<p class="lt-q">${esc(t.q)}</p>` : trialsWhyHTML(t);
+  h += `<dl class="lt-pico"><dt class="mono">Who</dt><dd>${esc(t.who)}</dd><dt class="mono">Arms</dt><dd>${esc(t.arms)}</dd>` +
+    (FELLOWS ? "" : `<dt class="mono">Use for</dt><dd>${esc(t.use)}</dd>`) + `</dl>`;
   h += `<div class="lt-key${t.key.v.length > 14 ? " long" : ""}"><span class="v">${esc(t.key.v)}</span><span class="l">${esc(t.key.l)}</span></div>`;
   h += `<p class="lt-res">${esc(t.res)}</p>`;
   h += `<section class="ds lt-sec"><h4 class="mono">What it changed</h4><p>${esc(t.now)}</p></section>`;
-  h += `<section class="ds lt-sec differ"><h4 class="mono">${ic("alert", "sm")}The catch</h4><p>${esc(t.catch)}</p></section>`;
+  h += FELLOWS ? `<section class="ds lt-sec differ"><h4 class="mono">${ic("alert", "sm")}The catch</h4><p>${esc(t.catch)}</p></section>` : trialsLimHTML(t.lim);
   if (t.since) h += `<section class="ds lt-sec"><h4 class="mono">Since</h4><p>${esc(t.since)}</p></section>`;
   if (t.canada) h += `<div class="lt-ca"><p class="mono">In Canada</p><p>${esc(t.canada)}</p></div>`;
   h += trialsChipsHTML(t);
@@ -88,6 +90,16 @@ function trialsCardHTML(t, opts = {}) {
     `<a class="glink alt" href="https://pubmed.ncbi.nlm.nih.gov/${esc(t.pmid)}/" target="_blank" rel="noopener"><span class="who mono">PubMed<span class="yr">${esc(t.pmid)}</span></span><span class="tt">The abstract</span>${ic("external", "sm")}</a>` +
     `<a class="glink alt" href="https://doi.org/${esc(t.doi)}" target="_blank" rel="noopener"><span class="who mono">${esc(trialsJournal(t.j))}<span class="yr">${t.y}</span></span><span class="tt">The paper</span>${ic("external", "sm")}</a></div>`;
   return h + `</div></article>`;
+}
+// Why they did it, then the question they asked.
+function trialsWhyHTML(t, hi = s => s) {
+  return `<section class="ds lt-sec lt-why"><h4 class="mono">Why they did it</h4><p>${hi(esc(t.why))}</p></section>` +
+    `<p class="lt-q">${hi(esc(t.q))}</p>`;
+}
+// Two or three points to hold the result against.
+function trialsLimHTML(lim) {
+  return `<section class="ds lt-sec differ"><h4 class="mono">${ic("alert", "sm")}Limitations</h4><ul class="dl">` +
+    lim.map(l => `<li>${esc(l)}</li>`).join("") + `</ul></section>`;
 }
 // A trial as one line: inside a guideline topic and in the Guides search.
 function trialsMiniHTML(t) {
@@ -97,7 +109,9 @@ function trialsMiniHTML(t) {
 
 // ---- New from the weekly watch ------------------------------------------------------------------
 // A running list: each trial the Sunday watch keeps joins the top, with our
-// one-line gist; a tap shows our note, its guideline topic and the paper.
+// one-line gist; a tap opens it like a landmark card (why, the question, who,
+// who it's for, what they found, limitations), then its guideline topic and
+// the paper. An entry from before those lines opens to its note alone.
 function trialsWatchRowHTML(r, fresh) {
   const open = trialsWatchOpen.has(r.k), topic = r.tp && Guides.byId[r.tp];
   let h = `<article class="ltw${open ? " open" : ""}" id="tw-${esc(r.k)}">` +
@@ -106,7 +120,10 @@ function trialsWatchRowHTML(r, fresh) {
     `${trialsHi(esc(r.t))}${topic ? `<span class="tp">${esc(topic.n)}</span>` : ""}</span>` +
     `${fresh ? '<i class="gdot" aria-label="Not seen yet"></i>' : ""}${ic("chev", "sm chev")}</button>`;
   if (!open) return h + `</article>`;
-  h += `<div class="ltw-body">${r.x ? `<p>${trialsHi(esc(r.x))}</p>` : ""}`;
+  const full = !FELLOWS && r.why && r.q && r.lim && r.lim.length;
+  h += `<div class="ltw-body">` + (!full ? (r.x ? `<p>${trialsHi(esc(r.x))}</p>` : "") : trialsWhyHTML(r, trialsHi) +
+    `<dl class="lt-pico">${r.who ? `<dt class="mono">Who</dt><dd>${esc(r.who)}</dd>` : ""}${r.use ? `<dt class="mono">Use for</dt><dd>${esc(r.use)}</dd>` : ""}</dl>` +
+    (r.x ? `<section class="ds lt-sec"><h4 class="mono">What they found</h4><p>${trialsHi(esc(r.x))}</p></section>` : "") + trialsLimHTML(r.lim));
   if (topic) h += `<div class="lt-chips"><button class="chip" data-action="guidesopen" data-id="${esc(topic.id)}">${ic("guides")}<span class="nm">${esc(topic.n)}</span></button></div>`;
   h += `<div class="lt-src">` +
     `<a class="glink alt" href="https://pubmed.ncbi.nlm.nih.gov/${esc(r.k)}/" target="_blank" rel="noopener"><span class="who mono">PubMed<span class="yr">${esc(r.k)}</span></span><span class="tt">The abstract</span>${ic("external", "sm")}</a>` +
