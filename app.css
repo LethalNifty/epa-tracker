@@ -266,6 +266,13 @@ section.sec { margin-top: 28px; }
 .cwho i { font-style: normal; color: var(--capillary); }
 .pillbtn { min-height: 34px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 520;
   color: var(--nbi-ink); background: var(--nbi-wash); }
+/* Not achieved: a quiet outline beside Approved, so the two never look alike. */
+.pillbtn.miss { flex: 0 0 auto; padding: 0 10px; color: var(--dim); background: none; box-shadow: inset 0 0 0 1px var(--fold-2); }
+.crow .pillbtn { flex: 0 0 auto; }
+.crow { flex-wrap: wrap; }
+.cacts { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: -6px; padding: 0 0 10px 68px; }
+.cacts .pillbtn { min-height: 32px; }
+.cacts .sparetag { margin-right: auto; }
 
 /* Finish line */
 .finish { padding: 14px 16px 16px; }
@@ -474,6 +481,13 @@ a.btn.callbtn .ic { color: inherit; }
 .ometabtn .onum { font: 500 11px/1 var(--mono); color: var(--faint); }
 .ometabtn .odate { font: 400 12.5px/1 var(--mono); color: var(--light); white-space: nowrap; }
 .ometabtn .otext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Forms that came back not achieved: greyed, apart, out of the count. */
+.misslist { display: flex; flex-direction: column; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--fold-2); }
+.misslist > .mono { color: var(--faint); font-size: 10px; letter-spacing: .06em; padding-bottom: 2px; }
+.omiss { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 13px; color: var(--faint); text-align: left; overflow: hidden; }
+.omiss .ic { flex: 0 0 auto; width: 14px; height: 14px; color: var(--mucosa); opacity: .7; }
+.omiss .odate { font: 400 12px/1 var(--mono); color: var(--dim); white-space: nowrap; text-decoration: line-through; text-decoration-color: rgba(255, 127, 149, .5); }
+.omiss .otext { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 10px;
   border-radius: var(--r-md); border: 1.5px dashed color-mix(in srgb, var(--c, var(--nbi)) 55%, transparent);
   color: var(--c, var(--nbi-ink)); font-weight: 520; }
@@ -1274,6 +1288,10 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
 .seg button .ic { width: 16px; height: 16px; }
 .seg button.on.pending { background: var(--capillary-wash); color: var(--capillary); }
 .seg button.on.approved { background: var(--nbi-wash); color: var(--nbi-ink); }
+.seg button.on.missed { background: rgba(255, 127, 149, .13); color: var(--mucosa); }
+.seg button { min-width: 0; white-space: nowrap; }
+.seg.three button { flex: 1 1 auto; gap: 5px; padding: 0 6px; font-size: 14.5px; }
+.seg.three button .ic { width: 14px; height: 14px; }
 .sactions { display: flex; gap: 8px; margin-top: 18px; }
 .sactions .btn + .btn { margin-top: 0; }
 .sactions .btn.danger { flex: 0 0 104px; }

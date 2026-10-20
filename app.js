@@ -25,6 +25,11 @@ const Store = {
       q: sd && typeof sd.q === "object" && sd.q ? sd.q : {}, pauses: sd && Array.isArray(sd.pauses) ? sd.pauses : [],
       qa: sd && typeof sd.qa === "object" && sd.qa ? sd.qa : {}};
     for (const k in this.state.obs) for (const o of this.state.obs[k]) if (!o.status) o.status = "approved";
+    // Forms that came back not achieved, kept apart so no count sees them.
+    const ms = this.state.missed;
+    this.state.missed = {};
+    if (ms && typeof ms === "object") for (const k in ms) if (PART_BY_ID[k] && Array.isArray(ms[k]))
+      this.state.missed[k] = ms[k].filter(o => o && typeof o === "object").map(o => ({...o, status: "missed"}));
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
       learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled)};
@@ -38,10 +43,25 @@ const Store = {
     this.save(); return this.state.obs[p].length - 1; },
   removeObs(p, i) { (this.state.obs[p]||[]).splice(i,1); this.save(); },
   restoreObs(p, i, o) { (this.state.obs[p] ||= []).splice(i, 0, o); this.save(); },
-  // A pending form turning approved keeps the day it did (ok), for its assessor's
-  // usual turnaround; a form just being logged (no date yet), or one going back
-  // to pending, keeps none.
-  statusTo(o, s) { if (s === "approved" && o.status !== "approved" && o.d) o.ok = fmtDate(getToday()); if (s !== "approved") delete o.ok; o.status = s; },
+  // A pending form coming back (approved, or not achieved) keeps the day it did
+  // (ok), for its assessor's usual turnaround; a form just being logged (no date
+  // yet), or one going back to pending, keeps none.
+  statusTo(o, s) { const back = s === "approved" || s === "missed";
+    if (back && o.status === "pending" && o.d) o.ok = fmtDate(getToday()); if (!back) delete o.ok; o.status = s; },
+  // Not achieved (below the entrustment mark): the form leaves the observations
+  // for state.missed, so it never counts, and its checklist lines go back.
+  // Returns where it landed there.
+  missObs(p, i) { const o = (this.state.obs[p] || [])[i]; if (!o) return -1;
+    this.statusTo(o, "missed"); this.state.obs[p].splice(i, 1);
+    if (o.tk && o.tk.length) this.bumpLines(o.tk, -1);
+    (this.state.missed[p] ||= []).push(o); this.save(); return this.state.missed[p].length - 1; },
+  // Back from not achieved, as status s, at i in the observations (else the end).
+  unmissObs(p, j, s, i) { const o = (this.state.missed[p] || [])[j]; if (!o) return -1;
+    this.state.missed[p].splice(j, 1); this.statusTo(o, s);
+    const list = this.state.obs[p] ||= [], at = i === undefined ? list.length : i; list.splice(at, 0, o);
+    if (o.tk && o.tk.length) this.bumpLines(o.tk, 1); this.save(); return at; },
+  removeMissed(p, j) { (this.state.missed[p] || []).splice(j, 1); this.save(); },
+  restoreMissed(p, j, o) { (this.state.missed[p] ||= []).splice(j, 0, o); this.save(); },
   setObsMeta(p, i, m) { const o = this.state.obs[p][i]; if (m.status) this.statusTo(o, m.status); Object.assign(o, m); this.save(); },
   setObsStatus(p, i, s) { if (this.state.obs[p] && this.state.obs[p][i]) { this.statusTo(this.state.obs[p][i], s); this.save(); } },
   toggleObsStatus(p, i) { const o = this.state.obs[p][i];
@@ -93,7 +113,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
@@ -457,8 +477,10 @@ function chaseHTML(list) {
         `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
         `<span class="cmeta"><b>${esc(PART_SHORT[c.pid] || "")}</b>` +
         `<span class="cwho"><span class="num">${esc(scopeShortDate(c.date))}</span> · ${who}${note ? " · " + esc(note) : ""}</span></span></button>` +
-        (c.spare ? `<span class="sparetag mono">Spare</span>` : "") +
-        `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div>`;
+        // The full app's two answers sit on their own line, so the form keeps its words.
+        (FELLOWS ? "" : `<div class="cacts">`) + (c.spare ? `<span class="sparetag mono">Spare</span>` : "") +
+        (FELLOWS ? "" : `<button class="pillbtn miss" data-action="chasemiss" data-part="${c.pid}" data-obs="${c.i}">Not achieved</button>`) +
+        `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button>` + (FELLOWS ? "" : `</div>`) + `</div>`;
     }).join("") +
     `</details></section>`;
 }
@@ -606,6 +628,10 @@ function partBlock(p, st) {
     });
     h += `</ol>`;
   }
+  const ms = Store.state.missed[p.id] || [];
+  if (ms.length) h += `<div class="misslist"><span class="mono">Not achieved · doesn't count</span>` + ms.map((o, j) =>
+    `<button class="omiss" data-action="sheet" data-part="${p.id}" data-missed="${j}">${ic("x", "sm")}` +
+    `<span class="odate">${o.d ? esc(dayLabel(o.d)) : "no date"}</span><span class="otext">${[scopeBare(o.a), o.n].filter(Boolean).map(esc).join(" · ")}</span></button>`).join("") + `</div>`;
   h += `<button class="logbtn" data-action="sheet" data-part="${p.id}">${ic("plus")}Log observation</button>`;
   if (p.items.length) {
     h += `<div class="ctx"><span class="mono">Context checklist</span>`;
@@ -769,10 +795,12 @@ function askPreTick(pid, askId) {
   const ask = askId && ASK.find(x => x.id === askId);
   return ask && ask.pre && pid && checklistGroups(pid, id => Store.lineVal(id)).some(g => g.name === ask.pre && g.done < g.total) ? [ask.pre] : [];
 }
-function openSheet(pid, i) {
-  const o = pid && i !== undefined && Store.state.obs[pid] && Store.state.obs[pid][+i];
+// mi: a not-achieved form's place in state.missed, in place of i.
+function openSheet(pid, i, mi) {
+  const missed = mi !== undefined, at = missed ? mi : i, from = missed ? Store.state.missed : Store.state.obs;
+  const o = pid && at !== undefined && from[pid] && from[pid][+at];
   sheet = o
-    ? {mode: "edit", pid, i: +i, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
+    ? {mode: "edit", pid, i: +at, missed, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
     : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false, tick: []};
   sheetError = null;
   sheetFresh = true;
@@ -781,11 +809,24 @@ function saveSheet() {
   if (!sheet.pid) { sheetError = "Pick an EPA first."; return; }
   const {pid, mode, status} = sheet;
   const meta = {d: sheet.d, a: sheet.a.trim(), n: sheet.n.trim(), status};
+  // A not-achieved form: its details change in place, or it moves back.
+  if (sheet.missed) {
+    Object.assign(Store.state.missed[pid][sheet.i], {d: meta.d, a: meta.a, n: meta.n});
+    if (status !== "missed") Store.unmissObs(pid, sheet.i, status); else Store.save();
+    sheet = null; sheetError = null; showToast("Changes saved"); return;
+  }
   const i = mode === "new" ? Store.logObs(pid) : sheet.i;
-  // Checklist lines ticked with it go back if it's undone or deleted.
-  const tk = mode === "new" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
+  // Checklist lines ticked with it go back if it's undone or deleted (or not achieved).
+  const tk = mode === "new" && status !== "missed" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
   if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
+  if (status === "missed") {
+    const j = Store.missObs(pid, i), L = PART_BY_ID[pid].label;
+    sheet = null; sheetError = null;
+    if (mode === "new") showToast(`${L} logged as not achieved`, () => Store.removeMissed(pid, j));
+    else showToast(`${L} marked not achieved. It won't count toward ${L}.`);
+    return;
+  }
   // Log another: same day and assessor, and the same What to ask for setting.
   const next = mode === "new" ? {d: sheet.d, a: meta.a, ask: sheet.ask || null} : null;
   sheet = null; sheetError = null;
@@ -793,10 +834,12 @@ function saveSheet() {
     () => { Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); }, next);
   else showToast("Changes saved");
 }
+// Every form logged, counted or not achieved.
+const everyForm = () => [...Object.values(Store.state.obs), ...Object.values(Store.state.missed)].flat();
 // Every assessor name used so far, most recently logged first, one spelling each.
 function assessorNames() {
   const all = [];
-  for (const k in Store.state.obs) for (const o of Store.state.obs[k]) if (o.a && o.a.trim()) all.push(o);
+  for (const o of everyForm()) if (o.a && o.a.trim()) all.push(o);
   all.sort((x, y) => String(y.ts || "").localeCompare(String(x.ts || "")));
   const out = [];
   for (const o of all) {
@@ -809,7 +852,7 @@ function assessorNames() {
 // day it was marked approved (o.ok), once there are two; keyed by lower-case surname.
 function assessorSpeed() {
   const by = {};
-  for (const k in Store.state.obs) for (const o of Store.state.obs[k]) {
+  for (const o of everyForm()) {
     const name = scopeBare(o.a).toLowerCase(), d = attrDate(o);
     if (!o.ok || !name || !d) continue;
     const days = dayIndex(attrDate({d: o.ok})) - dayIndex(d);
@@ -872,11 +915,12 @@ function sheetHTML() {
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
     `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` + ticks +
-    `<div class="seg" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
-    `<button class="approved${s.status === "approved" ? " on" : ""}" data-action="sheetstatus" data-status="approved">${ic("check")}Approved</button></div>` +
+    `<div class="seg${FELLOWS ? "" : " three"}" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
+    `<button class="approved${s.status === "approved" ? " on" : ""}" data-action="sheetstatus" data-status="approved">${ic("check")}Approved</button>` +
+    (FELLOWS ? "" : `<button class="missed${s.status === "missed" ? " on" : ""}" data-action="sheetstatus" data-status="missed">${ic("x")}Not achieved</button>`) + `</div>` +
     (sheetError ? `<div class="err" role="alert">${esc(sheetError)}</div>` : "") +
     `<div class="sactions">${edit ? `<button class="btn danger" data-action="sheetdelete">Delete</button>` : ""}` +
-    `<button class="btn primary" data-action="sheetsave">${edit ? "Save" : "Save as " + s.status}</button></div></div>`;
+    `<button class="btn primary" data-action="sheetsave">${edit ? "Save" : "Save as " + (s.status === "missed" ? "not achieved" : s.status)}</button></div></div>`;
 }
 // Keeps sheet fields in step with typing without re-rendering (which would
 // drop the keyboard); only the assessor suggestions redraw.
@@ -1024,7 +1068,7 @@ function dispatch(act, d) {
   else if (act === "back") go({page: route.from || "epas"}, true);
   else if (act === "tab") { if (route.page !== d.page) go({page: d.page}, true); else window.scrollTo({top: 0, behavior: "smooth"}); }
   else if (act === "sheet") {
-    scopeSheet = null; openSheet(d.part, d.obs);
+    scopeSheet = null; openSheet(d.part, d.obs, d.missed);
     // From What to ask for: the setting's own line (outpatient, inpatient) is ticked to start.
     if (d.ask && sheet.mode === "new") { sheet.ask = d.ask; sheet.tick = askPreTick(d.part, d.ask); }
     // From the pending list: it stays open behind the sheet, and the scope log's guess is offered.
@@ -1052,6 +1096,11 @@ function dispatch(act, d) {
   else if (act === "sheetdate") { sheet.d = d.date; route.keepScroll = true; render(); }
   else if (act === "sheetstatus") { sheet.status = d.status; route.keepScroll = true; render(); }
   else if (act === "sheetsave") { saveSheet(); route.keepScroll = true; render(); }
+  else if (act === "sheetdelete" && sheet.missed) {
+    const {pid, i} = sheet, removed = Store.state.missed[pid][i];
+    Store.removeMissed(pid, i); sheet = null;
+    showToast("Observation deleted", () => Store.restoreMissed(pid, i, removed));
+    route.keepScroll = true; render(); }
   else if (act === "sheetdelete") {
     const {pid, i} = sheet, removed = Store.state.obs[pid][i], tk = removed.tk || [];
     Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); sheet = null;
@@ -1063,6 +1112,10 @@ function dispatch(act, d) {
     const pid = d.part, i = +d.obs;
     Store.setObsStatus(pid, i, "approved"); chaseOpen = true;
     showToast(`${PART_BY_ID[pid].label} marked approved`, () => Store.setObsStatus(pid, i, "pending"));
+    route.keepScroll = true; render(); }
+  else if (act === "chasemiss") {
+    const pid = d.part, i = +d.obs, j = Store.missObs(pid, i), L = PART_BY_ID[pid].label; chaseOpen = true;
+    showToast(`${L} marked not achieved. It won't count toward ${L}.`, () => Store.unmissObs(pid, j, "pending", i));
     route.keepScroll = true; render(); }
   else if (act === "undo") { if (toast && toast.undo) toast.undo(); toast = null; route.keepScroll = true; render(); }
   else if (act === "cycleline") { Store.cycleLine(d.line, +d.target); route.keepScroll = true; render(); }

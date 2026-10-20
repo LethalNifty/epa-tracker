@@ -27,6 +27,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - the next call shift and who's on at each site
 - a weekly recap
 - a list of forms still pending in Entrada after 14+ days, so you can chase them; a spare form (one an EPA no longer needs) is shown but not counted
+- a form that comes back below the mark (3/5 or lower) is marked Not achieved: it stays on its EPA's page, greyed and apart, never counts, and still tells its assessor's turnaround
 - a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, and reminders
 
 **EPAs:**
@@ -52,7 +53,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - one search box that finds guidelines, trials, drugs, biopsy protocols and your pearls together
 - a weekly check adds new guidelines without an app update
 
-**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending or approved. After saving, the toast offers Log another with the same day and assessor.
+**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending, approved or not achieved. After saving, the toast offers Log another with the same day and assessor.
 
 **Reminders (Web Push):**
 - Monday 8 AM: the week's EPAs
