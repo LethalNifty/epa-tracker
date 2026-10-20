@@ -51,7 +51,7 @@ test("Done moves the bookmark to the end of tonight, with undo", () => {
   h.click("studydone");
   assert.deepEqual(h.saved().study.log, {"2026-09-30": 4});
   assert.match(h.html(), /Done for tonight/);
-  assert.match(h.html(), /Done · through p\. 38/);   // the toast
+  assert.match(h.html(), /Done · through Mayo p\. 38/);   // the toast
   h.click("undo");
   assert.deepEqual(h.saved().study.log, {});
 });
@@ -146,40 +146,64 @@ test("study rides in the backup, and old backups load with an empty study", () =
   assert.deepEqual(h.saved().study.log, {"2026-10-02": 9});
 });
 
-test("a night across two readings is named for the main one, with a note for the other", () => {
+// Tonight's card leads with the stop you're on: its book and chapter, title,
+// pages and PDF pages, and a bubble for each of tonight's pages there. A night
+// across books lists every stop under it, read ones ticked.
+const hero = html => html.slice(html.indexOf('class="monitor studymon'), html.indexOf('class="ov mono sm-foot"'));
+const stops = html => [...hero(html).matchAll(/<li class="(done|cur|todo)">.*?<span class="st-l">([^<]*)<\/span><span class="st-t">([^<]*)<\/span><span class="st-p mono">([^<]*)<\/span><\/li>/g)].map(m => m.slice(1).join(" | "));
+const tonightPits = html => (hero(html).match(/<i class="pit[^"]*"/g) || []).map(x => x.includes(" lit") ? "lit" : "tn");
+
+test("a night across four readings leads with the stop still to read, and ticks the ones read", () => {
+  // Read to p. 2473 by Mon 19 Oct, Tuesday paused: tonight runs from Yamada Ch 59
+  // through two pieces of Ch 123 to the first pages of Mayo's Ch 7, still to read.
+  const st = withStudy({"2026-10-16": 32, "2026-10-19": 39});
+  st.study.pauses = [{a: "2026-10-20", b: "2026-10-20"}];
+  const h = study("2026-10-19", st), html = h.html();
+  assert.match(hero(html), /<div class="sm-ch mono">Stop 4 of 4 · Mayo 7<\/div><div class="sm-title">Gastrointestinal Motility Disorders<\/div>/);
+  assert.match(hero(html), /<span class="mono">pp\.<\/span><b>83–85<\/b>/);
+  assert.match(hero(html), /<div class="sm-sub">3 pages · Mayo PDF 98–100<\/div>/);
+  assert.deepEqual(tonightPits(html), ["tn", "tn", "tn"]);
+  assert.match(hero(html), /<li class="st-h mono"><span>Tonight<\/span><span>10 pages<\/span><\/li>/);
+  assert.deepEqual(stops(html), ["done | Yamada 59 | Short Bowel Syndrome | 1180–1181", "done | Yamada 123 | PEG: Selection and Preparation | 2462–2463",
+    "done | Yamada 123 | PEG: Complications | 2471–2473", "cur | Mayo 7 | Gastrointestinal Motility Disorders | 83–85"]);
+  assert.doesNotMatch(hero(html), /Starts with|Ends with/);
+  assert.match(html, /Done · through Mayo p\. 85<\/button>/);
+  // Week's card says the same stop.
+  h.click("tab", {page: "week"});
+  assert.match(h.html(), /<b>pp\. 83–85<\/b><span class="sc-sub">Stop 4 of 4 · Mayo 7 · Gastrointestinal Motility Disorders<\/span>/);
+});
+
+test("a night across two books, nothing read yet: the first stop leads, the next waits below", () => {
   // 9 read by Mon 5 Oct: tonight is p. 44 (the end of Ch 3) and pp. 463-465 of Yamada.
   const html = study("2026-10-05", withStudy({"2026-10-02": 9})).html();
-  assert.match(html, /<div class="sm-ch mono">Ch 3 → Y 23<\/div><div class="sm-title">Nutrition Support \(Yamada\)<\/div>/);
-  assert.match(html, /Starts with the last page of Mayo Ch 3\. 4 pages · Mayo PDF 59, Yamada PDF 540–542/);
+  assert.match(hero(html), /<div class="sm-ch mono">Stop 1 of 2 · Mayo 3<\/div><div class="sm-title">Esophageal Motility<\/div>/);
+  assert.match(hero(html), /<span class="mono">p\.<\/span><b>44<\/b>/);
+  assert.match(hero(html), /<div class="sm-sub">1 page · Mayo PDF 59<\/div>/);
+  assert.deepEqual(stops(html), ["cur | Mayo 3 | Esophageal Motility | 44", "todo | Yamada 23 | Nutrition Support | 463–465"]);
+  assert.match(hero(html), /<span>4 pages<\/span>/);
+  assert.match(html, /Done · through Yamada p\. 465<\/button>/);
 });
 
 test("a Yamada night names the book and where to find the pages in its PDF", () => {
   // 13 read by Mon 5 Oct: Tuesday is pp. 466-469 of Yamada's Nutrition Support.
   const h = study("2026-10-06", withStudy({"2026-10-05": 13}));
   const html = h.html();
-  assert.match(html, /<div class="sm-ch mono">Y 23<\/div><div class="sm-title">Nutrition Support \(Yamada\)<\/div>/);
+  assert.match(hero(html), /<div class="sm-ch mono">Yamada 23<\/div><div class="sm-title">Nutrition Support<\/div>/);
   assert.match(html, /<b>466–469<\/b>/);
   assert.match(html, /4 pages · Yamada PDF 543–546/);
   assert.match(html, /Yamada's PDF page numbers are shown with each night's pages\./);
+  // One stop: no list of stops.
+  assert.deepEqual(stops(html), []);
+  assert.doesNotMatch(hero(html), /Stop 1 of 1|st-h/);
   h.click("tab", {page: "week"});
   assert.match(h.html(), /pp\. 466–469/);
-  assert.match(h.html(), /Y 23 · Nutrition Support \(Yamada\)/);
+  assert.match(h.html(), /Yamada 23 · Nutrition Support/);
 });
 
-test("a night across four readings draws a row of pages for each, and names Mayo", () => {
-  // Read to p. 2473 by Mon 19 Oct, Tuesday paused: tonight runs from Yamada Ch 59
-  // through two pieces of Ch 123 to the first pages of Mayo's Ch 7, still to read.
-  const st = withStudy({"2026-10-16": 32, "2026-10-19": 39});
-  st.study.pauses = [{a: "2026-10-20", b: "2026-10-20"}];
-  const html = study("2026-10-19", st).html();
-  const strips = html.slice(html.indexOf('class="sm-strips'), html.indexOf('class="ov mono sm-foot"'));
-  assert.deepEqual([...strips.matchAll(/pr-l mono">([^<]*)</g)].map(m => m[1]), ["Y 59", "Y 123", "Y 123", "Ch 7"]);
-  assert.match(html, /Starts with pp\. 1180–1181 of Yamada Ch 59\. Then pp\. 2462–2463 of Yamada Ch 123\. Ends with pp\. 83–85 of Mayo Ch 7\. 10 pages/);
-  assert.match(html, /Yamada PDF 2540–2542, Mayo PDF 98–100/);
-});
-
-test("two readings from the same Yamada chapter share one label", () => {
-  // 35 read by Fri 16 Oct: Monday is the rest of the PEG pages, then Ch 7.
-  const html = study("2026-10-19", withStudy({"2026-10-16": 35})).html();
-  assert.match(html, /<div class="sm-ch mono">Y 123 → Ch 7<\/div><div class="sm-title">PEG: Complications \(Yamada\)<\/div>/);
+test("halfway through a stop: its read pages are lit and the card says where you are", () => {
+  // Ch 3 is pp. 35-44 (run 0 to 9): two of tonight's four pages read.
+  const html = study("2026-09-30", withStudy({"2026-09-30": 2})).html();
+  assert.match(hero(html), /<div class="sm-ch mono">Mayo 3<\/div>/);
+  assert.deepEqual(tonightPits(html), ["lit", "lit", "tn", "tn"]);
+  assert.match(hero(html), /4 pages · Mayo PDF 50–53 · <span class="flu">read to p\. 36<\/span>/);
 });

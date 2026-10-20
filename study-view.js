@@ -36,7 +36,7 @@ function studyWhat(from, to) {
     return lead + pages + " of " + studyItemName(x.item);
   });
   // Two readings from one Yamada chapter carry the same label: say it once.
-  const lbls = items.map(studyItemLabel).filter((v, i, a) => a.indexOf(v) === i);
+  const lbls = items.map(studyShort).filter((v, i, a) => a.indexOf(v) === i);
   return {lbl: lbls.join(" → "), title: main ? main.item.title : "", note: side.join(". "), items};
 }
 const studyPages = n => n + (n === 1 ? " page" : " pages");
@@ -59,6 +59,28 @@ function studyPitsHTML(it, cur, tn, opts = {}) {
 }
 
 // ---- Tonight: the hero ---------------------------------------------------------------
+// A reading night leads with the stop you're on (the first reading not yet
+// read): its book and chapter, title, pages, PDF pages, and a pit for each of
+// tonight's pages there. A night across readings lists every stop below,
+// those read ticked, so the order through the books is plain.
+function studyStopsHTML(t) {
+  const stops = studyStops(t.from, t.to, t.now), k = Math.max(0, stops.findIndex(x => !x.done)), x = stops[k];
+  const one = x.a === x.z, pp = one ? String(x.a) : x.a + "–" + x.z;
+  let pits = "";
+  for (let i = x.from; i < x.to; i++) pits += `<i class="pit${i < t.now ? " lit" : " tn"}" style="--k:${i - x.from}"></i>`;
+  let h = `<div class="sm-ch mono">${stops.length > 1 ? `Stop ${k + 1} of ${stops.length} · ` : ""}${studyShort(x.item)}</div>` +
+    `<div class="sm-title">${esc(studyTitle(x.item))}</div>` +
+    `<div class="sm-pp${pp.length > 9 ? " long" : ""}"><span class="mono">${one ? "p." : "pp."}</span><b>${pp}</b></div>` +
+    `<div class="sm-sub">${studyPages(x.n)} · ${studyPdfNote(x.from, x.to)}` +
+    (t.now > x.from ? ` · <span class="flu">read to p. ${studyAt(t.now - 1).page}</span>` : "") + `</div>` +
+    `<div class="pits-in sm-tonight">${pits}</div>`;
+  if (stops.length > 1) h += `<ol class="sm-stops"><li class="st-h mono"><span>Tonight</span><span>${studyPages(t.n)}</span></li>` +
+    stops.map((s, j) => `<li class="${s.done ? "done" : j === k ? "cur" : "todo"}"><span class="st-m">${s.done ? ic("check") : ""}</span>` +
+      `<span class="st-l">${studyShort(s.item)}</span><span class="st-t">${esc(studyTitle(s.item))}</span>` +
+      `<span class="st-p mono">${s.a === s.z ? s.a : s.a + "–" + s.z}</span></li>`).join("") + `</ol>`;
+  return h;
+}
+const studyDoneLabel = t => { const last = studyAt(t.to - 1); return `Done · through ${studyBook(last.item)} p. ${last.page}`; };
 function studyHeroHTML(st) {
   const {today, s, str, t} = st, S = studySeq();
   const b = Math.min(12, Math.max(4, t.block || 12)), blk = blockFor(today);
@@ -73,15 +95,11 @@ function studyHeroHTML(st) {
     body = `<div class="sm-done">${ic("check")}</div><div class="sm-title">Mayo, pass 1: read</div>` +
       `<div class="sm-sub">All ${S.total} pages. Questions next: DDSEP round 1.</div>`;
   } else if (t.kind === "read" && !t.ahead && !t.done) {
-    const w = studyWhat(t.from, t.to);
-    body = `<div class="sm-ch mono">${w.lbl}</div><div class="sm-title">${esc(w.title)}</div>` + range(t.from, t.to) +
-      `<div class="sm-sub">${w.note ? esc(w.note) + ". " : ""}${studyPages(t.n)} · ${studyPdfNote(t.from, t.to)}` +
-      (t.partial ? ` · <span class="flu">read to p. ${studyAt(t.now - 1).page}</span>` : "") + `</div>`;
-    strip = w.items; tn = {from: t.from, to: t.to};
+    body = studyStopsHTML(t);
   } else if (t.kind === "read" && t.done) {
     const last = studyAt(Math.max(0, t.now - 1));
     body = `<div class="sm-done">${ic("check")}</div><div class="sm-title">Done for tonight</div>` +
-      `<div class="sm-sub">Read through p. ${last.page}, ${studyItemLabel(last.item)}.</div>` +
+      `<div class="sm-sub">Read through p. ${last.page}, ${studyShort(last.item)}.</div>` +
       (t.next ? `<div class="sm-next mono">Next · ${studyDay(t.next.day)} · pp. ${studyPP(t.next.from, t.next.to)}</div>` : "");
     strip = studyWhat(t.from, t.to).items;
   } else if (t.ahead) {
@@ -121,7 +139,7 @@ function studyActionsHTML(t) {
   if (t.kind === "complete" || t.kind === "after") return "";
   const stop = `<button class="btn" data-action="studystop">${ic("more")}Stopped somewhere else</button>`;
   if (t.kind === "read" && !t.ahead && !t.done)
-    return `<div class="sm-acts"><button class="btn flu" data-action="studydone">${ic("check")}Done · through p. ${studyAt(t.to - 1).page}</button>${stop}` +
+    return `<div class="sm-acts"><button class="btn flu" data-action="studydone">${ic("check")}${studyDoneLabel(t)}</button>${stop}` +
       `<button class="textbtn sm-skip" data-action="studyskip">${ic("moon", "sm")}Not tonight</button></div>`;
   if (t.kind === "skip")
     return `<div class="sm-acts"><button class="btn fluline" data-action="studyunskip">${ic("undo")}Read tonight after all</button></div>`;
@@ -379,9 +397,10 @@ function studyCardHTML() {
   let lbl, main, sub, cls = "";
   if (t.kind === "complete") { lbl = "Study"; main = "Mayo pass 1 read"; sub = "Questions next"; cls = " done"; }
   else if (t.kind === "read" && !t.ahead && !t.done) {
-    const w = studyWhat(t.from, t.to);
+    const stops = studyStops(t.from, t.to, t.now), k = Math.max(0, stops.findIndex(x => !x.done)), x = stops[k];
     const nq = studyqFor(t.from, t.to).length;
-    lbl = "Tonight"; main = "pp. " + studyPP(t.from, t.to); sub = (nq ? `${nq} questions after · ` : "") + w.lbl + " · " + w.title;
+    lbl = "Tonight"; main = (x.a === x.z ? "p. " + x.a : "pp. " + x.a + "–" + x.z);
+    sub = (nq ? `${nq} questions after · ` : "") + (stops.length > 1 ? `Stop ${k + 1} of ${stops.length} · ` : "") + studyShort(x.item) + " · " + studyTitle(x.item);
   } else if (t.kind === "read" && t.done) {
     lbl = "Tonight"; main = "Reading done"; cls = " done";
     sub = t.next ? `Next ${studyDay(t.next.day)} · pp. ${studyPP(t.next.from, t.next.to)}` : "Nothing more tonight";
@@ -491,7 +510,7 @@ function studyDispatch(act, d) {
   if (act === "studyopen") { studyTab = "t"; go({page: "study"}); return false; }
   if (act === "studytab") { studyTab = d.tab; route.keepScroll = false; enterNext = true; return true; }
   const {t} = studyState();
-  if (act === "studydone") studySet(Math.max(t.now, t.to), `Done · through p. ${studyAt(t.to - 1).page}`);
+  if (act === "studydone") studySet(Math.max(t.now, t.to), studyDoneLabel(t));
   else if (act === "studyread") studySet(Math.max(t.now, +d.to));
   else if (act === "studystop") studyOpenStop(d.id);
   else if (act === "studyitem") { studySheet.id = d.id; }

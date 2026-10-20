@@ -184,6 +184,18 @@ const studyPdfNote = (from, to) => studyPieces(from, to).map(x => studyBook(x.it
 const studyItemLabel = it => it.ch ? "Ch " + it.ch : it.y ? "Y " + it.y : "Q " + STUDY_ROMAN[it.sec];
 // The same with its book, for sentences: "Mayo Ch 7", "Yamada Ch 123", "Mayo Q III".
 const studyItemName = it => studyBook(it) + " " + (it.y ? "Ch " + it.y : studyItemLabel(it));
+// Short, beside a title: "Mayo 7", "Yamada 123", "Mayo Q III".
+const studyShort = it => studyBook(it) + " " + (it.y || it.ch || "Q " + STUDY_ROMAN[it.sec]);
+// A title where the book is already named beside it: no "(Yamada)".
+const studyTitle = it => it.title.replace(/ \(Yamada\)$/, "");
+// Tonight's stops: each reading the run [from, to) touches, with its own run
+// indices and whether it is read (done) by the bookmark now.
+function studyStops(from, to, now) {
+  return studyPieces(from, to).map(x => {
+    const a = studyIndexOf(x.item, x.a), z = studyIndexOf(x.item, x.z) + 1;
+    return {...x, from: a, to: z, n: z - a, done: now >= z};
+  });
+}
 
 // ---- Days and nights ---------------------------------------------------------------
 const studyMidnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -406,8 +418,9 @@ function studyBriefNights(day, st, stretches) {
       e.pp = studyPP(from, to); e.n = to - from;
       // Named only when the whole night is in one other book.
       if (pc.every(x => x.item.book && x.item.book === pc[0].item.book)) e.book = pc[0].item.book;
-      e.what = pc.map(x => studyItemLabel(x.item)).filter((v, i, a) => a.indexOf(v) === i).join(" and ") +
-        (pc.length === 1 ? " · " + pc[0].item.title : "");
+      const names = pc.map(x => studyShort(x.item)).filter((v, i, a) => a.indexOf(v) === i);
+      e.what = (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0]) +
+        (pc.length === 1 ? " · " + studyTitle(pc[0].item) : "");
     }
     out.push(e);
   }

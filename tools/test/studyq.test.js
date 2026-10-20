@@ -80,7 +80,7 @@ test("tonight's quiz waits until you start it, and asks only tonight's pages", a
   assert.doesNotMatch(html, /A question for a later night/);   // p. 40 is a later night
   assert.doesNotMatch(html, /Start the quiz/);
   h.click("tab", {page: "week"});
-  assert.match(h.html(), /2 questions after · Ch 3 · Esophageal Motility/);
+  assert.match(h.html(), /2 questions after · Mayo 3 · Esophageal Motility/);
 });
 
 test("Done opens tonight's quiz without a tap", async () => {
@@ -95,7 +95,7 @@ test("the 20:00 reminder puts the questions after the pages", async () => {
   const h = await phone("2026-09-30", undefined, {pw: PW});
   h.setNow("2026-09-30T20:00");
   const n = h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
-  assert.equal(n.body, "Ch 3 · Esophageal Motility. 4 pages, then 2 questions.");
+  assert.equal(n.body, "Mayo 3 · Esophageal Motility. 4 pages, then 2 questions.");
 });
 
 test("Show answer, then Got it or Missed; tapping the same mark clears it", async () => {

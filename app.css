@@ -1381,6 +1381,21 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
   45% { background: var(--flu-ink); box-shadow: 0 0 18px 3px rgba(255, 200, 114, .8); transform: scale(1.18); }
   100% { background: var(--flu); box-shadow: 0 0 7px rgba(255, 200, 114, .35); transform: scale(1); } }
 .pit.stain { animation: stain .75s var(--ease-out) both; animation-delay: calc(var(--k) * 90ms + 160ms); }
+/* Tonight's stop: its pages, then every stop of the night, read ones ticked. */
+.sm-tonight { margin-top: 12px; }
+.sm-tonight .pit { flex: 0 0 15px; }
+.sm-stops { list-style: none; margin: 16px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(255, 200, 114, .1); display: grid; gap: 2px; }
+.sm-stops .st-h { display: flex; justify-content: space-between; padding-bottom: 4px; color: var(--faint); font-size: 10px; letter-spacing: .06em; }
+.sm-stops li:not(.st-h) { display: grid; grid-template-columns: 18px auto 1fr auto; gap: 8px; align-items: center; min-height: 28px; font-size: 13px; }
+.st-m { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fold-2); }
+.st-m .ic { width: 11px; height: 11px; stroke-width: 3; }
+.sm-stops .done .st-m { background: var(--flu); color: #3a2600; box-shadow: none; }
+.sm-stops .cur .st-m { box-shadow: inset 0 0 0 1.5px var(--flu), 0 0 10px rgba(255, 200, 114, .4); }
+.st-l { font: 500 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--flu); white-space: nowrap; }
+.st-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.st-p { color: var(--dim); font-size: 11px; }
+.sm-stops .cur .st-t, .sm-stops .cur .st-p { color: var(--light); }
+.sm-stops .done .st-t, .sm-stops .done .st-p { color: var(--faint); }
 .sm-foot { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 200, 114, .1); }
 .sm-foot .ok { color: var(--flu-ink); }
 .sm-acts { display: grid; gap: 8px; margin-top: 12px; }

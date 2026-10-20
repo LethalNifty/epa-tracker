@@ -233,7 +233,7 @@ test("the brief writes out tonight and 13 days after", () => {
   assert.equal(b.length, 14);
   assert.equal(b[0].kind, "read");
   assert.equal(b[0].pp, "35–38");
-  assert.equal(b[0].what, "Ch 3 · Esophageal Motility");
+  assert.equal(b[0].what, "Mayo 3 · Esophageal Motility");
   assert.equal(b[1].kind, "thu");
 });
 
@@ -241,7 +241,7 @@ test("the brief names Yamada on a Yamada night, so the notification says which b
   // 13 read by Mon 5 Oct: Tuesday is four pages of Yamada's Nutrition Support.
   const b = v(`studyBriefNights(${D("2026-10-06")}, ${st({"2026-10-05": 13})}, [])`);
   assert.equal(b[0].pp, "466–469");
-  assert.equal(b[0].what, "Y 23 · Nutrition Support (Yamada)");
+  assert.equal(b[0].what, "Yamada 23 · Nutrition Support");
   assert.equal(b[0].book, "Yamada");
   // A Mayo night, or a night across both books, names no single book.
   assert.equal(v(`studyBriefNights(${D("2026-09-30")}, ${st({})}, [])`)[0].book, undefined);

@@ -71,7 +71,7 @@ test("20:00 reminder: tonight's pages, done nights, and the Study tab on tap", (
   const note = () => h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
   let n = note();
   assert.equal(n.title, "Tonight: pp. 35–38");
-  assert.equal(n.body, "Ch 3 · Esophageal Motility. 4 pages.");
+  assert.equal(n.body, "Mayo 3 · Esophageal Motility. 4 pages.");
   assert.equal(n.url, "./#study");
   h.run(`Store.setStudyCursor(4, getToday())`);
   n = note();
@@ -87,7 +87,7 @@ test("20:00 reminder on a Yamada night says which book", () => {
   h.setNow("2026-10-06T20:00");
   const n = h.val(`noticeFor({kind: "study", t: callNow()}, remindBrief(callNow()), callNow())`);
   assert.equal(n.title, "Tonight: Yamada pp. 466–469");
-  assert.equal(n.body, "Y 23 · Nutrition Support (Yamada). 4 pages.");
+  assert.equal(n.body, "Yamada 23 · Nutrition Support. 4 pages.");
 });
 
 test("with nothing saved on the phone, reminders still say something useful", () => {
