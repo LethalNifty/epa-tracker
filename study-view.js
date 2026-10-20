@@ -25,13 +25,15 @@ function studyState() {
 }
 // "Ch 3" and a title for run indices [from, to). A range across two
 // chapters is named for the one it spends most pages in; the other is a note
-// ("Starts with the last page of Ch 7").
+// ("Starts with the last page of Mayo Ch 7").
 function studyWhat(from, to) {
   const pc = studyPieces(from, to), items = pc.map(x => x.item).filter((v, i, a) => a.indexOf(v) === i);
   const main = pc.slice().sort((a, b) => (b.z - b.a) - (a.z - a.a))[0];
   const side = pc.filter(x => x !== main).map(x => {
     const pages = x.a === x.z ? (x.z === x.item.p[1] ? "the last page" : x.z === x.item.p[0] ? "the first page" : "p. " + x.a) : "pp. " + x.a + "–" + x.z;
-    return (pc.indexOf(x) < pc.indexOf(main) ? "Starts with " : "Ends with ") + pages + " of " + studyItemLabel(x.item);
+    // Before the main reading: "Starts with", then "Then" for any more; after it, "Ends with".
+    const k = pc.indexOf(x), lead = k > pc.indexOf(main) ? "Ends with " : k === 0 ? "Starts with " : "Then ";
+    return lead + pages + " of " + studyItemName(x.item);
   });
   // Two readings from one Yamada chapter carry the same label: say it once.
   const lbls = items.map(studyItemLabel).filter((v, i, a) => a.indexOf(v) === i);
@@ -101,7 +103,8 @@ function studyHeroHTML(st) {
     if (t.keep) { strip = studyWhat(t.keep.from, t.keep.to).items; tn = t.keep; }
   }
   const intro = !studyIntroDone ? " intro" : "";
-  const strips = strip ? `<div class="sm-strips${intro}">` + strip.slice(0, 3).map(it => studyPitsHTML(it, t.now, tn)).join("") + `</div>` : "";
+  // A row of pages for every reading the night touches (one night can cross four).
+  const strips = strip ? `<div class="sm-strips${intro}">` + strip.map(it => studyPitsHTML(it, t.now, tn)).join("") + `</div>` : "";
   const foot = t.kind === "complete" ? `<span>${S.total} of ${S.total}</span><span class="ok">Done</span>` :
     `<span>${bRead} of ${bPages} · Block ${b}</span><span class="${dl.cls}">${dl.txt}</span>`;
   return `<section class="monitor studymon${t.done || t.kind === "complete" ? " is-done" : ""}" aria-label="Tonight's reading">` +

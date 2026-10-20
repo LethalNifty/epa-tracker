@@ -77,9 +77,9 @@ test("Yamada pages give their own PDF page numbers and are named as Yamada's", (
   assert.equal(v("studyPdfPP(10, 13)"), "540–542");            // 463 + 77
   assert.equal(v("studyPdfPP(22, 24)"), "1246–1247");          // 1170 + 76
   assert.equal(v("studyPdfPP(34, 36)"), "2531–2532");          // 2462 + 69
-  assert.equal(v("studyPdfNote(0, 4)"), "PDF 50–53");
+  assert.equal(v("studyPdfNote(0, 4)"), "Mayo PDF 50–53");
   assert.equal(v("studyPdfNote(10, 13)"), "Yamada PDF 540–542");
-  assert.equal(v("studyPdfNote(9, 13)"), "PDF 59, Yamada PDF 540–542");
+  assert.equal(v("studyPdfNote(9, 13)"), "Mayo PDF 59, Yamada PDF 540–542");
 });
 
 test("reading nights: Mon, Tue, Wed, Fri from 30 Sep", () => {

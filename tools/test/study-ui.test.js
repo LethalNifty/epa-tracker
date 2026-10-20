@@ -150,7 +150,7 @@ test("a night across two readings is named for the main one, with a note for the
   // 9 read by Mon 5 Oct: tonight is p. 44 (the end of Ch 3) and pp. 463-465 of Yamada.
   const html = study("2026-10-05", withStudy({"2026-10-02": 9})).html();
   assert.match(html, /<div class="sm-ch mono">Ch 3 → Y 23<\/div><div class="sm-title">Nutrition Support \(Yamada\)<\/div>/);
-  assert.match(html, /Starts with the last page of Ch 3\. 4 pages · PDF 59, Yamada PDF 540–542/);
+  assert.match(html, /Starts with the last page of Mayo Ch 3\. 4 pages · Mayo PDF 59, Yamada PDF 540–542/);
 });
 
 test("a Yamada night names the book and where to find the pages in its PDF", () => {
@@ -164,6 +164,18 @@ test("a Yamada night names the book and where to find the pages in its PDF", () 
   h.click("tab", {page: "week"});
   assert.match(h.html(), /pp\. 466–469/);
   assert.match(h.html(), /Y 23 · Nutrition Support \(Yamada\)/);
+});
+
+test("a night across four readings draws a row of pages for each, and names Mayo", () => {
+  // Read to p. 2473 by Mon 19 Oct, Tuesday paused: tonight runs from Yamada Ch 59
+  // through two pieces of Ch 123 to the first pages of Mayo's Ch 7, still to read.
+  const st = withStudy({"2026-10-16": 32, "2026-10-19": 39});
+  st.study.pauses = [{a: "2026-10-20", b: "2026-10-20"}];
+  const html = study("2026-10-19", st).html();
+  const strips = html.slice(html.indexOf('class="sm-strips'), html.indexOf('class="ov mono sm-foot"'));
+  assert.deepEqual([...strips.matchAll(/pr-l mono">([^<]*)</g)].map(m => m[1]), ["Y 59", "Y 123", "Y 123", "Ch 7"]);
+  assert.match(html, /Starts with pp\. 1180–1181 of Yamada Ch 59\. Then pp\. 2462–2463 of Yamada Ch 123\. Ends with pp\. 83–85 of Mayo Ch 7\. 10 pages/);
+  assert.match(html, /Yamada PDF 2540–2542, Mayo PDF 98–100/);
 });
 
 test("two readings from the same Yamada chapter share one label", () => {

@@ -178,9 +178,12 @@ function studyPP(from, to) {
 const studyPdfOf = it => it.pdf === undefined ? STUDY_PDF : it.pdf;
 const studyPdfPiece = x => { const k = studyPdfOf(x.item); return x.a === x.z ? String(x.a + k) : (x.a + k) + "–" + (x.z + k); };
 const studyPdfPP = (from, to) => studyPieces(from, to).map(studyPdfPiece).join(", ");
-// "PDF 50–53", or "PDF 59, Yamada PDF 540–542": which file, and where in it.
-const studyPdfNote = (from, to) => studyPieces(from, to).map(x => (x.item.book ? x.item.book + " " : "") + "PDF " + studyPdfPiece(x)).join(", ");
+// "Mayo PDF 50–53", or "Mayo PDF 59, Yamada PDF 540–542": which file, and where in it.
+const studyBook = it => it.book || "Mayo";
+const studyPdfNote = (from, to) => studyPieces(from, to).map(x => studyBook(x.item) + " PDF " + studyPdfPiece(x)).join(", ");
 const studyItemLabel = it => it.ch ? "Ch " + it.ch : it.y ? "Y " + it.y : "Q " + STUDY_ROMAN[it.sec];
+// The same with its book, for sentences: "Mayo Ch 7", "Yamada Ch 123", "Mayo Q III".
+const studyItemName = it => studyBook(it) + " " + (it.y ? "Ch " + it.y : studyItemLabel(it));
 
 // ---- Days and nights ---------------------------------------------------------------
 const studyMidnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
