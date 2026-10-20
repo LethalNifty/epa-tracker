@@ -351,17 +351,21 @@ function studyPace(day, st) {
   const date = studyAddDays(day, Math.ceil((S.total - now) / rate * 7));
   return {done: false, rate: Math.round(rate * 10) / 10, date, onTrack: date <= STUDY_END};
 }
-// The block as 28 days, Thursday to Wednesday. state: "done" (read on a
-// reading night), "missed", "extra" (read on an off night), "today",
-// "future" or "past"; pages: the plan for tonight and nights to come, as if
-// each goes to plan.
+// The block in Monday-to-Sunday weeks: from the Monday before its first day
+// (a Thursday) to the Sunday after its last (a Wednesday), 35 days. The days
+// either side belong to the blocks around it (out); those after it show the
+// next block's first pages. state: "done" (read on a reading night),
+// "missed", "extra" (read on an off night), "today", "future" or "past";
+// pages: the plan for tonight and nights to come, as if each goes to plan.
 function studyNights(b, day, st, stretches) {
   const s = st || studyBlank(), log = s.log || {}, today = fmtDate(day);
   const t = studyTonight(day, s, stretches);
   let sim = t.kind === "read" && !t.ahead ? Math.max(t.now, t.to) : t.now;
+  const a = blockStart(b), z = blockEnd(b);
+  const first = studyAddDays(a, -((a.getDay() + 6) % 7)), last = studyAddDays(z, (7 - z.getDay()) % 7);
   const out = [];
-  for (let k = 0; k < 28; k++) {
-    const d = studyAddDays(blockStart(b), k), key = fmtDate(d), kind = studyNightKind(d, stretches, s.pauses);
+  for (let d = first; d <= last; d = studyAddDays(d, 1)) {
+    const key = fmtDate(d), kind = studyNightKind(d, stretches, s.pauses);
     const moved = key in log && log[key] > studyCursorBefore(log, d);
     let state, pages = 0;
     if (key < today) state = moved ? (kind === "read" ? "done" : "extra") : kind === "read" ? "missed" : "past";
@@ -370,7 +374,7 @@ function studyNights(b, day, st, stretches) {
       state = "future";
       if (kind === "read") { const sh = studyShare(d, sim, stretches, s.pauses); if (sh) { pages = sh.to - sh.from; sim = sh.to; } }
     }
-    out.push({date: d, key, kind, state, pages, moved});
+    out.push({date: d, key, kind, state, pages, moved, out: d < a || d > z});
   }
   return out;
 }
@@ -384,19 +388,27 @@ function studyNeedsScore(st) {
   const s = st || studyBlank(), done = studyDoneIds(s);
   return STUDY_ITEMS.find(it => it.q && done.includes(it.id) && !(s.q && s.q[it.id])) || null;
 }
-// Last block week (Thursday to Wednesday before this one): pages read, and
-// the even-spread share of the plan for its reading nights.
-function studyLastWeek(day, st, stretches) {
-  const s = st || studyBlank(), d = studyMidnight(day);
-  const thu = studyAddDays(d, -((d.getDay() + 3) % 7) - 7), wed = studyAddDays(thu, 6);
-  const read = Math.max(0, studyCursorBefore(s.log, studyAddDays(wed, 1)) - studyCursorBefore(s.log, thu));
-  const b = studyBlockOf(thu);
-  if (b === null || b > 12 || fmtDate(wed) < fmtDate(STUDY_START)) return {read, planned: 0};
-  const first = new Date(Math.max(blockStart(b), STUDY_START));
-  const nights = studyCountNights(first, blockEnd(b), stretches, s.pauses);
-  const inWeek = studyCountNights(new Date(Math.max(thu, STUDY_START)), wed, stretches, s.pauses);
-  const planned = nights ? Math.round((studyDue(b) - studyDue(b - 1)) * inWeek / nights) : 0;
-  return {read, planned};
+// The Monday-to-Sunday week from `mon`: pages read, and the even-spread
+// share of the plan for its reading nights. A week can straddle two blocks
+// (they turn over on Thursdays), so each part takes its own block's share.
+function studyWeekRead(mon, st, stretches) {
+  const s = st || studyBlank(), sun = studyAddDays(mon, 6);
+  const read = Math.max(0, studyCursorBefore(s.log, studyAddDays(sun, 1)) - studyCursorBefore(s.log, mon));
+  let planned = 0;
+  for (const b of new Set([studyBlockOf(mon), studyBlockOf(sun)])) {
+    if (b === null || b > 12) continue;
+    const first = new Date(Math.max(blockStart(b), STUDY_START));
+    const from = new Date(Math.max(first, mon)), to = new Date(Math.min(blockEnd(b), sun));
+    const nights = studyCountNights(first, blockEnd(b), stretches, s.pauses);
+    if (from <= to && nights) planned += (studyDue(b) - studyDue(b - 1)) * studyCountNights(from, to, stretches, s.pauses) / nights;
+  }
+  return {start: mon.getTime(), read, planned: Math.round(planned)};
+}
+// Last week and this week, for the brief: the Monday notification takes the
+// one that just ended, whichever day the app last wrote it.
+function studyReadWeeks(day, st, stretches) {
+  const d = studyMidnight(day), mon = studyAddDays(d, -((d.getDay() + 6) % 7));
+  return [studyWeekRead(studyAddDays(mon, -7), st, stretches), studyWeekRead(mon, st, stretches)];
 }
 // For the reminder brief: tonight and the next 13 days, written out, so the
 // phone can word a notification without the app open.

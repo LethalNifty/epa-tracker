@@ -225,16 +225,21 @@ function studyScoreAskHTML(s) {
     `<button class="pillbtn flu" data-action="studyscore" data-id="${it.id}">Score</button></section>`;
 }
 
-// ---- Nights: the block as 4 weeks --------------------------------------------------------
+// ---- Nights: the block in Monday-to-Sunday weeks ----------------------------------------
+// Rows run Monday to Sunday like any calendar, each named for its Monday. A
+// block runs Thursday to Wednesday, so the days either side of it are faint
+// (out), with a line inside the block's first and last day where it turns over.
 function studyNightsHTML(st) {
   const {today, s, str, t} = st, b = Math.min(13, Math.max(4, t.block || 13));
   const nights = studyNights(b, today, s, str);
-  const heads = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"].map(d => `<span>${d}</span>`).join("");
+  const heads = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => `<span>${d}</span>`).join("");
   let rows = "";
-  for (let w = 0; w < 4; w++) {
-    rows += `<div class="ng-row"><span class="ng-wk mono">Wk ${w + 1}</span>`;
+  for (let w = 0; w < nights.length / 7; w++) {
+    const week = nights.slice(w * 7, w * 7 + 7), mon = week[0].date;
+    rows += `<div class="ng-row${week.some(x => x.state === "today") ? " cur" : ""}"><span class="ng-wk mono">${MONTHS[mon.getMonth()]} ${mon.getDate()}</span>`;
     for (let k = 0; k < 7; k++) {
-      const x = nights[w * 7 + k], cls = `ng k-${x.kind} s-${x.state}${x.state === "today" && x.kind === "read" && t.done ? " tdone" : ""}`;
+      const x = week[k], cls = `ng k-${x.kind} s-${x.state}${x.state === "today" && x.kind === "read" && t.done ? " tdone" : ""}` +
+        (x.out ? " out" : (k > 0 && week[k - 1].out ? " edge-a" : "") + (k < 6 && week[k + 1].out ? " edge-z" : ""));
       let mark = "";
       if (x.state === "done" || (x.state === "today" && x.kind === "read" && t.done)) mark = ic("check");
       else if (x.kind === "read" && x.pages) mark = `<b>${x.pages}</b>`;

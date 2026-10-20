@@ -55,6 +55,26 @@ test("Monday reminder: the week's EPAs, call in the next seven days, last week's
   assert.equal(n.url, "./");
 });
 
+test("Monday reminder: last week's reading is the Monday to Sunday just ended, whenever the app last wrote its brief", () => {
+  // Read to 60 by Fri 23 Oct, then 6 pages on Tue 27 Oct.
+  const st = state({}, {study: {log: {"2026-10-23": 60, "2026-10-27": 66}, q: {}, pauses: []}});
+  const mon = at(2026, 11, 2, 8);
+  for (const when of ["2026-11-01T21:00", "2026-11-02T07:00", "2026-10-28T12:00"]) {
+    const h = withBlock(when, {state: st});
+    h.ctx.__b = h.val("remindBrief(callNow())");
+    const planned = h.val("studyWeekRead(new Date(2026, 9, 26), Store.state.study, callStretches(CallStore.list())).planned");
+    const n = h.val(`noticeFor({kind: "week", t: ${mon}}, __b, ${mon})`);
+    assert.match(n.body, new RegExp(` Reading: 6 of ${planned} pages last week\\.$`), when);
+  }
+  // A brief written more than a week before says nothing about reading.
+  const old = withBlock("2026-10-21T12:00", {state: st});
+  old.ctx.__b = old.val("remindBrief(callNow())");
+  assert.doesNotMatch(old.val(`noticeFor({kind: "week", t: ${mon}}, __b, ${mon})`).body || "", /Reading/);
+  // A brief from before this change carries one week as it was then.
+  assert.match(old.val(`noteWeek({block: 5, week: 2, rows: []}, {call: [], study: {nights: [], week: {read: 5, planned: 9}}}, ${mon})`).body,
+    / Reading: 5 of 9 pages last week\.$/);
+});
+
 test("Wednesday reminder: the last day of the block week, what's still due to ask for", () => {
   const h = withBlock("2026-11-04T08:00", {state: state({d1: many(4, "2026-07-10")})});
   const n = h.val(`noticeFor({kind: "ask", t: callNow()}, remindBrief(callNow()), callNow())`);

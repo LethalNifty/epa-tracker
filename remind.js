@@ -114,7 +114,7 @@ function remindBrief(now) {
     const qn = n.to > n.from && typeof studyqFor === "function" ? studyqFor(n.from, n.to).length : 0;
     return qn ? {...n, qn} : n;
   });
-  const study = {nights, week: studyLastWeek(day, Store.state.study, str)};
+  const study = {nights, weeks: studyReadWeeks(day, Store.state.study, str)};
   // How many pearls wait to be sent: never their words or who said them.
   const pearls = {unsent: Store.state.pearls.filter(p => !p.sent).length};
   // When each form worth chasing passes 14 days, for the icon badge: dates only.

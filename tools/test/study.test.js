@@ -196,21 +196,54 @@ test("pace needs a week; then pages per week and a finish date", () => {
   assert.ok(p.date);
 });
 
-test("the nights grid: 28 days from Thursday, pages spread evenly", () => {
+test("the nights grid: the block in Monday-to-Sunday weeks, the days either side of it marked out", () => {
   const n = v(`studyNights(4, ${D("2026-09-30")}, ${st({})}, [])`);
-  assert.equal(n.length, 28);
-  assert.equal(v(`fmtDate(new Date(${JSON.stringify(n[0].date)}))`), "2026-09-24");
+  // Thu 24 Sep to Wed 21 Oct, from the Monday before to the Sunday after: five weeks.
+  assert.equal(n.length, 35);
+  assert.equal(n[0].key, "2026-09-21");
+  assert.equal(n[34].key, "2026-10-25");
+  assert.deepEqual(n.filter(x => x.out).map(x => x.key),
+    ["2026-09-21", "2026-09-22", "2026-09-23", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"]);
   const wed = n.find(x => x.key === "2026-09-30");
   assert.equal(wed.state, "today");
   assert.equal(wed.pages, 4);
   const fri = n.find(x => x.key === "2026-10-02");
   assert.equal(fri.state, "future");
   assert.ok(fri.pages >= 3);
-  const total = n.reduce((a, x) => a + x.pages, 0);
-  assert.equal(total, 52);
-  const nights = n.filter(x => x.kind === "read").map(x => x.pages);
+  // The block's own nights still spread its 52 pages evenly.
+  const block = n.filter(x => !x.out);
+  assert.equal(block.reduce((a, x) => a + x.pages, 0), 52);
+  const nights = block.filter(x => x.kind === "read").map(x => x.pages);
   assert.equal(nights.length, 13);
   assert.ok(Math.min(...nights) >= 2 && Math.max(...nights) <= 6, nights.join(","));
+  // Block 5's first reading night, after it, shows its planned pages.
+  const next = n.find(x => x.key === "2026-10-23");
+  assert.equal(next.kind, "read");
+  assert.equal(next.state, "future");
+  assert.ok(next.pages > 0);
+});
+
+test("last week's reading runs Monday to Sunday, so Friday's pages count", () => {
+  // Read to 20 by Fri 9 Oct, then on Mon 12, Tue 13 and Fri 16 Oct.
+  const log = {"2026-10-09": 20, "2026-10-12": 23, "2026-10-13": 27, "2026-10-16": 30};
+  const [last, cur] = v(`studyReadWeeks(${D("2026-10-19")}, ${st(log)}, [])`);
+  assert.equal(last.start, v("new Date(2026, 9, 12).getTime()"));
+  assert.equal(last.read, 10);
+  assert.equal(last.planned, 16);   // 4 of Block 4's 13 reading nights, of its 52 pages
+  assert.equal(cur.start, v("new Date(2026, 9, 19).getTime()"));
+  assert.equal(cur.read, 0);
+  // Written on the Sunday, the week just ended is this one.
+  const [, sun] = v(`studyReadWeeks(${D("2026-10-18")}, ${st(log)}, [])`);
+  assert.deepEqual(sun, last);
+});
+
+test("a week across two blocks takes each block's share of the plan", () => {
+  // Mon 19 to Sun 25 Oct: Mon, Tue and Wed are Block 4's last nights, Fri 23 is Block 5's first.
+  const w = v(`studyWeekRead(new Date(2026, 9, 19), ${st({})}, [])`);
+  const b5 = v("studyDue(5) - studyDue(4)"), n5 = v("studyCountNights(new Date(2026, 9, 22), blockEnd(5), [], [])");
+  assert.equal(w.planned, Math.round(52 * 3 / 13 + b5 / n5));
+  // Before the plan starts, nothing is planned.
+  assert.equal(v(`studyWeekRead(new Date(2026, 8, 21), ${st({})}, []).planned`), 0);
 });
 
 test("the nights grid marks done, missed and extra", () => {

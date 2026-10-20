@@ -15,7 +15,7 @@ test("Study renders tonight's pages on the first reading night", () => {
   assert.match(html, /<b>35–38<\/b>/);
   assert.match(html, /Esophageal Motility/);
   assert.match(html, /data-action="studydone"/);
-  assert.equal((html.match(/class="ng /g) || []).length, 28);
+  assert.equal((html.match(/class="ng /g) || []).length, 35);
   // The book and the question scores are on Plan.
   assert.doesNotMatch(html, /class="qrow"/);
   h.click("studytab", {tab: "p"});
@@ -23,6 +23,23 @@ test("Study renders tonight's pages on the first reading night", () => {
   assert.equal((plan.match(/<i class="(lit|tn|)"/g) || []).length, 460);
   assert.equal((plan.match(/class="qrow"/g) || []).length, 7);
   assert.doesNotMatch(plan, /data-action="studydone"/);
+});
+
+test("the nights grid starts on Monday: rows named for their Monday, the days outside the block faint", () => {
+  const html = study("2026-10-20").html();
+  assert.match(html, /<div class="ng-days mono"><span><\/span><span>Mon<\/span><span>Tue<\/span><span>Wed<\/span><span>Thu<\/span><span>Fri<\/span><span>Sat<\/span><span>Sun<\/span><\/div>/);
+  assert.deepEqual([...html.matchAll(/<span class="ng-wk mono">([^<]*)<\/span>/g)].map(m => m[1]), ["Sep 21", "Sep 28", "Oct 5", "Oct 12", "Oct 19"]);
+  // This week's row stands out.
+  assert.deepEqual([...html.matchAll(/<div class="ng-row cur"><span class="ng-wk mono">([^<]*)</g)].map(m => m[1]), ["Oct 19"]);
+  // Mon 21 to Wed 23 Sep belong to Block 3, Thu 22 to Sun 25 Oct to Block 5: faint,
+  // with a line just inside the block where it turns over.
+  const cells = [...html.matchAll(/<div class="(ng [^"]*)"/g)].map(m => m[1]);
+  assert.equal(cells.length, 35);
+  const where = re => cells.map((c, i) => re.test(c) ? i : -1).filter(i => i >= 0);
+  assert.deepEqual(where(/ out\b/), [0, 1, 2, 31, 32, 33, 34]);
+  assert.deepEqual(where(/ edge-a\b/), [3]);    // Thu 24 Sep, the block's first day
+  assert.deepEqual(where(/ edge-z\b/), [30]);   // Wed 21 Oct, its last
+  assert.match(cells[29], /s-today/);
 });
 
 test("Study opens on Tonight from Week and from a reminder, whichever view was last", () => {

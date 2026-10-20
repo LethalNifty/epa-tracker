@@ -39,6 +39,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - tonight leads with the stop you're on (book and chapter, title, pages, PDF pages); a night across books lists every stop below it, read ones ticked
 - three or four Royal College-style short-answer questions on those pages, a quiz after reading (hidden until Done or Start the quiz)
 - buttons for Done, Stopped elsewhere and Not tonight; the plan reflows from a bookmark
+- Nights: the block's reading nights as a calendar, Monday to Sunday, with the days before and after the block faint
 - Pearls: teaching points caught on the wards, searchable, sent on as a text file to become Anki cards (`docs/PEARLS.md`)
 - Plan: the block's reading, the whole book, the finish, question scores and the bank, and pausing
 
@@ -57,7 +58,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 **+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending, approved or not achieved. After saving, the toast offers Log another with the same day and assessor.
 
 **Reminders (Web Push):**
-- Monday 8 AM: the week's EPAs
+- Monday 8 AM: the week's EPAs, call in the next seven days, and last week's reading (Monday to Sunday)
 - Wednesday 8 AM: what's still due
 - an hour before call: who's on
 - 8 PM on reading nights: tonight's pages

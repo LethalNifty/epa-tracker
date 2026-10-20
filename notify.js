@@ -25,12 +25,19 @@ function noteCall(st, now) {
   return {title, body: parts.join(" "), tag: "gi-call-" + st.s, url: "./#call"};
 }
 const noteDue = w => w.rows.map(r => r.label + (r.n > 1 ? " ×" + r.n : "")).join(", ");
+// Last week's reading: of the Monday-to-Sunday weeks the app wrote, the one
+// that ended before now. A brief from before those carries a single week.
+function noteLastRead(s, now) {
+  if (!s) return null;
+  if (!s.weeks) return s.week || null;
+  return s.weeks.find(x => x.start + NOTE_WEEK <= now && now < x.start + 2 * NOTE_WEEK) || null;
+}
 // Monday morning: the week's EPAs, call in the next seven days, last week's reading.
 function noteWeek(w, brief, now) {
   const due = w.rows.length ? `Due: ${noteDue(w)}.` : "Nothing due this week. Log anything you get.";
   const calls = (brief.call || []).filter(st => st.s >= now && st.s < now + NOTE_WEEK);
   const call = calls.length ? " Call: " + calls.map(st => `${noteWd(st.s)} ${noteHM(st.s)}${noteLong(st) ? " (weekend)" : ""}`).join(", ") + "." : "";
-  const lw = brief.study && brief.study.week, read = lw && (lw.read || lw.planned) ? ` Reading: ${lw.read} of ${lw.planned} pages last week.` : "";
+  const lw = noteLastRead(brief.study, now), read = lw && (lw.read || lw.planned) ? ` Reading: ${lw.read} of ${lw.planned} pages last week.` : "";
   return {title: "This week's EPAs", body: `Block ${w.block}, week ${w.week}. ` + due + call + read, tag: "gi-week-" + now, url: "./"};
 }
 // Wednesday morning, the last day of each block week: what's still due, to ask for today.
