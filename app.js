@@ -849,7 +849,7 @@ function saveSheet() {
   const tk = mode === "new" && status !== "missed" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
   if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
-  if (mode === "edit" && status !== "missed" && !FELLOWS) Store.setObsTicks(pid, i, sheet.tick || []);
+  if (mode === "edit" && status !== "missed") Store.setObsTicks(pid, i, sheet.tick || []);
   if (status === "missed") {
     const j = Store.missObs(pid, i), L = PART_BY_ID[pid].label;
     sheet = null; sheetError = null;
@@ -927,11 +927,11 @@ function sheetHTML() {
         PARTS.filter(P => P.stage === st).map(P => chip(P.id)).join("") + `</div>`).join("");
   }
   const edit = s.mode === "edit";
-  // A new observation can tick its checklist lines as it's logged (the full app).
+  // A new observation can tick its checklist lines as it's logged.
   // An edited one shows the groups it holds, any still open, and any with a
   // tick made by hand that no form holds yet (it takes that one over).
   const free = g => g.ids.some(x => Store.lineVal(x) > Store.lineHeld(x));
-  const groups = FELLOWS || s.missed || !s.pid ? [] : checklistGroups(s.pid, id => Store.lineVal(id))
+  const groups = s.missed || !s.pid ? [] : checklistGroups(s.pid, id => Store.lineVal(id))
     .filter(g => g.done < g.total || (edit && ((s.held || []).includes(g.name) || free(g)))).sort((a, b) => b.kase - a.kase);
   const ticks = groups.length ? `<div class="lbl mono">${edit ? "Checklist lines for this form" : "Also tick on the checklist"}</div><div class="pickrow ticks">` +
     groups.map(g => { const on = (s.tick || []).includes(g.name);

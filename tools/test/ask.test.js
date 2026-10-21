@@ -116,11 +116,12 @@ test("a restored backup keeps where you are", () => {
   assert.equal(h.saved().ask, "scope");
 });
 
-test("the fellows' edition: no What to ask for, no checklist ticks in the sheet", () => {
+test("the fellows' edition: no What to ask for, but the sheet ticks checklist lines like the full app", () => {
   const h = load({today: TODAY, edition: "fellows", state: st({setup: {d: "2026-10-01"}})});
   assert.doesNotMatch(h.html(), /What to ask for/);
   h.click("sheet", {part: "c2"});
-  assert.doesNotMatch(h.html(), /Also tick on the checklist/);
+  assert.match(h.html(), /<div class="lbl mono">Also tick on the checklist<\/div>/);
+  assert.deepEqual(h.val("sheet.tick"), []);
 });
 
 test("perianal fistula: guselkumab and upadacitinib are on the card, with what their evidence is", () => {

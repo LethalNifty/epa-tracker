@@ -2,7 +2,7 @@
 // Checklist ticks that belong to a form: a line ticked with a pending form
 // shows as pending and counts once the form is approved; editing a form can
 // attach its context afterwards (taking over a tick made by hand for it) or
-// take it off. Full app only: the fellows' sheet has no checklist chips.
+// take it off. The fellows' edition works the same way.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {load, obs, state} = require("./harness");
@@ -107,8 +107,22 @@ test("a line another form holds isn't offered, and Not achieved from the edit sh
   assert.deepEqual(s.missed.f1b[0].tk, ["f1b-1"]);
 });
 
-test("the fellows' edit sheet has no checklist chips", () => {
-  const h = load({today: TODAY, edition: "fellows", state: state({f1b: [pending("2026-10-10", "Brook")]})});
-  h.run(`openSheet("f1b", 0); render();`);
-  assert.doesNotMatch(h.html(), /data-action="sheettick"/);
+test("the fellows' edition: ticks with a form, pending until approved, and its edit sheet re-links them", () => {
+  const h = load({today: TODAY, edition: "fellows", state: state({f1b: [pending("2026-10-10", "Brook")]}, {setup: {d: "2026-10-01"}})});
+  h.click("sheet", {part: "f1b"});
+  h.click("sheettick", {name: "Upper GI tract disease"});
+  h.click("sheetsave");
+  assert.deepEqual(h.saved().obs.f1b[1].tk, ["f1b-1"]);
+  h.run(`go({page: "epa", code: "F1", from: "epas"})`);
+  assert.match(lineOf(h.html(), "f1b-1"), /^<div class="line lpend"/);
+  // The older form takes on Liver disease from its edit sheet.
+  h.click("sheet", {part: "f1b", obs: "0"});
+  assert.match(h.html(), /Checklist lines for this form/);
+  h.click("sheettick", {name: "Liver disease"});
+  h.click("sheetsave");
+  assert.deepEqual(h.saved().obs.f1b[0].tk, ["f1b-3"]);
+  // Deleted: its line comes off.
+  h.click("sheet", {part: "f1b", obs: "0"});
+  h.click("sheetdelete");
+  assert.equal(h.saved().lines["f1b-3"], undefined);
 });
