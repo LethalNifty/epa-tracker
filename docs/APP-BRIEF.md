@@ -55,7 +55,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - one search box that finds guidelines, trials, drugs, biopsy protocols and your pearls together
 - a weekly check adds new guidelines without an app update
 
-**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending, approved or not achieved. After saving, the toast offers Log another with the same day and assessor.
+**+ (floating button):** Case | EPA | Pearl across the top of one sheet. Case logs a scope by voice. An observation: pick the EPA (this week's first; each chip shows its short name, and the picked one its full title), the date (Today and Yesterday chips), the assessor's surname (suggested from past entries), a note, and whether it's pending, approved or not achieved. After saving, the toast offers Log another with the same day and assessor. Checklist lines ticked with a form belong to it: pending while it's pending, gone if it's deleted or not achieved; editing a form can attach or take off its lines (taking over a tick made by hand).
 
 **Reminders (Web Push):**
 - Monday 8 AM: the week's EPAs, call in the next seven days, and last week's reading (Monday to Sunday)

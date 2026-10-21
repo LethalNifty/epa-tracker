@@ -484,7 +484,7 @@ function scopeReportOpts() {
   const s = Store.state.scopes, today = getToday();
   const r = scopeReportRange(scopePeriod, s.cases, s.lastReport, today);
   return {cases: s.cases, staff: s.staff, from: r.from, to: r.to, label: r.label, name: (s.reportName || "").trim(), today,
-    items: PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], lineVal: id => Store.lineVal(id), lastReport: s.lastReport};
+    items: PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], lineVal: id => Store.lineOk(id), lastReport: s.lastReport};
 }
 async function scopeExportReport() {
   scopeErr = null;

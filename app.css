@@ -501,6 +501,9 @@ a.btn.callbtn .ic { color: inherit; }
 .lbox .ic { width: 15px; height: 15px; stroke-width: 3; }
 .ldone .lbox { background: var(--c, var(--nbi)); box-shadow: none; color: #2b0d3f; }
 .lbox.half { box-shadow: inset 0 0 0 1.6px var(--c, var(--nbi)); color: var(--c, var(--nbi)); }
+/* A tick whose form is still pending: the pending form's colour, until it's approved. */
+.lbox.pend { color: var(--capillary); background: var(--capillary-wash); box-shadow: inset 0 0 0 1.6px color-mix(in srgb, var(--capillary) 55%, transparent); }
+.lpn { margin-left: 8px; color: var(--capillary); font-size: 9.5px; white-space: nowrap; }
 .llab { flex: 1; font-size: 14px; line-height: 1.3; }
 .ldone .llab { color: var(--dim); }
 .lmeta { flex: 0 0 36px; height: 36px; border-radius: 10px; color: var(--faint); display: flex; align-items: center; justify-content: center; }

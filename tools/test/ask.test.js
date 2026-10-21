@@ -91,6 +91,7 @@ test("checklist ticks: saved with the observation, numbered lines tick in order,
   assert.equal(h.saved().lines["c2-8"].v, 1);
   h.click("sheet", {part: "c2", obs: "0"});
   assert.doesNotMatch(h.html(), /Also tick on the checklist/);
+  assert.match(h.html(), /Checklist lines for this form/);
   h.click("sheetdelete");
   assert.equal(h.saved().lines["c2-8"], undefined);
   h.click("undo");

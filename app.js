@@ -104,6 +104,32 @@ const Store = {
     }
     if (ids.length) this.bumpLines(ids, 1);
     return ids; },
+  // Ticks of a line that forms hold (o.tk), and those whose form is still
+  // pending: they show as pending and count (lineOk) once it's approved.
+  lineHeld(id, pend) { let n = 0;
+    for (const k in this.state.obs) for (const o of this.state.obs[k])
+      if (o.tk && (!pend || o.status !== "approved")) n += o.tk.filter(x => x === id).length;
+    return Math.min(n, this.lineVal(id)); },
+  linePend(id) { return this.lineHeld(id, true); },
+  lineOk(id) { return this.lineVal(id) - this.linePend(id); },
+  // A logged form's checklist groups, changed: a group taken off gives its line
+  // back; one added takes over a tick no form holds (made by hand for this
+  // case), else ticks the group's next open line.
+  setObsTicks(p, i, names) {
+    const o = this.state.obs[p][i], nameOf = id => { const g = checklistGroups(p, () => 0).find(x => x.ids.includes(id)); return g && g.name; };
+    const keep = (o.tk || []).filter(id => names.includes(nameOf(id))), drop = (o.tk || []).filter(id => !keep.includes(id));
+    if (drop.length) this.bumpLines(drop, -1);
+    const have = keep.map(nameOf), add = [];
+    for (const g of checklistGroups(p, () => 0)) {
+      if (!names.includes(g.name) || have.includes(g.name)) continue;
+      const free = g.ids.find(x => this.lineVal(x) > this.lineHeld(x));
+      const id = free || g.ids.find(x => this.lineVal(x) < itemTarget(x));
+      if (!id) continue;
+      if (!free) this.bumpLines([id], 1);
+      add.push(id);
+    }
+    if (keep.length + add.length) o.tk = [...keep, ...add]; else delete o.tk;
+    this.save(); },
   setLineMeta(id, m) { Object.assign(this.state.lines[id] ||= {v:0}, m); this.save(); },
   partDone(p) { return (this.state.obs[p]||[]).length; },
   exportJSON() { return JSON.stringify(this.state, null, 1); },
@@ -637,10 +663,12 @@ function partBlock(p, st) {
     h += `<div class="ctx"><span class="mono">Context checklist</span>`;
     for (const it of p.items) {
       if (it.h) { h += `<div class="ihead">${esc(it.h)}</div>`; continue; }
-      const v = Store.lineVal(it.id), ldone = v >= it.target;
-      const box = it.target === 1 ? (v ? ic("check") : "") : `${v}/2`;
-      h += `<div class="line${ldone ? " ldone" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
-        `<span class="lbox${!ldone && v ? " half" : ""}">${box}</span><span class="llab">${esc(it.label)}</span>` +
+      // A tick whose form is still pending shows as pending, and counts once it's approved.
+      const v = Store.lineVal(it.id), pend = Store.linePend(it.id), ok = v - pend, ldone = ok >= it.target, lp = pend && !ldone;
+      const box = it.target === 1 ? (ok ? ic("check") : pend ? ic("clock") : "") : `${v}/2`;
+      h += `<div class="line${ldone ? " ldone" : lp ? " lpend" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
+        `<span class="lbox${lp ? " pend" : !ldone && v ? " half" : ""}">${box}</span>` +
+        `<span class="llab">${esc(it.label)}${lp ? `<span class="lpn mono">Pending</span>` : ""}</span>` +
         `<button class="lmeta" data-action="linemeta" data-line="${it.id}" aria-label="Date and note">${ic("more")}</button></div>`;
       if (route.editLine === it.id) h += lineEditorHTML(it.id);
     }
@@ -799,8 +827,9 @@ function askPreTick(pid, askId) {
 function openSheet(pid, i, mi) {
   const missed = mi !== undefined, at = missed ? mi : i, from = missed ? Store.state.missed : Store.state.obs;
   const o = pid && at !== undefined && from[pid] && from[pid][+at];
+  const held = o && !missed ? checklistGroups(pid, () => 0).filter(g => (o.tk || []).some(id => g.ids.includes(id))).map(g => g.name) : [];
   sheet = o
-    ? {mode: "edit", pid, i: +at, missed, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false}
+    ? {mode: "edit", pid, i: +at, missed, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false, tick: held, held}
     : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false, tick: []};
   sheetError = null;
   sheetFresh = true;
@@ -820,6 +849,7 @@ function saveSheet() {
   const tk = mode === "new" && status !== "missed" && sheet.tick && sheet.tick.length ? Store.tickGroups(pid, sheet.tick) : [];
   if (tk.length) meta.tk = tk;
   Store.setObsMeta(pid, i, meta);
+  if (mode === "edit" && status !== "missed" && !FELLOWS) Store.setObsTicks(pid, i, sheet.tick || []);
   if (status === "missed") {
     const j = Store.missObs(pid, i), L = PART_BY_ID[pid].label;
     sheet = null; sheetError = null;
@@ -898,8 +928,12 @@ function sheetHTML() {
   }
   const edit = s.mode === "edit";
   // A new observation can tick its checklist lines as it's logged (the full app).
-  const groups = !FELLOWS && !edit && s.pid ? checklistGroups(s.pid, id => Store.lineVal(id)).filter(g => g.done < g.total).sort((a, b) => b.kase - a.kase) : [];
-  const ticks = groups.length ? `<div class="lbl mono">Also tick on the checklist</div><div class="pickrow ticks">` +
+  // An edited one shows the groups it holds, any still open, and any with a
+  // tick made by hand that no form holds yet (it takes that one over).
+  const free = g => g.ids.some(x => Store.lineVal(x) > Store.lineHeld(x));
+  const groups = FELLOWS || s.missed || !s.pid ? [] : checklistGroups(s.pid, id => Store.lineVal(id))
+    .filter(g => g.done < g.total || (edit && ((s.held || []).includes(g.name) || free(g)))).sort((a, b) => b.kase - a.kase);
+  const ticks = groups.length ? `<div class="lbl mono">${edit ? "Checklist lines for this form" : "Also tick on the checklist"}</div><div class="pickrow ticks">` +
     groups.map(g => { const on = (s.tick || []).includes(g.name);
       return `<button class="pick ghost${on ? " on" : ""}" data-action="sheettick" data-name="${esc(g.name)}" aria-pressed="${on}">` +
         `${esc(askName(g.name))}<span class="tn">${g.done}/${g.total}</span></button>`; }).join("") + `</div>` : "";

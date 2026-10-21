@@ -337,7 +337,7 @@ function scopeShareHTML() {
     `<p class="chnote">Each point is the share of your previous 20 colonoscopies (fewer at the start) where you reached the cecum or terminal ileum yourself.</p></div></section>`;
 }
 function scopeTherapyHTML() {
-  const rows = scopeTherapy(scopeData().cases, PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], id => Store.lineVal(id));
+  const rows = scopeTherapy(scopeData().cases, PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], id => Store.lineOk(id));
   return `<section class="sec"><div class="sec-head"><h2>Therapeutics</h2><span class="mono">Against C8 minimums</span></div><div class="card list tlist">` +
     rows.map(r => {
       let segs = "";
