@@ -1,7 +1,8 @@
 "use strict";
 // Who signs quickly: the day a pending form is marked approved is kept with it
 // (o.ok), and each assessor's usual turnaround shows in the log sheet's
-// assessor suggestions and in the pending list. Full app only.
+// assessor suggestions and in the pending list. The fellows' edition has it
+// too (2026-10-22).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {load, obs, state} = require("./harness");
@@ -79,11 +80,11 @@ test("the pending list says how long each assessor usually takes", () => {
   assert.match(html, /Casey<span class="usual"> · usually 3 weeks<\/span>/);
 });
 
-test("the fellows' edition keeps the day but shows no turnaround", () => {
+test("the fellows' edition keeps the day and shows the turnaround too", () => {
   const h = load({today: TODAY, edition: "fellows", state: state({c2: [pending("2026-10-01", "Brook")]}, {setup: {d: "2026-10-01"}})});
   h.click("togglestatus", {part: "c2", obs: "0"});
   assert.equal(h.saved().obs.c2[0].ok, TODAY);
   h.run(`Store.state.obs.c2.push(${JSON.stringify(done("2026-09-01", "Brook", "2026-09-04"))}); Store.state.obs.c3 = [${JSON.stringify(pending("2026-09-20", "Brook"))}]; render();`);
   h.click("sheet", {part: "c4"});
-  assert.doesNotMatch(h.html(), /class="sp"|class="usual"/);
+  assert.match(h.html(), /data-name="Brook">Brook<span class="sp">/);
 });

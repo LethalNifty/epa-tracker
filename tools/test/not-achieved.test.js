@@ -2,7 +2,8 @@
 // Not achieved: a form that came back below the entrustment mark (3/5 or
 // lower) doesn't count. It moves out of the observation list into its own
 // (state.missed), so no count, pace, chase or stage unlock ever sees it, and it
-// keeps the day it came back for its assessor's turnaround. Full app only.
+// keeps the day it came back for its assessor's turnaround. The fellows'
+// edition has it too (2026-10-22), with the turnaround hints.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {load, obs, state} = require("./harness");
@@ -110,9 +111,16 @@ test("the backup keeps not-achieved forms; a bad entry is dropped on load", () =
   assert.equal(h.val("Store.state.missed.c2[0].a"), "Casey");
 });
 
-test("the fellows' edition has no Not achieved", () => {
-  const h = load({today: TODAY, edition: "fellows", state: state({c2: [pending("2026-09-01", "Casey")]}, {setup: {d: "2026-09-01"}})});
-  assert.doesNotMatch(h.html(), /chasemiss|Not achieved/);
-  h.click("sheet", {part: "c2", obs: "0"});
-  assert.doesNotMatch(h.html(), /data-status="missed"|Not achieved/);
+test("the fellows' edition: Not achieved on the pending list and the sheet, and the assessor's usual turnaround", () => {
+  const h = load({today: TODAY, edition: "fellows", state: state({c2: [done("2026-08-01", "Casey", "2026-08-15"), pending("2026-09-01", "Casey")],
+    c3: [done("2026-08-05", "Casey", "2026-08-12")]}, {setup: {d: "2026-09-01"}})});
+  const row = pendingRow(h.html());
+  assert.match(row, /data-action="chasemiss" data-part="c2" data-obs="1">Not achieved<\/button>/);
+  assert.match(row, /<span class="usual"> · /);
+  h.click("chasemiss", {part: "c2", obs: "1"});
+  assert.equal(h.saved().missed.c2[0].a, "Casey");
+  assert.equal(h.val("Store.partDone('c2')"), 1);
+  h.click("sheet", {part: "c4"});
+  assert.match(h.html(), /data-status="missed">.*Not achieved<\/button>/);
+  assert.match(h.html(), /data-name="Casey">Casey<span class="sp">/);
 });

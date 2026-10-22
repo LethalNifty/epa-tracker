@@ -489,7 +489,7 @@ function lookRowsHTML(items) {
 }
 // A spare (a form the EPA no longer needs) is listed last and not counted.
 function chaseHTML(list) {
-  const n = list.filter(c => !c.spare).length, sp = FELLOWS ? {} : assessorSpeed();
+  const n = list.filter(c => !c.spare).length, sp = assessorSpeed();
   return `<section class="sec"><details class="card chase"${chaseOpen ? " open" : ""}><summary>${ic("clock")}` +
     `<b>${n} form${n > 1 ? "s" : ""} pending 14+ days</b><span class="mono">Entrada</span>${ic("chev", "chev")}</summary>` +
     [...list.filter(c => !c.spare), ...list.filter(c => c.spare)].map(c => {
@@ -503,10 +503,10 @@ function chaseHTML(list) {
         `${names.length === 1 ? ` data-a="${esc(names[0])}"` : ""}><span class="cc sm st-${PART_BY_ID[c.pid].stage}">${c.label}</span>` +
         `<span class="cmeta"><b>${esc(PART_SHORT[c.pid] || "")}</b>` +
         `<span class="cwho"><span class="num">${esc(scopeShortDate(c.date))}</span> · ${who}${note ? " · " + esc(note) : ""}</span></span></button>` +
-        // The full app's two answers sit on their own line, so the form keeps its words.
-        (FELLOWS ? "" : `<div class="cacts">`) + (c.spare ? `<span class="sparetag mono">Spare</span>` : "") +
-        (FELLOWS ? "" : `<button class="pillbtn miss" data-action="chasemiss" data-part="${c.pid}" data-obs="${c.i}">Not achieved</button>`) +
-        `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button>` + (FELLOWS ? "" : `</div>`) + `</div>`;
+        // The two answers sit on their own line, so the form keeps its words.
+        `<div class="cacts">` + (c.spare ? `<span class="sparetag mono">Spare</span>` : "") +
+        `<button class="pillbtn miss" data-action="chasemiss" data-part="${c.pid}" data-obs="${c.i}">Not achieved</button>` +
+        `<button class="pillbtn" data-action="chaseok" data-part="${c.pid}" data-obs="${c.i}">Approved</button></div></div>`;
     }).join("") +
     `</details></section>`;
 }
@@ -902,7 +902,7 @@ function assessorSuggestions(typed) {
   return assessorNames().filter(n => !t || (n.toLowerCase().includes(t) && n.toLowerCase() !== t)).slice(0, 4);
 }
 function suggHTML(typed) {
-  const sp = FELLOWS ? {} : assessorSpeed();
+  const sp = assessorSpeed();
   return assessorSuggestions(typed).map(x => { const s = sp[x.toLowerCase()];
     return `<button class="pick ghost" data-action="pickassessor" data-name="${esc(x)}">${esc(x)}${s ? `<span class="sp">${speedShort(s)}</span>` : ""}</button>`; }).join("");
 }
@@ -949,9 +949,9 @@ function sheetHTML() {
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
     `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` + ticks +
-    `<div class="seg${FELLOWS ? "" : " three"}" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
+    `<div class="seg three" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
     `<button class="approved${s.status === "approved" ? " on" : ""}" data-action="sheetstatus" data-status="approved">${ic("check")}Approved</button>` +
-    (FELLOWS ? "" : `<button class="missed${s.status === "missed" ? " on" : ""}" data-action="sheetstatus" data-status="missed">${ic("x")}Not achieved</button>`) + `</div>` +
+    `<button class="missed${s.status === "missed" ? " on" : ""}" data-action="sheetstatus" data-status="missed">${ic("x")}Not achieved</button></div>` +
     (sheetError ? `<div class="err" role="alert">${esc(sheetError)}</div>` : "") +
     `<div class="sactions">${edit ? `<button class="btn danger" data-action="sheetdelete">Delete</button>` : ""}` +
     `<button class="btn primary" data-action="sheetsave">${edit ? "Save" : "Save as " + (s.status === "missed" ? "not achieved" : s.status)}</button></div></div>`;
