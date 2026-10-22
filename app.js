@@ -32,7 +32,7 @@ const Store = {
       this.state.missed[k] = ms[k].filter(o => o && typeof o === "object").map(o => ({...o, status: "missed"}));
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
-      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled)};
+      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled), ageOn: !!(sc && sc.ageOn)};
     // Once: cases imported before sites were filled on import take their block's hospital.
     if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; }
     const gd = this.state.guides;

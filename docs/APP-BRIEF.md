@@ -28,7 +28,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - a weekly recap
 - a list of forms still pending in Entrada after 14+ days, so you can chase them; a spare form (one an EPA no longer needs) is shown but not counted
 - a form that comes back below the mark (3/5 or lower) is marked Not achieved: it stays on its EPA's page, greyed and apart, never counts, and still tells its assessor's turnaround
-- a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, and reminders
+- a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, patient age range for the procedure log (off unless switched on, or turned on by importing a log that has ages), and reminders
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording

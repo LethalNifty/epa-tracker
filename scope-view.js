@@ -80,7 +80,7 @@ function scopeCardsFrom(drafts) {
 function scopeCardFromCase(c, copy) {
   return {key: scopeNewKey(), d: copy ? fmtDate(getToday()) : c.d, staff: c.staff, staffHeard: null, staffAlt: [], staffSaid: null,
     site: c.site, loc: c.loc, urg: c.urg, procs: (c.procs || []).slice(), reach: c.reach || null, why: (c.why || []).slice(),
-    found: (c.found || []).slice(), leftover: [], note: copy ? "" : c.note || "", n: 1, epa: {}, carried: {}, err: null,
+    found: (c.found || []).slice(), age: copy ? null : c.age || null, leftover: [], note: copy ? "" : c.note || "", n: 1, epa: {}, carried: {}, err: null,
     editId: copy ? null : c.id, otherLabel: c.otherLabel || ""};
 }
 // EPA parts this card could count toward: active stage, still needing observations.
@@ -99,8 +99,9 @@ function scopeChip(label, action, data, cls) {
   const attrs = Object.entries(data || {}).map(([k, v]) => ` data-${k}="${esc(v)}"`).join("");
   return `<button class="chip${cls ? " " + cls : ""}" data-action="${action}"${attrs}>${label}</button>`;
 }
+const scopeAgeOn = () => !!scopeData().ageOn;
 function scopeSegHTML(card, kind, list) {
-  return `<div class="sseg" role="group" aria-label="${kind === "site" ? "Site" : "Location"}">` + list.map(([k, , short]) =>
+  return `<div class="sseg" role="group" aria-label="${{site: "Site", loc: "Location", age: "Patient age"}[kind]}">` + list.map(([k, , short]) =>
     `<button class="${card[kind] === k ? "on" : ""}${card.carried && card.carried[kind] && card[kind] === k ? " carried" : ""}" data-action="scopeset" data-key="${card.key}" data-kind="${kind}" data-v="${k}"` +
     (card[kind] === k ? ` aria-pressed="true"` : ` aria-pressed="false"`) + `>${short}</button>`).join("") + `</div>`;
 }
@@ -165,6 +166,7 @@ function scopeCardHTML(card, i, o = {}) {
     (o.noClose ? "" : `<button class="iconbtn" data-action="scopecardx" data-key="${card.key}" aria-label="Remove this case">${ic("x")}</button>`) + `</div>` +
     `<div class="sc-who">${staff}${scopeChip(card.urg === "urgent" ? "Urgent" : "Elective", "scopeurg", {key: card.key}, card.urg === "urgent" ? "urg on" : "ghost")}</div>` +
     `<div class="sc-where">${scopeSegHTML(card, "site", SCOPE_SITES)}${scopeSegHTML(card, "loc", SCOPE_LOCS)}</div>` +
+    (scopeAgeOn() ? `<div class="srowk sc-age"><span class="mono">Age</span>${scopeSegHTML(card, "age", SCOPE_AGES)}</div>` : "") +
     scopeReachHTML(card) +
     scopeListRow(card, "procs", "Did", card.procs, scopeProcChipLabel) +
     scopeListRow(card, "why", "Why", card.why, scopeWhyLabel) +
@@ -366,6 +368,7 @@ function scopeBreadthHTML() {
     `<div class="bgrp2"><span class="mono">Staff</span>${scopeBarsHTML(staff)}</div>` +
     `<div class="bgrp2"><span class="mono">Site</span>${scopeBarsHTML(map(b.site, SCOPE_SITES.map(x => [x[0], x[1]])))}</div>` +
     `<div class="bgrp2"><span class="mono">Setting</span>${scopeBarsHTML(map(b.loc, SCOPE_LOCS.map(x => [x[0], x[1]])).concat(map(b.urg, [["urgent", "Urgent"], ["elective", "Elective"]]).filter(r => r.label !== "Not recorded")))}</div>` +
+    (Object.keys(b.age).some(k => k !== "none") ? `<div class="bgrp2"><span class="mono">Age</span>${scopeBarsHTML(map(b.age, SCOPE_AGES.map(x => [x[0], x[1]])))}</div>` : "") +
     `</div></section>`;
 }
 function scopeReportCardHTML() {
@@ -485,7 +488,7 @@ function scopePickHTML() {
 // ---- Actions -------------------------------------------------------------------------------------------
 function scopeRead() {
   const s = scopeData();
-  const r = scopeParse(scopeCap.text, {today: getToday(), staff: s.staff, learned: s.learned});
+  const r = scopeParse(scopeCap.text, {today: getToday(), staff: s.staff, learned: s.learned, age: !!s.ageOn});
   scopeCap.cards = scopeCardsFrom(r.cases);
   scopeCap.removed = r.removed;
   // What could identify a patient leaves the box too.
@@ -505,6 +508,7 @@ function scopeCaseOf(card, id) {
     urg: card.urg || null, procs: card.procs.slice(), reach: scopeHasBase(card) ? card.reach : null, why: card.why.slice(), found: card.found.slice(),
     note: (card.note || "").trim(), src: card.src || "dictated", ts: new Date().toISOString()};
   if (card.otherLabel) c.otherLabel = card.otherLabel;
+  if (card.age) c.age = card.age;
   return c;
 }
 function scopeAddEpa(card, caseId) {
@@ -626,6 +630,7 @@ function scopeDispatch(act, d = {}) {
     Store.removeCase(id); scopeSheet = null;
     showToast("Case deleted", () => Store.restoreScopes(before));
   }
+  else if (act === "scopeage") { scopeData().ageOn = d.v === "on"; Store.save(); }
   else if (act === "scopehintoff") { scopeData().hintOff = fmtDate(getToday()); Store.save(); }
   else if (act === "scopemore") scopeAllRecent = true;
   else if (act === "scopedot") { scopeDot = scopeDot === d.id ? null : d.id || null; scopeDotFresh = !!scopeDot; }
@@ -673,7 +678,8 @@ function scopeImportText(text) {
   if (!r.ok) { scopeErr = r.error; return; }
   Store.restoreScopes(r.next);
   scopeErr = null;
-  showToast(`Imported ${r.added} case${r.added === 1 ? "" : "s"}${r.staffAdded ? `, ${r.staffAdded} staff` : ""}${r.skipped ? ` (${r.skipped} already here)` : ""}`,
+  showToast(`Imported ${r.added} case${r.added === 1 ? "" : "s"}${r.staffAdded ? `, ${r.staffAdded} staff` : ""}${r.skipped ? ` (${r.skipped} already here)` : ""}` +
+    `${r.filled ? ` · ages added to ${r.filled}` : ""}${r.ageOn ? " · age range on" : ""}`,
     () => Store.restoreScopes(before));
 }
 function scopeReadImport(f) {
@@ -725,6 +731,15 @@ function scopeAfterRender() {
     if (el && el.scrollIntoView) el.scrollIntoView({block: "center", behavior: scopeReduced() ? "auto" : "smooth"});
     scopeFocus = null;
   }
+}
+
+// ---- Settings: patient age range ------------------------------------------------------------------
+// Off unless the fellow keeps ages, as T-Res asked for them.
+function scopeSetHTML() {
+  const on = scopeAgeOn(), b = (v, label) => `<button class="${on === (v === "on") ? "on" : ""}" data-action="scopeage" data-v="${v}" aria-pressed="${on === (v === "on")}">${label}</button>`;
+  return `<div class="setgrp"><div class="set-h mono"><span>Procedure log</span></div><div class="card pad">` +
+    `<div class="agepick"><span>Patient age range</span><div class="sseg" role="group" aria-label="Patient age range">${b("off", "Off")}${b("on", "On")}</div></div>` +
+    `<p class="bnote mono">18 to 49, 50 to 75 or over 75 on each case, never an exact age</p></div></div>`;
 }
 
 // ---- Week: last week's scopes in the recap -------------------------------------------------------------

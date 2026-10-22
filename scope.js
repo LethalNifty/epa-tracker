@@ -38,7 +38,10 @@ const SCOPE_PROCS = [
   ["egd.peg", "egd", "PEG", "EGD: PEG Placement"],
   ["egd.nj", "egd", "NJ tube", "EGD: NJ placement"],
   ["egd.stent", "egd", "Stent", "EGD: Endoluminal SP"],
+  ["egd.dil", "egd", "Dilation", "EGD: Dilate", "dilations"],
   ["egd.dil.balloon", "egd", "Balloon dilation", "EGD: Dilate: Balloon", "dilations"],
+  ["egd.dil.savary", "egd", "Savary dilation", "EGD: Dilate: Savary", "dilations"],
+  ["egd.dil.maloney", "egd", "Maloney dilation", "EGD: Dilate: Maloney", "dilations"],
   ["egd.dil.bougie", "egd", "Bougie dilation", "EGD: Dilate: Bougie", "dilations"],
   ["egd.dil.pneum", "egd", "Pneumatic dilation", "EGD: Dilate: Pneumatic", "dilations"],
   ["egd.nv", "egd", "Hemostasis", "EGD: Hemostasis", "non-variceal hemostasis"],
@@ -152,6 +155,12 @@ const SCOPE_FOUND = [
   ["active", "Active bleeding", "actively bleeding|active(?:ly)? bleed(?:ing)?|spurting|oozing"],
   ["other", "Other", ""],
 ].map(([code, label, words]) => ({code, label, words}));
+// Patient age, kept only as the band T-Res used, never an exact age. Off
+// unless the fellow switches it on (or imports a log that has ages).
+const SCOPE_AGES = [["18-49", "18 to 49", "18-49"], ["50-75", "50 to 75", "50-75"], ["75+", "Over 75", "Over 75"]];
+const scopeAgeLabel = a => (SCOPE_AGES.find(x => x[0] === a) || [, ""])[1];
+const scopeAgeBand = n => n < 18 || n > 120 ? null : n <= 49 ? "18-49" : n <= 75 ? "50-75" : "75+";
+const SCOPE_DECADES = {twenties: 20, thirties: 30, forties: 40, fifties: 50, sixties: 60, seventies: 70, eighties: 80, nineties: 90};
 const scopeWhyLabel = c => (SCOPE_WHY.find(x => x.code === c) || {label: c}).label;
 const scopeFoundLabel = c => (SCOPE_FOUND.find(x => x.code === c) || {label: c}).label;
 
@@ -238,9 +247,12 @@ const SCOPE_TX = [
   [phrase("(?:fully covered |uncovered |covered |metal |plastic |pancreatic |pd |biliary |cbd )*(?:stent(?:s|ed|ing)?|sems|fcsems|wallstent)"),
     (fam, m) => fam === "ercp" ? [/pancreatic|\bpd\b/.test(m) ? "ercp.panc" : /metal|sems|covered|wallstent/.test(m) ? "ercp.metal" : "ercp.plastic"]
       : [fam === "colo" ? "colo.stent" : fam === "fs" ? "fs.stent" : "egd.stent"]],
-  [phrase("(?:balloon |cre |tts |bougie |savary |maloney |pneumatic |rigiflex |achalasia )*(?:dilat(?:ed|ion|ions|e|ing)|dilatation|stretched)|savary|bougie|maloney|pneumatic dilation|rigiflex"),
+  // Savary is often heard as "savory"; a dilation with no type said is saved untyped, never guessed.
+  [phrase("(?:balloon |cre |tts |bougie |savary |savory |savoury |maloney |wire[- ]guided |pneumatic |rigiflex |achalasia )*(?:dilat(?:ed|ion|ions|e|ing|or|ors)|dilatation|stretched)" +
+    "|sav(?:a|o|ou)ry(?: bougies?)?|bougies?|maloney(?: bougies?)?|pneumatic dilation|rigiflex"),
     (fam, m) => fam === "colo" ? ["colo.dil"] : fam === "fs" ? ["fs.dil"] :
-      [/pneumatic|rigiflex|achalasia/.test(m) ? "egd.dil.pneum" : /bougie|savary|maloney/.test(m) ? "egd.dil.bougie" : "egd.dil.balloon"]],
+      [/pneumatic|rigiflex|achalasia/.test(m) ? "egd.dil.pneum" : /sav(?:a|o|ou)ry|wire[- ]guided/.test(m) ? "egd.dil.savary" : /maloney/.test(m) ? "egd.dil.maloney" :
+        /bougie/.test(m) ? "egd.dil.bougie" : /balloon|cre |tts /.test(m) ? "egd.dil.balloon" : "egd.dil"]],
   [phrase("(?:cold |hot )?snare(?:d)?(?: polypectom\\w*)?|polypectom\\w*|emr|(?:endoscopic )?mucosal resection|(?:removed|resected|took off) (?:a |the |an |one |two |three |four |five |\\d+ )?" +
     "(?:\\d+(?:\\.\\d+)? ?(?:cm|mm|centimet\\w*|millimet\\w*) |small |large |big |sessile |pedunculated |flat |tiny )*polyps?|polyps? (?:was |were )?(?:removed|resected)"),
     (fam, m, ctx) => {
@@ -273,6 +285,10 @@ const SCOPE_SITE_RX = [["hsc", phrase("hsc|health sciences?(?: cent(?:re|er))?")
 const SCOPE_LOC_RX = [["suite", phrase("endo(?:scopy)? (?:suite|unit)|the suite|gi unit")],
   ["ed", phrase("ed|er|emerg|emergency department|emergency room|the emergency")],
   ["icu", phrase("icu|intensive care(?: unit)?|critical care|the unit|micu|sicu|ccu")]];
+// "a 72 year old", "68 yo", "aged 81", "in her fifties". A decade that crosses
+// a band (the seventies) gives no band.
+const SCOPE_AGE_RX = phrase("(?:aged? )?(\\d{2,3})(?:[- ]?(?:years?|yrs?)[- ]?old|[- ]?y\\.?o\\.?|[- ]?y/o)|aged (\\d{2,3})" +
+  "|in (?:his|her|their) (twenties|thirties|forties|fifties|sixties|seventies|eighties|nineties|[2-9]0'?s)");
 const SCOPE_URG_RX = [["urgent", phrase("urgent\\w*|emergent\\w*|emergency scope|stat|on call|overnight|after hours|middle of the night|call scope|at night")],
   ["elective", phrase("elective|outpatient|routine|scheduled|booked")]];
 const SCOPE_MONTHS = ["jan(?:uary)?", "feb(?:ruary)?", "mar(?:ch)?", "apr(?:il)?", "may", "june?", "july?", "aug(?:ust)?",
@@ -422,7 +438,7 @@ function scopeReadCase(text, ctx) {
   const mark = (a, b) => { for (let i = Math.max(0, a); i < Math.min(lower.length, b); i++) used[i] = 1; };
   const all = rx => { const out = []; rx.lastIndex = 0; let m; while ((m = rx.exec(lower))) { out.push(m); if (!m[0].length) rx.lastIndex++; } return out; };
   const draft = {d: null, staff: null, staffHeard: null, staffSaid: null, staffAlt: [], site: null, loc: null, urg: null,
-    procs: [], reach: null, why: [], found: [], leftover: [], n: 1};
+    procs: [], reach: null, why: [], found: [], age: null, leftover: [], n: 1};
   const add = (list, c) => { if (c && !list.includes(c)) list.push(c); };
 
   // Learned phrases first, so a personal word wins over the built-in reading.
@@ -444,6 +460,13 @@ function scopeReadCase(text, ctx) {
   for (const m of all(SCOPE_URG_RX[0][1])) { urgent = true; mark(m.index, m.index + m[0].length); }
   for (const m of all(SCOPE_URG_RX[1][1])) { elective = true; mark(m.index, m.index + m[0].length); }
   draft.urg = elective ? "elective" : urgent ? "urgent" : null;
+  // Said ages always leave the words; the band is kept only when the fellow records ages.
+  for (const m of all(SCOPE_AGE_RX)) {
+    mark(m.index, m.index + m[0].length);
+    const dec = m[3] ? SCOPE_DECADES[m[3]] || parseInt(m[3], 10) : null;
+    const band = dec ? (dec === 70 ? null : scopeAgeBand(dec + 5)) : scopeAgeBand(+(m[1] || m[2]));
+    if (ctx.age && band && !draft.age) draft.age = band;
+  }
 
   // Procedure words, in order, so each therapy belongs to the procedure named before it.
   const famAt = [];
@@ -587,6 +610,8 @@ function scopeReadCase(text, ctx) {
   vocab(SCOPE_FOUND, draft.found);
   vocab(SCOPE_WHY.filter(x => ["ida", "crc", "surv", "fb"].includes(x.code)), draft.why);
   if (draft.procs.includes("egd.fb")) add(draft.why, "fb");
+  // "Dilated with bougies": the named type is the dilation.
+  if (draft.procs.some(c => c.startsWith("egd.dil."))) draft.procs = draft.procs.filter(c => c !== "egd.dil");
   // Screening words already made this a screening colonoscopy; say why only when it is one.
   if (draft.why.includes("crc") && !draft.procs.includes("colo.screen")) draft.why = draft.why.filter(c => c !== "crc");
   // An ulcer named by where it is.
@@ -814,7 +839,7 @@ function scopeSummary(c, o = {}) {
     if (f === "para") head = c.procs.includes("para.ther") ? "Paracentesis, therapeutic" : "Paracentesis";
     const tx = (c.procs || []).filter(p => scopeFam(p) === f && SCOPE_PROC[p] && !SCOPE_PROC[p].base && p !== "egd.entero")
       .map(p => /^[A-Z]{2,}$/.test(SCOPE_PROC[p].label) ? SCOPE_PROC[p].label
-        : SCOPE_PROC[p].label.toLowerCase().replace("nj tube", "NJ tube").replace("barrett's", "Barrett's"));
+        : SCOPE_PROC[p].label.toLowerCase().replace("nj tube", "NJ tube").replace("barrett's", "Barrett's").replace("savary", "Savary").replace("maloney", "Maloney"));
     parts.push(head + (tx.length && !o.heads ? " · " + tx.join(", ") : ""));
   }
   return parts.join(" + ") || "No procedure yet";
@@ -888,7 +913,8 @@ const SCOPE_TX_GROUPS = [
   ["Variceal hemostasis", [["Band ligation", ["egd.ev.band"]], ["Cyanoacrylate", ["egd.ev.glue"]], ["Sclerotherapy", ["egd.ev.sclero"]]]],
   ["Resection", [["Polypectomy", ["egd.poly", "colo.poly", "fs.poly"]], ["Polyp 10 mm or larger", ["colo.bigpoly"]],
     ["EMR", ["egd.emr", "colo.emr"]], ["ESD", ["egd.esd", "colo.esd"]]]],
-  ["Dilation", [["Balloon", ["egd.dil.balloon"]], ["Bougie", ["egd.dil.bougie"]], ["Pneumatic", ["egd.dil.pneum"]], ["Colonic", ["colo.dil", "fs.dil"]]]],
+  ["Dilation", [["Balloon", ["egd.dil.balloon"]], ["Savary", ["egd.dil.savary"]], ["Maloney", ["egd.dil.maloney"]],
+    ["Bougie, type not recorded", ["egd.dil.bougie"]], ["Pneumatic", ["egd.dil.pneum"]], ["Type not recorded", ["egd.dil"]], ["Colonic", ["colo.dil", "fs.dil"]]]],
   ["Foreign body removal", [["Foreign body or food bolus", ["egd.fb"]]]],
   ["Enteral access", [["PEG", ["egd.peg"]], ["Nasojejunal tube", ["egd.nj"]]]],
   ["Luminal stent", [["Esophageal or gastroduodenal", ["egd.stent"]], ["Colonic", ["colo.stent", "fs.stent"]]]],
@@ -948,7 +974,7 @@ function scopeBreadth(cases, from, to, staff) {
     const p = (staff || []).find(x => x.id === id);
     return {id, name: p ? p.name : "Not recorded", n: byStaff[id]};
   }).sort((a, b) => (a.id === "none") - (b.id === "none") || b.n - a.n || a.name.localeCompare(b.name));
-  return {n: inR.length, staff: staffRows, site: count("site"), loc: count("loc"), urg: count("urg")};
+  return {n: inR.length, staff: staffRows, site: count("site"), loc: count("loc"), urg: count("urg"), age: count("age")};
 }
 function scopeWeek(cases, from, to) {
   const inR = cases.filter(c => scopeIn(c, from, to));
@@ -982,12 +1008,14 @@ function scopeCSV(cases, staff) {
   const name = id => { const p = (staff || []).find(x => x.id === id); return p ? p.name : ""; };
   const site = k => (SCOPE_SITES.find(x => x[0] === k) || [, ""])[1];
   const loc = k => (SCOPE_LOCS.find(x => x[0] === k) || [, ""])[1];
-  const rows = [["Date", "Procedure", "Procedure codes", "How far (colonoscopy)", "Why", "Found", "Staff", "Site", "Location", "Urgency", "Note"]];
+  // An age column only when some case has an age.
+  const ages = cases.some(c => c.age);
+  const rows = [["Date", "Procedure", "Procedure codes", "How far (colonoscopy)", "Why", "Found", "Staff", "Site", "Location", "Urgency", ...(ages ? ["Age"] : []), "Note"]];
   for (const c of cases.slice().sort(scopeByDate)) {
     rows.push([c.d, scopeFams(c).map(scopeFamLabel).join(" + "), scopeTresCodes(c).join("; "),
       scopeHasBase(c) && c.reach ? scopeReachLabel(c.reach) : "", (c.why || []).map(scopeWhyLabel).join("; "),
       (c.found || []).map(scopeFoundLabel).join("; "), name(c.staff), site(c.site), loc(c.loc),
-      c.urg === "urgent" ? "Urgent" : c.urg === "elective" ? "Elective" : "", c.note || ""]);
+      c.urg === "urgent" ? "Urgent" : c.urg === "elective" ? "Elective" : "", ...(ages ? [scopeAgeLabel(c.age)] : []), c.note || ""]);
   }
   return "﻿" + rows.map(r => r.map(q).join(",")).join("\r\n") + "\r\n";
 }
@@ -1007,17 +1035,26 @@ function scopeImport(scopes, file) {
     next.staff.push({id, name: p.name, aliases: (p.aliases || []).slice(), hidden: !!p.hidden});
     idMap[p.id] = id; staffAdded++;
   }
-  const have = new Set(next.cases.map(c => c.id)), fresh = [];
+  const have = new Map(next.cases.map(c => [c.id, c])), fresh = [], isAge = a => SCOPE_AGES.some(x => x[0] === a);
+  let filled = 0;
   for (const c of file.cases) {
     if (!c || !c.id || !/^\d{4}-\d{2}-\d{2}$/.test(c.d || "")) { skipped++; continue; }
-    if (have.has(c.id)) { skipped++; continue; }
+    if (have.has(c.id)) {
+      // A case already here takes the age it was missing; nothing else changes.
+      const old = have.get(c.id);
+      if (!old.age && isAge(c.age)) { old.age = c.age; filled++; }
+      skipped++; continue;
+    }
     next.cases.push({id: c.id, d: c.d, staff: c.staff ? idMap[c.staff] || null : null, site: c.site || null, loc: c.loc || null,
       urg: c.urg || null, procs: (c.procs || []).filter(p => SCOPE_PROC[p]), reach: c.reach || null, why: (c.why || []).slice(),
-      found: (c.found || []).slice(), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z"});
-    fresh.push(next.cases[next.cases.length - 1]); have.add(c.id); added++;
+      found: (c.found || []).slice(), ...(isAge(c.age) ? {age: c.age} : {}), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z"});
+    fresh.push(next.cases[next.cases.length - 1]); have.set(c.id, next.cases[next.cases.length - 1]); added++;
   }
   scopeFillSites(fresh);
-  return {ok: true, added, skipped, staffAdded, next};
+  // A log that records ages switches them on, so the fellow keeps recording them.
+  const ageOn = !next.ageOn && file.cases.some(c => c && isAge(c.age));
+  if (ageOn) next.ageOn = true;
+  return {ok: true, added, skipped, staffAdded, filled, ageOn, next};
 }
 // ---- EPA links ---------------------------------------------------------------------------------
 // An observation added from a case carries the case's id in `src`, so the
@@ -1058,8 +1095,10 @@ function scopeStaffOn(cases, iso, pid) {
   return {ids, fit: fit.length > 0};
 }
 // The site a consult block is at ("Consults SBH" is St. Boniface), or null
-// for blocks named after a service rather than a hospital.
+// for blocks named after a service rather than a hospital. The block names are
+// the owner's rotation, so the fellows' edition never takes a site from them.
 function scopeBlockSite(iso) {
+  if (FELLOWS) return null;
   const b = /^\d{4}-\d{2}-\d{2}$/.test(iso || "") ? blockFor(new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8), 12)) : null;
   if (!b) return null;
   return /\bHSC\b/.test(b.name) ? "hsc" : /\bSBH\b/.test(b.name) ? "stb" : /\bGrace\b/.test(b.name) ? "grace" : null;

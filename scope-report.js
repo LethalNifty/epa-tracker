@@ -392,8 +392,8 @@ function scopeReportPDF(o) {
   }
 
   // ---- Case mix, then the logbook ----
-  const b = scopeBreadth(all, o.from, o.to, o.staff);
-  room(60 + 14 * Math.max(Math.min(12, b.staff.length) + 1, 8));
+  const b = scopeBreadth(all, o.from, o.to, o.staff), hasAge = Object.keys(b.age).some(k => k !== "none");
+  room(60 + 14 * Math.max(Math.min(12, b.staff.length) + 1 + (hasAge ? 6 : 0), 8));
   y += 6;
   section("Case mix", `The ${b.n} case${b.n === 1 ? "" : "s"} ${whole ? "logged" : "in this period"}`);
   const bars = (x, yy, w, title, rows) => {
@@ -410,7 +410,8 @@ function scopeReportPDF(o) {
   };
   const staffRows = b.staff.slice(0, 12).map(r => ({label: r.id === "none" ? "Not recorded" : "Dr. " + String(r.name).split(",")[0].trim(), n: r.n}));
   const mapRows = (obj, list) => list.map(([k, l]) => ({label: l, n: obj[k] || 0})).filter(r => r.n).concat(obj.none ? [{label: "Not recorded", n: obj.none}] : []);
-  const yL = bars(M, y, CW / 2 - 16, "SUPERVISING STAFF", staffRows.length ? staffRows : [{label: "Not recorded", n: 0}]);
+  let yL = bars(M, y, CW / 2 - 16, "SUPERVISING STAFF", staffRows.length ? staffRows : [{label: "Not recorded", n: 0}]);
+  if (hasAge) yL = bars(M, yL + 6, CW / 2 - 16, "PATIENT AGE", mapRows(b.age, SCOPE_AGES.map(x => [x[0], x[1]])));
   let yR = bars(M + CW / 2 + 16, y, CW / 2 - 16, "SITE", mapRows(b.site, SCOPE_SITES.map(x => [x[0], x[1]])));
   yR = bars(M + CW / 2 + 16, yR + 6, CW / 2 - 16, "SETTING", mapRows(b.loc, SCOPE_LOCS.map(x => [x[0], x[2] === "Suite" ? "Endoscopy suite" : x[2]]))
     .concat(mapRows(b.urg, [["urgent", "Urgent"], ["elective", "Elective"]]).filter(r => r.label !== "Not recorded")));

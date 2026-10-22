@@ -1676,6 +1676,11 @@ button.chip.on { padding-right: 12px; }
 .sseg button.on.carried { background: var(--nbi-wash); color: var(--nbi-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nbi) 45%, transparent); }
 .srowk { display: grid; grid-template-columns: 50px 1fr; gap: 8px; align-items: start; margin-top: 10px; }
 .srowk > .mono { padding-top: 11px; color: var(--faint); font-size: 10px; }
+.sc-age { align-items: center; }
+.sc-age > .mono { padding-top: 0; }
+/* Settings: the patient age range switch. */
+.agepick { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.agepick .sseg { flex: 0 0 132px; }
 
 /* How far you got: the colon straightened into a strip, the scope tip at the reach. */
 .reach { margin-top: 12px; padding: 10px 10px 4px; border-radius: 12px; background: var(--field); box-shadow: inset 0 0 0 1px var(--fold); }

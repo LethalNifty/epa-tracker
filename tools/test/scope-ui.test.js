@@ -481,3 +481,44 @@ test("the switch sits above the capture box, clear of the keyboard", () => {
   assert.doesNotMatch(h.html(), /class="sheet scopesheet/);
   assert.match(h.html(), /Log observation/);
 });
+
+test("patient age: off by default, switched on in Settings, then an Age row on every card", () => {
+  const h = endo("2026-09-28", withScopes());
+  h.say("EGD with Brook, 72 year old, dysphagia");
+  assert.doesNotMatch(h.html(), /aria-label="Patient age"/);
+  h.click("scopeclear");
+  h.click("setopen");
+  assert.match(h.html(), /Patient age range/);
+  assert.match(h.html(), /data-action="scopeage" data-v="off" aria-pressed="true"/);
+  h.click("scopeage", {v: "on"});
+  assert.equal(h.saved().scopes.ageOn, true);
+  assert.match(h.html(), /data-action="scopeage" data-v="on" aria-pressed="true"/);
+  h.click("setclose");
+  h.say("EGD with Brook, 72 year old, dysphagia");
+  assert.match(h.html(), /aria-label="Patient age"/);
+  assert.equal(h.card().age, "50-75");
+  const key = h.card().key;
+  h.click("scopeset", {key, kind: "age", v: "75+"});
+  h.click("scopesave");
+  assert.equal(h.saved().scopes.cases[0].age, "75+");
+  h.click("scopetab", {tab: "progress"});
+  assert.match(h.html(), /<span class="mono">Age<\/span>/);
+});
+
+test("ages survive a backup restore and an edit; Another like that starts without one", () => {
+  const c = {id: "k1", d: "2026-09-27", staff: "sb", procs: ["egd.dx"], why: [], found: [], age: "18-49", ts: "2026-09-27T18:00:00.000Z"};
+  const h = endo("2026-09-28", withScopes([c], {ageOn: true}));
+  assert.equal(h.saved().scopes.ageOn, true);
+  h.click("scopeedit", {id: "k1"});
+  assert.match(h.html(), /data-kind="age" data-v="18-49" aria-pressed="true"/);
+  h.click("scopeupdate");
+  assert.equal(h.saved().scopes.cases[0].age, "18-49");
+  h.click("scopeagain", {id: "k1"});
+  assert.equal(h.val("scopeSheet.card.age"), null);
+});
+
+test("the fellows' Settings has the age switch too", () => {
+  const h = load({today: "2026-09-28", edition: "fellows", state: state({}, {setup: {d: "2026-09-01"}})});
+  h.click("setopen");
+  assert.match(h.html(), /Patient age range/);
+});

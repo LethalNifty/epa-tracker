@@ -96,7 +96,7 @@ test("variceal banding, PEG and dilation", () => {
   assert.deepEqual(b.procs, ["egd.dx", "egd.ev.band"]);
   assert.deepEqual(b.found, ["ev"]);
   assert.deepEqual(h.one("PEG with Brook").procs, ["egd.dx", "egd.peg"]);
-  assert.deepEqual(h.one("EGD, savary dilation of a stricture").procs, ["egd.dx", "egd.dil.bougie"]);
+  assert.deepEqual(h.one("EGD, savary dilation of a stricture").procs, ["egd.dx", "egd.dil.savary"]);
   assert.deepEqual(h.one("EGD for dysphagia, balloon dilated").procs, ["egd.dx", "egd.dil.balloon"]);
   assert.deepEqual(h.one("colonoscopy to the cecum, removed a 2 cm polyp").procs, ["colo.dx", "colo.poly", "colo.bigpoly"]);
 });
@@ -409,4 +409,73 @@ test("observations added from a case link back to it", () => {
   assert.deepEqual(out.map.c1, [{pid: "f3a", i: 1, status: "approved", a: "Dr. Brook"}]);
   assert.deepEqual(out.map.c4, [{pid: "f4", i: 0, status: "pending", a: "brook"}]);
   assert.equal(out.map.c3, undefined);
+});
+
+test("dilation by type: Savary (heard as savory too), Maloney, bougie, balloon, pneumatic; no type is never guessed", () => {
+  const procs = t => h.one(t).procs;
+  assert.deepEqual(procs("EGD with Brook, savory dilation to 15 mm"), ["egd.dx", "egd.dil.savary"]);
+  assert.deepEqual(procs("EGD, wire guided dilation of a peptic stricture"), ["egd.dx", "egd.dil.savary"]);
+  assert.deepEqual(procs("EGD for dysphagia, maloney dilator"), ["egd.dx", "egd.dil.maloney"]);
+  assert.deepEqual(procs("EGD, dilated with bougies"), ["egd.dx", "egd.dil.bougie"]);
+  assert.deepEqual(procs("EGD, CRE balloon dilation of the pylorus"), ["egd.dx", "egd.dil.balloon"]);
+  assert.deepEqual(procs("EGD for achalasia, pneumatic dilation"), ["egd.dx", "egd.dil.pneum"]);
+  assert.deepEqual(procs("EGD, dilated the stricture"), ["egd.dx", "egd.dil"]);
+  assert.equal(h.val(`scopeSummary({procs: ["egd.dx", "egd.dil.savary"]})`), "EGD · Savary dilation");
+  const g = h.val(`scopeTxGroups([{procs: ["egd.dx", "egd.dil.savary"]}, {procs: ["egd.dx", "egd.dil.maloney"]}, {procs: ["egd.dx", "egd.dil"]}])`);
+  assert.deepEqual(g.find(x => x.label === "Dilation").rows.map(r => r.label), ["Savary", "Maloney", "Type not recorded"]);
+  assert.ok(h.val(`scopeC8({procs: ["egd.dx", "egd.dil.maloney"]}).has("dilations")`));
+});
+
+test("a said age is kept as its band only when ages are on, and never left over", () => {
+  const on = ", age: true";
+  assert.equal(h.one("EGD with Brook, 72 year old, dysphagia", on).age, "50-75");
+  assert.equal(h.one("EGD with Brook for a 76-year-old with melena", on).age, "75+");
+  assert.equal(h.one("colonoscopy to the cecum, 34 yo", on).age, "18-49");
+  assert.equal(h.one("EGD, aged 81, banded varices", on).age, "75+");
+  assert.equal(h.one("EGD for a man in his fifties", on).age, "50-75");
+  assert.equal(h.one("EGD for a woman in her seventies", on).age, null);   // the seventies cross a band
+  const off = h.one("EGD with Brook, aged 72, dysphagia");
+  assert.equal(off.age, null);
+  assert.deepEqual(off.leftover, []);
+  const two = h.parse("EGD with Brook, 45 year old. Colonoscopy with Stone to the cecum, 80 year old", on).cases;
+  assert.deepEqual(two.map(c => c.age), ["18-49", "75+"]);
+});
+
+test("import keeps ages, fills a missing age on a case already here, and switches ages on", () => {
+  const file = {kind: "gi-scopes", v: 1, staff: [], cases: [{id: "t1", d: "2026-07-12", procs: ["egd.dx"], age: "50-75"},
+    {id: "t2", d: "2026-07-13", procs: ["egd.dx"], age: "nonsense"}]};
+  const r = h.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify(file)})`);
+  assert.equal(r.next.cases[0].age, "50-75");
+  assert.equal("age" in r.next.cases[1], false);
+  assert.equal(r.next.ageOn, true);
+  assert.equal(r.ageOn, true);
+  // The same file again: nothing added, nothing switched (already on).
+  const again = h.val(`scopeImport(${JSON.stringify(r.next)}, ${JSON.stringify(file)})`);
+  assert.equal(again.added, 0);
+  assert.equal(again.ageOn, false);
+  // A case imported before ages were kept takes its age from the file, nothing else changes.
+  const old = {cases: [{id: "t1", d: "2026-07-12", procs: ["egd.dx", "egd.bx"], note: "kept", src: "import"}], staff: [], learned: []};
+  const fill = h.val(`scopeImport(${JSON.stringify(old)}, ${JSON.stringify(file)})`);
+  assert.equal(fill.filled, 1);
+  assert.deepEqual(fill.next.cases[0], {...old.cases[0], age: "50-75"});
+  // No ages in the file: ages stay off.
+  const plain = h.val(`scopeImport({cases: [], staff: [], learned: []}, {kind: "gi-scopes", cases: [{id: "t9", d: "2026-07-12", procs: ["egd.dx"]}]})`);
+  assert.equal(plain.next.ageOn, undefined);
+});
+
+test("the spreadsheet has an Age column only when some case has an age", () => {
+  const csv = cases => h.val(`scopeCSV(${JSON.stringify(cases)}, [])`).split("\r\n");
+  assert.doesNotMatch(csv([{id: "a", d: "2026-07-12", procs: ["egd.dx"]}])[0], /Age/);
+  const rows = csv([{id: "a", d: "2026-07-12", procs: ["egd.dx"], age: "75+"}, {id: "b", d: "2026-07-13", procs: ["egd.dx"]}]);
+  assert.match(rows[0], /,Urgency,Age,Note$/);
+  assert.match(rows[1], /,Over 75,$/);
+  assert.match(rows[2], /,,$/);
+});
+
+test("the fellows' edition never takes a site from the owner's block names", () => {
+  const f = load({today: "2026-09-28", edition: "fellows"});
+  assert.equal(f.val(`scopeBlockSite("2026-07-20")`), null);
+  const file = {kind: "gi-scopes", v: 1, staff: [], cases: [{id: "t1", d: "2026-07-20", procs: ["egd.dx"]}, {id: "t2", d: "2026-07-21", site: "grace", procs: ["egd.dx"]}]};
+  const r = f.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify(file)})`);
+  assert.deepEqual(r.next.cases.map(c => c.site), [null, "grace"]);
 });
