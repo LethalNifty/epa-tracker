@@ -113,3 +113,74 @@ test("D2 survives an import and comes out in the spreadsheet; the PDF's procedur
   assert.equal(h.val(`scopeReportProc(${JSON.stringify(egd("t1", "2026-10-01", {d2: "yes", procs: ["egd.dx", "egd.bx"]}))})`), "EGD · biopsy");
   assert.doesNotMatch(h.val(`scopeCSV([${JSON.stringify(egd("t2", "2026-10-02"))}], T_STAFF)`), /D2/);
 });
+
+// ---- The block report card ----------------------------------------------------------------------
+// Block 3 runs 27 Aug to 23 Sep, Block 4 from 24 Sep; on 9 Oct Block 4 is 16 days in.
+const {obs} = require("./harness");
+const BLOCKS = [
+  colo("b1", "2026-08-28", "sf"), egd("b2", "2026-08-30"), colo("b3", "2026-09-02", "hf"), colo("b4", "2026-09-20", "cecum"),
+  colo("n1", "2026-09-25", "cecum"), colo("n2", "2026-09-30", "ti"), egd("n3", "2026-10-01", {d2: "yes"}), colo("n4", "2026-10-02", "hf"),
+  egd("n5", "2026-10-05", {d2: "staff"}), egd("n6", "2026-10-06"), colo("n7", "2026-10-07", "cecum", {procs: ["colo.dx", "colo.poly"], found: ["polyp"]}),
+];
+const OBS = {f3a: [obs("2026-09-10"), obs("2026-09-15"), obs("2026-10-01", {status: "pending"})]};
+const card = (h, num = 4) => h.val(`scopeBlockCard(${JSON.stringify(BLOCKS)}, ${JSON.stringify(OBS)}, ${num}, getToday())`);
+const row = (bc, label) => bc.rows.find(r => r.label === label);
+
+test("block card: rates and reach compare whole blocks, with arrows", () => {
+  const bc = card(engine());
+  assert.equal(bc.num, 4);
+  assert.equal(bc.prev, 3);
+  assert.equal(bc.elapsed, 16);
+  assert.deepEqual(row(bc, "To the cecum yourself"), {label: "To the cecum yourself", now: "3 of 4", was: "1 of 3", dir: "up", kind: "rate"});
+  assert.deepEqual(row(bc, "Usual reach"), {label: "Usual reach", now: "Cecum", was: "HF", dir: "up", kind: "rate"});
+});
+
+test("block card: counts compare the same days of each block, so a block in progress isn't behind", () => {
+  const bc = card(engine());
+  assert.deepEqual(row(bc, "Procedures"), {label: "Procedures", now: "7", was: "3", dir: "up", kind: "count"});
+  assert.deepEqual(row(bc, "Therapeutic cases"), {label: "Therapeutic cases", now: "1", was: "0", dir: "up", kind: "count"});
+  assert.deepEqual(row(bc, "EPAs logged"), {label: "EPAs logged", now: "1", was: "1", dir: "same", kind: "count"});
+  assert.match(bc.note, /Counts compare the first 16 days of each block/);
+});
+
+test("block card: D2 counts answered EGDs only and says how many were left out", () => {
+  const bc = card(engine());
+  assert.deepEqual(row(bc, "D2 yourself"), {label: "D2 yourself", now: "1 of 2", was: "None", dir: null, kind: "rate"});
+  assert.match(bc.note, /1 EGD not recorded, left out/);
+  const none = engine().val(`scopeBlockCard(${JSON.stringify(BLOCKS.filter(c => !c.d2))}, {}, 4, getToday())`);
+  assert.equal(none.rows.find(r => r.label === "D2 yourself"), undefined);
+  assert.doesNotMatch(none.note, /D2|EGD/);
+});
+
+test("block card: a day strip for the block, and Block 1 stands alone", () => {
+  const bc = card(engine());
+  assert.equal(bc.days.length, 28);
+  assert.deepEqual(bc.days.slice(0, 2).map(x => [x.d, x.n, x.future]), [["2026-09-24", 0, false], ["2026-09-25", 1, false]]);
+  assert.equal(bc.days[16].future, true);
+  assert.equal(bc.scopeDays, 7);
+  const one = engine("2026-07-20").val(`scopeBlockCard([${JSON.stringify(colo("x", "2026-07-15", "sf"))}], {}, 1, getToday())`);
+  assert.equal(one.prev, null);
+  assert.equal(row(one, "To the cecum yourself").was, null);
+  assert.equal(row(one, "To the cecum yourself").dir, null);
+  assert.equal(engine().val(`scopeBlockCard([], {}, 5, getToday())`), null);
+});
+
+test("Progress opens with the block card; the arrows step back a block; fellows don't get it", () => {
+  const h = endo("2026-10-09", withScopes(BLOCKS, {}, {obs: OBS}));
+  h.click("scopetab", {tab: "progress"});
+  let html = h.html();
+  assert.match(html, /aria-label="Block report card"/);
+  assert.ok(html.indexOf("Block report card") < html.indexOf("Colon depth"));
+  assert.match(html, /Block 4 · Motility\/Nutrition/);
+  assert.match(html, /Against Block 3/);
+  assert.match(html, /<b>3 of 4<\/b>/);
+  assert.match(html, /data-action="scopeblock" data-step="1" disabled/);
+  h.click("scopeblock", {step: "-1"});
+  html = h.html();
+  assert.match(html, /Block 3 · Hepatology/);
+  assert.match(html, /Against Block 2/);
+  assert.doesNotMatch(html, /data-action="scopeblock" data-step="1" disabled/);
+  const f = endo("2026-10-09", state({}, {setup: {d: "2026-09-01"}, scopes: {cases: BLOCKS, staff: STAFF, learned: []}}), {edition: "fellows"});
+  f.click("scopetab", {tab: "progress"});
+  assert.doesNotMatch(f.html(), /Block report card/);
+});

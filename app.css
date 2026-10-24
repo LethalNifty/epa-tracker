@@ -1212,6 +1212,36 @@ a.src:active { background: var(--wall-3); }
 .dial-pace.ok { color: var(--offlabel); background: var(--offlabel-wash); }
 .dial-pace.warn { color: var(--capillary); background: var(--capillary-wash); }
 
+/* Block report card (Endo Progress): this block against the last */
+.brc-card { display: flex; flex-direction: column; gap: 12px; }
+.brc-h { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 6px; margin: -4px -6px 0; }
+.brc-t { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
+.brc-t .mono { color: var(--nbi-ink); font-size: 10.5px; }
+.brc-t b { font-size: 17px; font-weight: 540; letter-spacing: -.01em; }
+.brc-nav[disabled] { opacity: .3; pointer-events: none; }
+.brc-nav.next .ic { transform: scaleX(-1); }
+.brc-rows { display: flex; flex-direction: column; }
+.brc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; border-top: 1px solid var(--fold); }
+.brc-row:first-child { border-top: 0; }
+.brc-l { font-size: 14px; color: var(--dim); min-width: 0; }
+.brc-v { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.brc-v b { font-size: 15.5px; font-weight: 560; color: var(--light); }
+.brc-was { min-width: 46px; text-align: right; font-size: 12.5px; color: var(--faint); }
+.brc-arr { width: 13px; height: 13px; fill: none; stroke: var(--dim); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.brc-arr.rate.up { stroke: var(--offlabel); }
+.brc-arr.rate.down { stroke: var(--mucosa); }
+.brc-arr.same { stroke: var(--faint); }
+.brc-days { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--fold); }
+.brc-dh { display: flex; justify-content: space-between; color: var(--dim); font-size: 10.5px; }
+.brc-wd, .brc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.brc-wd span { text-align: center; color: var(--faint); font-size: 9.5px; }
+.brc-grid i { display: block; height: 16px; border-radius: 5px; background: var(--fold); }
+.brc-grid i.l1 { background: rgba(213, 140, 255, .42); }
+.brc-grid i.l2 { background: var(--nbi); }
+.brc-grid i.fut { background: transparent; border: 1px dashed var(--fold-2); }
+.brc-grid i.now { box-shadow: 0 0 0 1.5px var(--light); }
+.brc-note { margin: 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

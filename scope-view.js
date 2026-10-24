@@ -390,9 +390,37 @@ function scopeReportCardHTML() {
     `<p class="bnote">Totals, therapeutic techniques, cecal intubation, milestones and every case in full. For your program or a job application; no patient details, so it's safe to email.</p>` +
     (scopeErr ? `<div class="err">${esc(scopeErr)}</div>` : "") + `</div></section>`;
 }
+// ---- Block report card: this block against the last -------------------------------------------
+let scopeBlockNum = null;   // the block shown; null follows today
+const SCOPE_ARROWS = {up: "M6 10.5V2M2.2 5.8L6 2l3.8 3.8", down: "M6 1.5V10M2.2 6.2L6 10l3.8-3.8", same: "M2.5 6h7"};
+function scopeArrow(dir, kind) {
+  if (!dir) return "";
+  const say = {up: "up", down: "down", same: "the same"}[dir];
+  return `<svg class="brc-arr ${dir} ${kind}" viewBox="0 0 12 12" role="img" aria-label="${say}"><path d="${SCOPE_ARROWS[dir]}"/></svg>`;
+}
+function scopeBlockCardHTML() {
+  if (FELLOWS) return "";
+  const cur = blockFor(getToday());
+  if (!cur) return "";
+  const num = Math.min(scopeBlockNum || cur.num, cur.num), bc = scopeBlockCard(scopeData().cases, Store.state.obs, num, getToday());
+  if (!bc) return "";
+  const nav = (step, label, off) => `<button class="iconbtn brc-nav${step > 0 ? " next" : ""}" data-action="scopeblock" data-step="${step}"${off ? " disabled" : ""} aria-label="${label}">` +
+    ic("back", "sm") + `</button>`;
+  const rows = bc.rows.map(r => `<div class="brc-row" role="row"><span class="brc-l" role="rowheader">${esc(r.label)}</span>` +
+    `<span class="brc-v" role="cell"><b>${esc(r.now)}</b>${scopeArrow(r.dir, r.kind)}${r.was !== null ? `<span class="brc-was">${esc(r.was)}</span>` : ""}</span></div>`).join("");
+  const wd = ["T", "F", "S", "S", "M", "T", "W"].map(x => `<span>${x}</span>`).join("");
+  const days = bc.days.map(x => `<i class="${x.n >= 3 ? "l2" : x.n ? "l1" : ""}${x.future ? " fut" : ""}${x.today ? " now" : ""}" title="${esc(scopeShortDate(x.d))}: ${x.n}"></i>`).join("");
+  return `<section class="sec brc" aria-label="Block report card"><div class="card pad brc-card">` +
+    `<div class="brc-h">${nav(-1, "Earlier block", num <= 1)}<div class="brc-t"><span class="mono">Block ${bc.num} · ${esc(bc.name)}</span>` +
+    `<b>${bc.prev ? "Against Block " + bc.prev : "Your first block"}</b></div>${nav(1, "Later block", num >= cur.num)}</div>` +
+    `<div class="brc-rows" role="table" aria-label="Block ${bc.num}${bc.prev ? " against Block " + bc.prev : ""}">${rows}</div>` +
+    `<div class="brc-days"><div class="brc-dh mono"><span>Scope days</span><span>${bc.scopeDays} of ${bc.elapsed}</span></div>` +
+    `<div class="brc-wd mono" aria-hidden="true">${wd}</div><div class="brc-grid" aria-hidden="true">${days}</div></div>` +
+    `<p class="brc-note">${esc(bc.note)}</p></div></section>`;
+}
 function scopeProgressHTML() {
   const s = scopeData();
-  return scopeDepthHTML() + (s.cases.length ? scopeTotalsHTML() + scopeShareHTML() + scopeTherapyHTML() + scopeFirstsHTML() + scopeBreadthHTML() + scopeReportCardHTML()
+  return (s.cases.length ? scopeBlockCardHTML() : "") + scopeDepthHTML() + (s.cases.length ? scopeTotalsHTML() + scopeShareHTML() + scopeTherapyHTML() + scopeFirstsHTML() + scopeBreadthHTML() + scopeReportCardHTML()
     : `<div class="card empty spaced">Log a few cases and your totals, therapeutics and report appear here.</div>`);
 }
 
@@ -581,6 +609,7 @@ function scopeDispatch(act, d = {}) {
     if (d.kind === "loc" && (d.v === "ed" || d.v === "icu") && card[d.kind]) card.urg = "urgent"; scopeCardsFresh = false; }
   else if (act === "scopeurg" && card) { card.urg = card.urg === "urgent" ? "elective" : "urgent"; scopeCardsFresh = false; }
   else if (act === "scoped2" && card) { card.d2 = scopeD2Ok(d.v) ? d.v : null; scopeCardsFresh = false; }
+  else if (act === "scopeblock") { const cur = blockFor(getToday()); if (cur) { const n = Math.max(1, Math.min(cur.num, (scopeBlockNum || cur.num) + (+d.step || 0))); scopeBlockNum = n === cur.num ? null : n; } }
   else if (act === "scopereach" && card) {
     scopeCardsFresh = false;
     if (d.r === "none") { card.procs = card.procs.filter(p => p !== "colo.dx" && p !== "colo.screen"); card.reach = null; if (!card.procs.length) card.procs.push("colo.hem"); }

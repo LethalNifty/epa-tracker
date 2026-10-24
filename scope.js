@@ -1013,6 +1013,67 @@ function scopeChange(cases, since) {
     colosTotal: series.length};
 }
 
+// ---- Block report card -------------------------------------------------------------------------
+// One stretch of days: procedures, colonoscopies and how many reached the
+// cecum yourself, the usual reach (the middle one, so one bad day doesn't
+// sink it), therapeutic cases, answered D2s, and procedures by day.
+function scopeStretch(cases, from, to) {
+  const inR = cases.filter(c => scopeIn(c, from, to));
+  const ranks = inR.filter(c => scopeHasBase(c) && c.reach).map(c => scopeRank(c.reach)).sort((a, b) => a - b);
+  const egds = inR.filter(c => (c.procs || []).includes("egd.dx")), d2a = egds.filter(c => scopeD2Ok(c.d2));
+  const days = {};
+  for (const c of inR) days[c.d] = (days[c.d] || 0) + scopeFams(c).length;
+  return {procs: inR.reduce((a, c) => a + scopeFams(c).length, 0), colos: ranks.length, cecum: ranks.filter(r => r >= 5).length,
+    usual: ranks.length ? ranks[Math.floor((ranks.length - 1) / 2)] : -1, tx: inR.filter(scopeIsTherapeutic).length,
+    egds: egds.length, d2: d2a.filter(c => c.d2 === "yes").length, d2n: d2a.length, days};
+}
+// Observations dated within [from, to].
+function scopeObsIn(obsByPart, from, to) {
+  let n = 0;
+  for (const pid in obsByPart || {}) for (const o of obsByPart[pid] || []) { const d = attrDate(o); if (d && scopeIn({d: fmtDate(d)}, from, to)) n++; }
+  return n;
+}
+// Block `num` against the block before. Rates and reach use every case in
+// each; counts use the same first days of each, so a block in progress isn't
+// shown behind a finished one. Null before the block starts.
+function scopeBlockCard(cases, obsByPart, num, today) {
+  if (num < 1 || num > 13) return null;
+  const start = blockStart(num), t = dayIndex(today), s0 = dayIndex(start);
+  if (t < s0) return null;
+  const elapsed = Math.min(28, t - s0 + 1), done = elapsed === 28;
+  const day = (b, k) => fmtDate(new Date(blockStart(b).getFullYear(), blockStart(b).getMonth(), blockStart(b).getDate() + k));
+  const now = scopeStretch(cases, day(num, 0), day(num, elapsed - 1));
+  now.epas = scopeObsIn(obsByPart, day(num, 0), day(num, elapsed - 1));
+  const prev = num > 1 ? scopeStretch(cases, day(num - 1, 0), day(num - 1, 27)) : null;
+  const same = prev ? scopeStretch(cases, day(num - 1, 0), day(num - 1, elapsed - 1)) : null;
+  if (same) same.epas = scopeObsIn(obsByPart, day(num - 1, 0), day(num - 1, elapsed - 1));
+  const cmp = (a, b, step = 0) => a - b > step ? "up" : b - a > step ? "down" : "same";
+  const pct = (k, n) => k / n * 100;
+  const rows = [];
+  const count = (label, key) => rows.push({label, now: String(now[key]), was: same ? String(same[key]) : null, dir: same ? cmp(now[key], same[key]) : null, kind: "count"});
+  const rate = (label, k, n) => {
+    if (!now[n] && !(prev && prev[n])) return;
+    rows.push({label, now: now[n] ? `${now[k]} of ${now[n]}` : "None", was: prev ? (prev[n] ? `${prev[k]} of ${prev[n]}` : "None") : null,
+      dir: prev && now[n] && prev[n] ? cmp(pct(now[k], now[n]), pct(prev[k], prev[n]), 4.99) : null, kind: "rate"});
+  };
+  count("Procedures", "procs");
+  rate("To the cecum yourself", "cecum", "colos");
+  if (now.usual >= 0 || (prev && prev.usual >= 0)) {
+    const say = r => r >= 0 ? SCOPE_REACH[r][1].replace("Splenic flexure", "SF").replace("Hepatic flexure", "HF").replace("Terminal ileum", "TI") : "None";
+    rows.push({label: "Usual reach", now: say(now.usual), was: prev ? say(prev.usual) : null,
+      dir: prev && now.usual >= 0 && prev.usual >= 0 ? cmp(now.usual, prev.usual) : null, kind: "rate"});
+  }
+  if (now.tx || (prev && prev.tx)) count("Therapeutic cases", "tx");
+  rate("D2 yourself", "d2", "d2n");
+  count("EPAs logged", "epas");
+  const left = now.egds - now.d2n, d2row = rows.some(r => r.label === "D2 yourself");
+  const note = [!prev ? "First block: nothing to compare yet." : done ? "Whole blocks compared." :
+    `Counts compare the first ${elapsed} days of each block; rates and reach use every case so far.`,
+    d2row && left ? `D2 counts answered EGDs only: ${left} EGD${left === 1 ? "" : "s"} not recorded, left out.` : ""].filter(Boolean).join(" ");
+  const days = Array.from({length: 28}, (_, k) => ({d: day(num, k), n: now.days[day(num, k)] || 0, future: k >= elapsed, today: s0 + k === t}));
+  return {num, name: BLOCK_NAMES[num], prev: prev ? num - 1 : null, elapsed, done, rows, note, days, scopeDays: days.filter(x => x.n).length};
+}
+
 // ---- Spreadsheet -------------------------------------------------------------------------------
 function scopeTresCodes(c) {
   return (c.procs || []).map(p => {
