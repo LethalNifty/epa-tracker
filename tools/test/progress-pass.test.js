@@ -184,3 +184,76 @@ test("Progress opens with the block card; the arrows step back a block; fellows 
   f.click("scopetab", {tab: "progress"});
   assert.doesNotMatch(f.html(), /Block report card/);
 });
+
+// ---- Year 1 so far, the year in review once it ends -----------------------------------------------
+const YEAR = BLOCKS.map(c => c.id === "n1" ? {...c, staff: "ss"} : c);
+const STUDY = {log: {"2026-09-30": 4, "2026-10-02": 8, "2026-10-05": 12}, q: {}, pauses: [], qa: {q1: {ok: true}, q2: {ok: false}}};
+const yearState = () => withScopes(YEAR, {}, {obs: OBS, study: STUDY});
+function yearOf(today = "2026-10-09") {
+  const h = load({today, state: yearState()});
+  return {h, y: h.val("reviewYear(Store.state, getToday())")};
+}
+
+test("year so far: procedures by month, the cecum, the best run and the busiest list", () => {
+  const {y} = yearOf();
+  assert.equal(y.title, "Year 1 so far");
+  assert.equal(y.over, false);
+  assert.equal(y.procs, 11);
+  assert.deepEqual(y.months.map(m => [m.label, m.n, m.future]).slice(0, 5),
+    [["Jul", 0, false], ["Aug", 2, false], ["Sep", 4, false], ["Oct", 5, false], ["Nov", 0, true]]);
+  assert.equal(y.months.length, 12);
+  assert.deepEqual([y.colos, y.cecum], [7, 4]);
+  assert.equal(y.firstCecum, "2026-09-20");
+  assert.deepEqual(y.bestRun, {n: 3, d: "2026-09-30"});
+  assert.deepEqual(y.busiest, {n: 1, d: "2026-08-28"});
+  assert.equal(y.scopeDays, 11);
+  assert.deepEqual(y.mostWith, {name: "Brook", n: 10});
+  assert.equal(y.tx, 1);
+});
+
+test("year so far: D2 answered only, EPAs against the 139, and the reading", () => {
+  const {h, y} = yearOf();
+  assert.deepEqual(y.d2, {yes: 1, of: 2, left: 2});
+  assert.equal(y.epas.req, 139);
+  assert.equal(y.epas.logged, h.val("tally(PARTS).logged"));
+  assert.equal(y.epas.stage, h.val("STAGE_NAMES[currentStage()]"));
+  assert.deepEqual([y.study.pages, y.study.nights, y.study.answered, y.study.right], [12, 3, 2, 1]);
+  assert.equal(y.study.total, h.val("studySeq().total"));
+});
+
+test("on 30 June it becomes the year in review", () => {
+  const {y} = yearOf("2027-06-30");
+  assert.equal(y.title, "Year 1 in review");
+  assert.equal(y.over, true);
+  assert.equal(y.months.filter(m => m.future).length, 0);
+  assert.equal(y.span, "July 2026 to June 2027");
+});
+
+test("Year 1 so far opens from the block card and from the Year plan, with Save as image", () => {
+  const h = endo("2026-10-09", yearState());
+  h.click("scopetab", {tab: "progress"});
+  assert.match(h.html(), /data-action="reviewopen"[^>]*>[^<]*(?:<[^>]+>)*[^<]*Year 1 so far/);
+  h.click("reviewopen");
+  let html = h.html();
+  assert.match(html, /role="dialog" aria-modal="true" aria-label="Year 1 so far"/);
+  assert.match(html, /data-action="reviewsave"/);
+  assert.match(html, /Save as image/);
+  assert.match(html, /Best run to the cecum/);
+  assert.match(html, /D2 yourself/);
+  h.click("reviewclose");
+  assert.doesNotMatch(h.html(), /aria-label="Year 1 so far"/);
+  h.click("tab", {page: "plan"});
+  assert.match(h.html(), /data-action="reviewopen"/);
+});
+
+test("the image draws the title and the numbers; the fellows' edition has no year view", () => {
+  const {h} = yearOf();
+  const calls = h.val(`(() => { const out = []; const ctx = new Proxy({}, {get: (o, k) => k === "measureText" ? (s => ({width: String(s).length * 10})) :
+    k in o ? o[k] : (...a) => { if (k === "fillText") out.push(String(a[0])); }, set: (o, k, v) => { o[k] = v; return true; }});
+    reviewDraw(ctx, reviewYear(Store.state, getToday()), 1080, 1350); return out; })()`);
+  assert.ok(calls.includes("Year 1 so far"), calls.join("|"));
+  assert.ok(calls.includes("11"), calls.join("|"));
+  const f = endo("2026-10-09", state({}, {setup: {d: "2026-09-01"}, scopes: {cases: YEAR, staff: STAFF, learned: []}}), {edition: "fellows"});
+  f.click("scopetab", {tab: "progress"});
+  assert.doesNotMatch(f.html(), /reviewopen/);
+});

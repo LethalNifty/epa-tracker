@@ -60,7 +60,7 @@ test("the service worker caches every file the app needs, under a new cache name
   // The page shows the same version the service worker caches.
   assert.match(read("app.js"), /const APP_VERSION = "epa-v62";/);
   for (const f of ["index.html", "app.css", "search.js", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "settings.js", "watch.js", "study-view.js", "scope-chart.js",
-    "scope-view.js", "scope-report.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "fellows.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
+    "scope-view.js", "scope-report.js", "review.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "fellows.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), "missing file " + f);
   }
@@ -81,6 +81,8 @@ test("the page loads the stylesheet, the coach, the call card and the app, in or
   assert.ok(html.indexOf('src="scope-chart.js"') < html.indexOf('src="scope-view.js"'));
   assert.ok(html.indexOf('src="scope-view.js"') < html.indexOf('src="scope-report.js"'));
   assert.ok(html.indexOf('src="scope-report.js"') < html.indexOf('src="app.js"'));
+  assert.ok(html.indexOf('src="scope-report.js"') < html.indexOf('src="review.js"'));
+  assert.ok(html.indexOf('src="review.js"') < html.indexOf('src="app.js"'));
   // The edition switch is read at the top of app.js.
   assert.ok(html.indexOf('src="fellows.js"') < html.indexOf('src="app.js"'));
   assert.doesNotMatch(html, /<style>/);

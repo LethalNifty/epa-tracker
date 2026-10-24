@@ -124,7 +124,7 @@ function scopeReachHTML(card) {
 function scopeD2HTML(card) {
   if (FELLOWS || !card.procs.includes("egd.dx")) return "";
   const v = card.d2 || "";
-  return `<div class="srowk sc-d2"><span class="mono">D2 yourself</span><div class="sseg" role="group" aria-label="D2 yourself">` +
+  return `<div class="srowk sc-d2"><span class="mono">D2</span><div class="sseg" role="group" aria-label="D2 yourself">` +
     SCOPE_D2.map(([k, label]) => `<button class="${v === k ? "on" : ""}" data-action="scoped2" data-key="${card.key}" data-v="${k}" aria-pressed="${v === k}">${label}</button>`).join("") +
     `</div></div>`;
 }
@@ -416,7 +416,8 @@ function scopeBlockCardHTML() {
     `<div class="brc-rows" role="table" aria-label="Block ${bc.num}${bc.prev ? " against Block " + bc.prev : ""}">${rows}</div>` +
     `<div class="brc-days"><div class="brc-dh mono"><span>Scope days</span><span>${bc.scopeDays} of ${bc.elapsed}</span></div>` +
     `<div class="brc-wd mono" aria-hidden="true">${wd}</div><div class="brc-grid" aria-hidden="true">${days}</div></div>` +
-    `<p class="brc-note">${esc(bc.note)}</p></div></section>`;
+    `<p class="brc-note">${esc(bc.note)}</p>` +
+    `<button class="textbtn brc-year" data-action="reviewopen">${ic("star", "sm")}Year 1 ${blockFor(getToday()) && fmtDate(getToday()) < REVIEW_YEAR.to ? "so far" : "in review"}${ic("chev", "chev")}</button></div></section>`;
 }
 function scopeProgressHTML() {
   const s = scopeData();

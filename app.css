@@ -1241,6 +1241,40 @@ a.src:active { background: var(--wall-3); }
 .brc-grid i.fut { background: transparent; border: 1px dashed var(--fold-2); }
 .brc-grid i.now { box-shadow: 0 0 0 1.5px var(--light); }
 .brc-note { margin: 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+.brc-year { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin: -2px -4px -4px; }
+.brc-year .ic.chev { width: 14px; height: 14px; transform: rotate(-90deg); }
+
+/* Year 1 so far (review.js): a sheet from Endo Progress and the Year plan */
+.yrvsheet { display: flex; flex-direction: column; gap: 14px; }
+.yrv-span { margin: -8px 2px 0; color: var(--dim); font-size: 11px; }
+.yrv-hero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.yrv-hero div { display: flex; flex-direction: column; gap: 6px; padding: 14px 12px 12px; border-radius: var(--r-md); background: var(--wall); border: 1px solid var(--fold); }
+.yrv-hero b { font-size: 34px; font-weight: 300; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--light); }
+.yrv-hero .mono { color: var(--dim); font-size: 10px; }
+.yrv-gh { color: var(--dim); font-size: 10.5px; margin: 0 2px 8px; }
+.yrv-months { display: flex; flex-direction: column; }
+.yrv-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; }
+.yrv-bar { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.yrv-track { display: flex; align-items: flex-end; width: 100%; height: 84px; border-radius: 5px; background: var(--fold); overflow: hidden; }
+.yrv-bar.fut .yrv-track { background: transparent; border: 1px dashed var(--fold-2); }
+.yrv-track i { display: block; width: 100%; border-radius: 5px; background: linear-gradient(180deg, #e063d3, var(--sun-a)); }
+.yrv-m { font-size: 10px; color: var(--dim); }
+.yrv-bar.fut .yrv-m { color: var(--faint); }
+.yrv-n { position: absolute; top: 4px; font-size: 9.5px; color: var(--light); font-variant-numeric: tabular-nums; }
+.yrv-g { display: flex; flex-direction: column; }
+.yrv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-height: 42px; padding: 11px 14px; border-top: 1px solid var(--fold); font-size: 14px; }
+.yrv-row:first-child { border-top: 0; }
+.yrv-row span { color: var(--dim); }
+.yrv-row b { font-weight: 540; text-align: right; font-variant-numeric: tabular-nums; }
+.yrv-note { margin: 0 2px; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+.yrvsheet .bnote { margin-top: -4px; }
+.yrv-entry { display: flex; align-items: center; gap: 12px; width: 100%; margin: 14px 0 4px; padding: 14px 16px; text-align: left;
+  background: linear-gradient(135deg, var(--nbi-wash), var(--wall)); border: 1px solid var(--fold); border-radius: var(--r-lg); }
+.yrv-et { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.yrv-et .mono { color: var(--nbi-ink); font-size: 10.5px; }
+.yrv-et b { font-size: 17px; font-weight: 540; }
+.yrv-es { color: var(--dim); font-size: 13px; }
+.yrv-entry > .chev { width: 16px; height: 16px; color: var(--faint); transform: rotate(-90deg); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }

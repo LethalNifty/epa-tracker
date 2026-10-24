@@ -714,6 +714,7 @@ function viewPlan() {
   let h = `<header class="ph"><p class="eyebrow mono">Recalculated from what you've logged</p><h1 class="title">Year 1 plan</h1></header>` +
     epaSwitchHTML("plan");
   if (cp) h += finishHTML(paceFinish(obsBy, today), planFinish(cp), today);
+  h += reviewEntryHTML();
   const order = {
     f: "You're on Foundations. Core opens once every Foundations observation is logged, then Transition to Practice (P1). ",
     core: "You're on Core. Transition to Practice (P1) opens once every Core observation is logged. ",
@@ -1014,7 +1015,8 @@ function render() {
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
-      (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") + (toast ? toastHTML() : "");
+      (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
+      (reviewSheet ? reviewSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -1039,6 +1041,7 @@ function render() {
   guidesAfterRender();
   pearlsAfterRender();
   setAfterRender();
+  reviewAfterRender();
   liveAfterRender(p);
 }
 // A sheet up holds the page still behind it. On iPhone a drag that runs past
@@ -1053,7 +1056,7 @@ function holdPage(on) {
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet);
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet);
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1089,6 +1092,7 @@ function dispatch(act, d) {
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("watch")) { if (watchDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("review")) { if (reviewDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
   if (act.startsWith("study")) { if (studyDispatch(act, d) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("guides")) { route.keepScroll = true; if (guidesDispatch(act, d || {}) !== false) act === "guidestab" ? liveSwap(render, "seg") : render(); return; }
@@ -1295,7 +1299,7 @@ const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, p
 function appOpenFromLink(name) {
   if (!APP_LINKS[name]) return;
   if (name === "study") studyTab = "t";
-  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null;
+  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null;
   go({...APP_LINKS[name]});
 }
 if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)] && !FELLOWS) {
