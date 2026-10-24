@@ -231,6 +231,20 @@ const SCOPE_CUE_BEFORE = /(?:^|[^a-z])(?:to|reached|reach|reaching|got to|get to
 const SCOPE_TAKEOVER = phrase("staff|attending|took over|take over|taking over|takes over|took it|handed(?: it)? over|handed off|hand(?:ed)? it off|took the scope|finished it|finished|completed it");
 const SCOPE_COMPLETE = [["cecum", phrase("all the way|to completion|complete colonoscopy|full colonoscopy|c(?:a)?ecal intubation|intubated the c(?:a)?ecum")],
   ["ti", phrase("intubated the (?:ti|terminal ileum|ileum)|ileal intubation|ti intubation|(?:ti|ileum) intubated")]];
+// D2 on an EGD: the fellow's when said reached ("to D2", "got to the second
+// part of the duodenum"); staff's when they took over at an upper landmark or
+// the fellow couldn't get there. Optional: nothing said is not recorded.
+const SCOPE_D2_WORD = "d ?2|d two|dee two|(?:the )?second (?:part|portion)(?: of the duodenum)?";
+const SCOPE_UPPER_LM = "pylorus|pyloric channel|antrum|stomach|duodenal bulb|bulb|d ?1|ge junction|gej|gastro-?esophageal junction|o?esophagus|cardia|fundus|cricopharyngeus|ues";
+const SCOPE_D2_YES = phrase(`(?:to|into|reached|reach|reaching|got to|get to|made it to|as far as|intubated|intubate|entered|down to)\\s+(?:the\\s+)?(?:${SCOPE_D2_WORD})` +
+  `|(?:${SCOPE_D2_WORD})\\s+(?:myself|intubated|reached)`);
+const SCOPE_D2_STAFF = phrase(`(?:(?:staff|attending|they|he|she)\\s+)?(?:took over|take over|taking over|had to take over|took it|took the scope|handed(?: it)? over)` +
+  `\\s+(?:at|in|from|before|by|around|near)\\s+(?:the\\s+)?(?:${SCOPE_UPPER_LM})` +
+  `|(?:couldn'?t|could not|didn'?t|did not|unable to|failed to|wasn'?t able to)\\s+(?:get|make it|reach|pass|intubate|traverse)(?:\\s+(?:to|into|through|past))?` +
+  `\\s+(?:the\\s+)?(?:${SCOPE_D2_WORD}|${SCOPE_UPPER_LM}|duodenum)` +
+  `|(?:staff|attending)\\s+(?:got|reached|intubated|took)\\s+(?:to\\s+)?(?:the\\s+)?(?:${SCOPE_D2_WORD})`);
+const SCOPE_D2 = [["", "Not recorded"], ["yes", "Yes"], ["staff", "Staff took over"]];
+const scopeD2Ok = v => v === "yes" || v === "staff";
 
 // Therapies: [pattern, handler(fam, ctx) -> codes]
 const SCOPE_TX = [
@@ -438,7 +452,7 @@ function scopeReadCase(text, ctx) {
   const mark = (a, b) => { for (let i = Math.max(0, a); i < Math.min(lower.length, b); i++) used[i] = 1; };
   const all = rx => { const out = []; rx.lastIndex = 0; let m; while ((m = rx.exec(lower))) { out.push(m); if (!m[0].length) rx.lastIndex++; } return out; };
   const draft = {d: null, staff: null, staffHeard: null, staffSaid: null, staffAlt: [], site: null, loc: null, urg: null,
-    procs: [], reach: null, why: [], found: [], age: null, leftover: [], n: 1};
+    procs: [], reach: null, d2: null, why: [], found: [], age: null, leftover: [], n: 1};
   const add = (list, c) => { if (c && !list.includes(c)) list.push(c); };
 
   // Learned phrases first, so a personal word wins over the built-in reading.
@@ -536,6 +550,11 @@ function scopeReadCase(text, ctx) {
     // A landmark in an upper or flex case is where something was, not a reach.
     if (!used[m.index] && !/^(?:ti|sf|hf|sig|desc)$/.test(m[0])) mark(m.index, m.index + m[0].length);
   }
+  // D2: the words always leave the text; the answer is kept for an EGD when D2 is on.
+  let d2 = null;
+  for (const m of all(SCOPE_D2_STAFF)) { d2 = "staff"; mark(m.index, m.index + m[0].length); }
+  for (const m of all(SCOPE_D2_YES)) { if (!used[m.index]) d2 = d2 || "yes"; mark(m.index, m.index + m[0].length); }
+  if (ctx.d2 && draft.procs.includes("egd.dx")) draft.d2 = d2;
 
   // Multi-word names and learned spellings ("cove all check") as phrases first.
   let aliasHit = null;
@@ -834,6 +853,7 @@ function scopeSummary(c, o = {}) {
     let head = scopeFamShort(f);
     if (f === "colo" && (c.procs || []).includes("colo.screen")) head = "Screening colonoscopy";
     if (f === "colo" && c.reach && scopeHasBase(c)) head += " to " + SCOPE_REACH_SAY[c.reach];
+    if (f === "egd" && c.d2 === "yes" && c.procs.includes("egd.dx")) head += " to D2";
     if (f === "egd" && c.procs.includes("egd.entero") && !c.procs.includes("egd.dx")) head = "Push enteroscopy";
     if (f === "other") head = c.procs.includes("other.ileo") ? "Ileoscopy" : (c.otherLabel || "Other");
     if (f === "para") head = c.procs.includes("para.ther") ? "Paracentesis, therapeutic" : "Paracentesis";
@@ -1008,12 +1028,13 @@ function scopeCSV(cases, staff) {
   const name = id => { const p = (staff || []).find(x => x.id === id); return p ? p.name : ""; };
   const site = k => (SCOPE_SITES.find(x => x[0] === k) || [, ""])[1];
   const loc = k => (SCOPE_LOCS.find(x => x[0] === k) || [, ""])[1];
-  // An age column only when some case has an age.
-  const ages = cases.some(c => c.age);
-  const rows = [["Date", "Procedure", "Procedure codes", "How far (colonoscopy)", "Why", "Found", "Staff", "Site", "Location", "Urgency", ...(ages ? ["Age"] : []), "Note"]];
+  // Age and D2 columns only when some case has one.
+  const ages = cases.some(c => c.age), d2s = cases.some(c => scopeD2Ok(c.d2));
+  const rows = [["Date", "Procedure", "Procedure codes", "How far (colonoscopy)", ...(d2s ? ["D2 yourself"] : []), "Why", "Found", "Staff", "Site", "Location", "Urgency", ...(ages ? ["Age"] : []), "Note"]];
   for (const c of cases.slice().sort(scopeByDate)) {
     rows.push([c.d, scopeFams(c).map(scopeFamLabel).join(" + "), scopeTresCodes(c).join("; "),
-      scopeHasBase(c) && c.reach ? scopeReachLabel(c.reach) : "", (c.why || []).map(scopeWhyLabel).join("; "),
+      scopeHasBase(c) && c.reach ? scopeReachLabel(c.reach) : "", ...(d2s ? [scopeD2Ok(c.d2) ? SCOPE_D2.find(x => x[0] === c.d2)[1] : ""] : []),
+      (c.why || []).map(scopeWhyLabel).join("; "),
       (c.found || []).map(scopeFoundLabel).join("; "), name(c.staff), site(c.site), loc(c.loc),
       c.urg === "urgent" ? "Urgent" : c.urg === "elective" ? "Elective" : "", ...(ages ? [scopeAgeLabel(c.age)] : []), c.note || ""]);
   }
@@ -1046,7 +1067,7 @@ function scopeImport(scopes, file) {
       skipped++; continue;
     }
     next.cases.push({id: c.id, d: c.d, staff: c.staff ? idMap[c.staff] || null : null, site: c.site || null, loc: c.loc || null,
-      urg: c.urg || null, procs: (c.procs || []).filter(p => SCOPE_PROC[p]), reach: c.reach || null, why: (c.why || []).slice(),
+      urg: c.urg || null, procs: (c.procs || []).filter(p => SCOPE_PROC[p]), reach: c.reach || null, ...(scopeD2Ok(c.d2) ? {d2: c.d2} : {}), why: (c.why || []).slice(),
       found: (c.found || []).slice(), ...(isAge(c.age) ? {age: c.age} : {}), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z"});
     fresh.push(next.cases[next.cases.length - 1]); have.set(c.id, next.cases[next.cases.length - 1]); added++;
   }

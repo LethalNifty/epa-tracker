@@ -79,7 +79,7 @@ function scopeCardsFrom(drafts) {
 // A saved case (or a copy) opened as a card.
 function scopeCardFromCase(c, copy) {
   return {key: scopeNewKey(), d: copy ? fmtDate(getToday()) : c.d, staff: c.staff, staffHeard: null, staffAlt: [], staffSaid: null,
-    site: c.site, loc: c.loc, urg: c.urg, procs: (c.procs || []).slice(), reach: c.reach || null, why: (c.why || []).slice(),
+    site: c.site, loc: c.loc, urg: c.urg, procs: (c.procs || []).slice(), reach: c.reach || null, d2: copy ? null : c.d2 || null, why: (c.why || []).slice(),
     found: (c.found || []).slice(), age: copy ? null : c.age || null, leftover: [], note: copy ? "" : c.note || "", n: 1, epa: {}, carried: {}, err: null,
     editId: copy ? null : c.id, otherLabel: c.otherLabel || ""};
 }
@@ -119,6 +119,14 @@ function scopeReachHTML(card) {
     `<div class="reach-track" style="--r:${Math.max(0, r)};--n:${SCOPE_REACH.length - 1}">${stops}</div>` +
     `<div class="reach-f"><button class="textbtn sm" data-action="scopereach" data-key="${card.key}" data-r="${base ? "none" : "drove"}">` +
     `${base ? "I didn't drive: therapy only" : "I drove the colonoscopy"}</button></div></div>`;
+}
+// An EGD's D2, optional: Not recorded until said or tapped, never asked for.
+function scopeD2HTML(card) {
+  if (FELLOWS || !card.procs.includes("egd.dx")) return "";
+  const v = card.d2 || "";
+  return `<div class="srowk sc-d2"><span class="mono">D2 yourself</span><div class="sseg" role="group" aria-label="D2 yourself">` +
+    SCOPE_D2.map(([k, label]) => `<button class="${v === k ? "on" : ""}" data-action="scoped2" data-key="${card.key}" data-v="${k}" aria-pressed="${v === k}">${label}</button>`).join("") +
+    `</div></div>`;
 }
 function scopeListRow(card, kind, label, codes, labeler) {
   const chips = codes.map(c => `<span class="chip on">${esc(labeler(c))}` +
@@ -167,7 +175,7 @@ function scopeCardHTML(card, i, o = {}) {
     `<div class="sc-who">${staff}${scopeChip(card.urg === "urgent" ? "Urgent" : "Elective", "scopeurg", {key: card.key}, card.urg === "urgent" ? "urg on" : "ghost")}</div>` +
     `<div class="sc-where">${scopeSegHTML(card, "site", SCOPE_SITES)}${scopeSegHTML(card, "loc", SCOPE_LOCS)}</div>` +
     (scopeAgeOn() ? `<div class="srowk sc-age"><span class="mono">Age</span>${scopeSegHTML(card, "age", SCOPE_AGES)}</div>` : "") +
-    scopeReachHTML(card) +
+    scopeD2HTML(card) + scopeReachHTML(card) +
     scopeListRow(card, "procs", "Did", card.procs, scopeProcChipLabel) +
     scopeListRow(card, "why", "Why", card.why, scopeWhyLabel) +
     scopeListRow(card, "found", "Found", card.found, scopeFoundLabel) +
@@ -488,7 +496,7 @@ function scopePickHTML() {
 // ---- Actions -------------------------------------------------------------------------------------------
 function scopeRead() {
   const s = scopeData();
-  const r = scopeParse(scopeCap.text, {today: getToday(), staff: s.staff, learned: s.learned, age: !!s.ageOn});
+  const r = scopeParse(scopeCap.text, {today: getToday(), staff: s.staff, learned: s.learned, age: !!s.ageOn, d2: !FELLOWS});
   scopeCap.cards = scopeCardsFrom(r.cases);
   scopeCap.removed = r.removed;
   // What could identify a patient leaves the box too.
@@ -509,6 +517,7 @@ function scopeCaseOf(card, id) {
     note: (card.note || "").trim(), src: card.src || "dictated", ts: new Date().toISOString()};
   if (card.otherLabel) c.otherLabel = card.otherLabel;
   if (card.age) c.age = card.age;
+  if (scopeD2Ok(card.d2) && c.procs.includes("egd.dx")) c.d2 = card.d2;
   return c;
 }
 function scopeAddEpa(card, caseId) {
@@ -571,6 +580,7 @@ function scopeDispatch(act, d = {}) {
   else if (act === "scopeset" && card) { card[d.kind] = card[d.kind] === d.v ? null : d.v; card.carried = {...card.carried, [d.kind]: false};
     if (d.kind === "loc" && (d.v === "ed" || d.v === "icu") && card[d.kind]) card.urg = "urgent"; scopeCardsFresh = false; }
   else if (act === "scopeurg" && card) { card.urg = card.urg === "urgent" ? "elective" : "urgent"; scopeCardsFresh = false; }
+  else if (act === "scoped2" && card) { card.d2 = scopeD2Ok(d.v) ? d.v : null; scopeCardsFresh = false; }
   else if (act === "scopereach" && card) {
     scopeCardsFresh = false;
     if (d.r === "none") { card.procs = card.procs.filter(p => p !== "colo.dx" && p !== "colo.screen"); card.reach = null; if (!card.procs.length) card.procs.push("colo.hem"); }

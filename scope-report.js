@@ -203,7 +203,7 @@ const rpPct = (k, n) => n ? Math.round(k / n * 100) + "%" : "–";
 // One logbook line's procedure, without the reach (it has its own column).
 function scopeReportProc(c) {
   let s = scopeSummary(c);
-  for (const say of Object.values(SCOPE_REACH_SAY)) s = s.replace(" to " + say, "");
+  for (const say of Object.values(SCOPE_REACH_SAY).concat("D2")) s = s.replace(" to " + say, "");
   return s.replace("polypectomy, large polypectomy", "polypectomy, 10 mm or larger");
 }
 function scopeReportWhy(c) {
