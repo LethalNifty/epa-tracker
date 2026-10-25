@@ -2,7 +2,7 @@
 // The Agenda tab: Days and Month, the event sheet, your usual week and Add
 // from file, over agenda.js. Full app only.
 
-let agView = "d", agSel = null, agMonth = null;
+let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false;
 const agToday = () => fmtDate(getToday());
 const agDayWords = iso => { const d = agDate(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const agHeading = iso => { const t = agToday();
@@ -81,9 +81,56 @@ function viewAgenda() {
   if (!agMonth) agMonth = agSel.slice(0, 7);
   const blk = blockFor(getToday()), ctx = agCtx(), seg = (v, label) =>
     `<button class="${agView === v ? "on" : ""}" data-action="agview" data-view="${v}"${agView === v ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<header class="ph"><p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
+  return `<header class="ph has-gear"><button class="iconbtn phgear" data-action="agnew" aria-label="Add an event">${ic("plus")}</button>` +
+    `<p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
     `<div class="segtabs ag-seg" role="group" aria-label="Agenda views">${seg("d", "Days")}${seg("m", "Month")}</div>` +
     (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx));
+}
+
+// ---- The event sheet -----------------------------------------------------------------------------
+function agOpen(id) {
+  const it = id ? agState().items.find(x => x.id === id) : null;
+  agSheet = it ? {mode: "edit", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, err: null}
+    : {mode: "new", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, err: null};
+  agSheetFresh = true;
+}
+function agSheetHTML() {
+  const s = agSheet, edit = s.mode === "edit", title = edit ? "Edit event" : "New event", fresh = agSheetFresh ? " fresh" : "";
+  const chip = (act, on, label, extra = "") => `<button class="pick ghost${on ? " on" : ""}" data-action="${act}"${extra} aria-pressed="${on}">${label}</button>`;
+  return `<div class="scrim${fresh}" data-action="agclose"></div><div class="sheet agsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
+    `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="agclose" aria-label="Close">${ic("x")}</button></div>` +
+    (edit && s.uid ? `<p class="ssub">From a calendar file. Adding that file again updates it.</p>` : "") +
+    `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Dentist, soccer, a flight" autocapitalize="sentences"></label>` +
+    `<label class="lbl mono">${s.multi ? "First day" : "Day"}<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
+    (s.multi ? `<label class="lbl mono">Last day<input type="date" value="${esc(s.d2 || "")}" data-ag="d2"></label>` : "") +
+    `<div class="pickrow">${chip("agallday", s.allDay, "All day")}${chip("agmulti", s.multi, "Ends another day")}</div>` +
+    (s.allDay ? "" : `<div class="ag-times"><label class="lbl mono">Starts<input type="time" value="${esc(s.s)}" data-ag="s"></label>` +
+      `<label class="lbl mono">Ends<input type="time" value="${esc(s.e)}" data-ag="e"></label></div>`) +
+    `<div class="lbl mono">Repeats</div><div class="pickrow">` + [["", "Never"], ["w", "Weekly"], ["m", "Monthly"], ["y", "Yearly"]]
+      .map(([r, label]) => chip("agrep", (s.rep || "") === r, label, ` data-rep="${r}"`)).join("") + `</div>` +
+    `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" data-ag="n" placeholder="Where, who, what to bring"></label>` +
+    (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
+    `<div class="sactions">${edit ? `<button class="btn danger" data-action="agdelete">Delete</button>` : ""}` +
+    `<button class="btn primary" data-action="agsave">${edit ? "Save" : "Add event"}</button></div></div>`;
+}
+// Checks the sheet, then saves it; the sheet stays open with a message when something's missing.
+function agSave() {
+  const s = agSheet, t = s.t.trim(), timed = !s.allDay;
+  const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : s.multi && !(agValidIso(s.d2) && s.d2 > s.d) ? "The last day is before the first." :
+    timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." : null;
+  if (err) { s.err = err; return; }
+  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n};
+  const before = agSnapshot();
+  if (s.mode === "new") { agAdd(f); showToast(`${t} added`, () => agRestore(before)); }
+  else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
+  agSheet = null;
+}
+// Typing keeps the sheet in step without a redraw (which would drop the keyboard).
+function agField(t) {
+  const f = t && t.dataset && t.dataset.ag;
+  if (!f || !agSheet) return false;
+  agSheet[f] = t.value;
+  return true;
 }
 
 // ---- Taps --------------------------------------------------------------------------------------
@@ -99,5 +146,16 @@ function agDispatch(act, d) {
   }
   else if (act === "agcall") { go({page: "call", from: "agenda"}); return false; }
   else if (act === "agstudy") { studyTab = "t"; go({page: "study"}); return false; }
+  else if (act === "agnew") agOpen(null);
+  else if (act === "agopen") agOpen(d.id);
+  else if (act === "agclose") agSheet = null;
+  else if (act === "agsave" && agSheet) agSave();
+  else if (act === "agdelete" && agSheet) {
+    const before = agSnapshot();
+    agRemove(agSheet.id); agSheet = null;
+    showToast("Event deleted", () => agRestore(before)); }
+  else if (act === "agallday" && agSheet) agSheet.allDay = !agSheet.allDay;
+  else if (act === "agmulti" && agSheet) { agSheet.multi = !agSheet.multi; if (agSheet.multi && !(agSheet.d2 > agSheet.d)) agSheet.d2 = agAddDays(agSheet.d, 1); }
+  else if (act === "agrep" && agSheet) agSheet.rep = d.rep || null;
   return true;
 }

@@ -1020,7 +1020,7 @@ function render() {
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
-      (reviewSheet ? reviewSheetHTML() : "") + (toast ? toastHTML() : "");
+      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -1030,7 +1030,7 @@ function render() {
   liveBeforeSwap(app);
   app.innerHTML = html;
   liveAfterSwap();
-  enterNext = false; sheetFresh = false; toastFresh = false;
+  enterNext = false; sheetFresh = false; toastFresh = false; agSheetFresh = false;
   const up = anySheet();
   if (!up) holdPage(false);
   if (route.restoreY !== undefined) { window.scrollTo(0, route.restoreY); delete route.restoreY; }
@@ -1060,7 +1060,7 @@ function holdPage(on) {
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet);
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet);
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1193,7 +1193,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
+  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -1204,7 +1204,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
+  if (agField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
   if (t.id === "importfile") {

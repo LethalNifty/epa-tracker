@@ -1329,6 +1329,8 @@ a.src:active { background: var(--wall-3); }
 .mc.past .mk { opacity: .55; }
 .cm-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; padding-left: 2px; font-size: 9.5px; color: var(--faint); }
 .cm-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.ag-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ag-times .lbl { min-width: 0; }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }

@@ -106,3 +106,61 @@ test("a call row goes to Call and back; a reading row goes to Study", () => {
   g.click("agstudy");
   assert.equal(g.val("route.page"), "study");
 });
+
+// ---- The event sheet --------------------------------------------------------------------------
+test("Add: a sheet on the chosen day, 9 to 10; it needs a name and an end after its start; Undo takes it back", () => {
+  const h = agenda("2026-10-27");
+  h.click("agday", {day: "2026-10-29"});
+  h.click("agnew");
+  assert.match(h.html(), /role="dialog" aria-modal="true" aria-label="New event"/);
+  assert.deepEqual(h.val("[agSheet.d, agSheet.s, agSheet.e, agSheet.allDay, agSheet.rep]"), ["2026-10-29", "09:00", "10:00", false, null]);
+  h.click("agsave");
+  assert.match(h.html(), /Give it a name first\./);
+  h.fire("input", {dataset: {ag: "t"}, value: "Dentist"});
+  h.run(`agSheet.s = "15:00"; agSheet.e = "14:00"`);
+  h.click("agsave");
+  assert.match(h.html(), /It ends before it starts\./);
+  h.run(`agSheet.e = "16:00"`);
+  h.click("agsave");
+  assert.equal(h.val("agSheet"), null);
+  assert.deepEqual(h.saved().agenda.items.map(x => [x.t, x.d, x.s, x.e]), [["Dentist", "2026-10-29", "15:00", "16:00"]]);
+  assert.match(h.html(), /Dentist added/);
+  h.click("undo");
+  assert.deepEqual(h.saved().agenda.items, []);
+});
+
+test("All day hides the times, Ends another day asks for the last day, Repeats picks how often", () => {
+  const h = agenda("2026-10-27");
+  h.click("agnew");
+  h.run(`agSheet.t = "Florida"; agSheet.d = "2026-11-13"`);
+  h.click("agallday");
+  assert.doesNotMatch(h.html(), /data-ag="s"/);
+  h.click("agmulti");
+  assert.equal(h.val("agSheet.d2"), "2026-11-14");
+  assert.match(h.html(), /<label class="lbl mono">Last day<input type="date" value="2026-11-14" data-ag="d2">/);
+  h.run(`agSheet.d2 = "2026-11-12"`);
+  h.click("agsave");
+  assert.match(h.html(), /The last day is before the first\./);
+  h.run(`agSheet.d2 = "2026-11-17"`);
+  h.click("agrep", {rep: "y"});
+  assert.match(h.html(), /data-action="agrep" data-rep="y" aria-pressed="true">Yearly/);
+  h.click("agsave");
+  assert.deepEqual(h.saved().agenda.items.map(x => [x.t, x.d, x.d2, x.s, x.rep]), [["Florida", "2026-11-13", "2026-11-17", null, "y"]]);
+});
+
+test("Edit and delete with Undo; an event from a file says so", () => {
+  const h = agenda("2026-10-27", [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30", {uid: "x1"})]);
+  h.click("agopen", {id: "a1"});
+  assert.match(h.html(), /aria-label="Edit event"/);
+  assert.match(h.html(), /From a calendar file\. Adding that file again updates it\./);
+  h.run(`agSheet.t = "Dentist cleaning"`);
+  h.click("agsave");
+  assert.equal(h.saved().agenda.items[0].t, "Dentist cleaning");
+  assert.match(h.html(), /Changes saved/);
+  h.click("agopen", {id: "a1"});
+  h.click("agdelete");
+  assert.deepEqual(h.saved().agenda.items, []);
+  assert.match(h.html(), /Event deleted/);
+  h.click("undo");
+  assert.equal(h.saved().agenda.items[0].t, "Dentist cleaning");
+});
