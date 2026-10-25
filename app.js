@@ -30,6 +30,8 @@ const Store = {
     this.state.missed = {};
     if (ms && typeof ms === "object") for (const k in ms) if (PART_BY_ID[k] && Array.isArray(ms[k]))
       this.state.missed[k] = ms[k].filter(o => o && typeof o === "object").map(o => ({...o, status: "missed"}));
+    // Agenda: your own events and usual week (full app).
+    if (!FELLOWS) this.state.agenda = agClean(this.state.agenda);
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
       learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled), ageOn: !!(sc && sc.ageOn)};
@@ -139,7 +141,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}, agenda:s.agenda};
       this.migrate(); this.save(); return {ok:true};
     } catch(e) { return {ok:false, error:"Could not read that file."}; }
   },
