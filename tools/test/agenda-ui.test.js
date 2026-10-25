@@ -207,3 +207,17 @@ test("Add from file: on the page, a file's events land with Undo, a call file go
   h.run(`agImportText(__src, "notes.txt"); render()`);
   assert.match(h.html(), /<div class="err" role="alert">That file isn't a calendar\. Pick an \.ics file\.<\/div>/);
 });
+
+// ---- Week's Next line ------------------------------------------------------------------------
+test("Week's Next line: your next event this week, opening Agenda on its day; none, no line; never for fellows", () => {
+  const items = [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30")];
+  const h = load({today: "2026-10-27", state: state({}, {agenda: {items}})});
+  assert.match(h.html(), /<button class="card agnext" data-action="agshow" data-day="2026-10-29"><span class="mono">Next<\/span><b>Dentist<\/b><span class="mono">Thu 29 Oct · 16:30<\/span>/);
+  h.click("agshow", {day: "2026-10-29"});
+  assert.deepEqual(h.val("[route.page, agSel, agView]"), ["agenda", "2026-10-29", "d"]);
+  const soon = load({today: "2026-10-28", state: state({}, {agenda: {items}})});
+  assert.match(soon.html(), /<span class="mono">Tomorrow · 16:30<\/span>/);
+  assert.doesNotMatch(load({today: "2026-10-27"}).html(), /agnext/);
+  const fel = load({today: "2026-10-27", edition: "fellows", state: state({}, {setup: {d: "2026-10-01"}, agenda: {items}})});
+  assert.doesNotMatch(fel.html(), /agnext/);
+});

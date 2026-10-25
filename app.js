@@ -563,6 +563,7 @@ function viewWeek() {
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +
       (cs.cur ? "" : callCardHTML(cs, now)) + remindRowHTML();
   }
+  h += agNextHTML();
   const cp = coachPlan(obsBy, today), rows = weekRows(obsBy, today), lead = weekLead(now, cs);
   const part = {ask: askHTML(askToday(today, cs), lookFor(rows, id => Store.lineVal(id))), week: thisWeekHTML(rows, cp.active),
     study: studyCardHTML(), call: cs.cur ? "" : callCardHTML(cs, now)};

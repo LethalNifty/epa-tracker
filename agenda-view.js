@@ -186,6 +186,15 @@ function agReadFile(f) {
   else { const rd = new FileReader(); rd.onload = () => done(icsText(new Uint8Array(rd.result))); rd.onerror = fail; rd.readAsArrayBuffer(f); }
 }
 
+// ---- Week's Next line ----------------------------------------------------------------------------
+function agNextHTML() {
+  const nx = agNext(callNow());
+  if (!nx) return "";
+  const t = agToday(), day = nx.iso === t ? "Today" : nx.iso === agAddDays(t, 1) ? "Tomorrow" : agDayWords(nx.iso);
+  return `<button class="card agnext" data-action="agshow" data-day="${nx.iso}"><span class="mono">Next</span><b>${esc(nx.t)}</b>` +
+    `<span class="mono">${day} · ${nx.from || "All day"}</span>${ic("chev", "sm")}</button>`;
+}
+
 // ---- Taps --------------------------------------------------------------------------------------
 // Returns false when it redraws by itself.
 function agDispatch(act, d) {
@@ -197,6 +206,7 @@ function agDispatch(act, d) {
     agMonth = fmtDate(t).slice(0, 7);
     agSel = agToday().slice(0, 7) === agMonth ? agToday() : agMonth + "-01";
   }
+  else if (act === "agshow") { agSel = d.day; agView = "d"; go({page: "agenda"}); return false; }
   else if (act === "agcall") { go({page: "call", from: "agenda"}); return false; }
   else if (act === "agstudy") { studyTab = "t"; go({page: "study"}); return false; }
   else if (act === "agnew") agOpen(null);
