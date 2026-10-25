@@ -28,7 +28,16 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - a weekly recap
 - a list of forms still pending in Entrada after 14+ days, so you can chase them; a spare form (one an EPA no longer needs) is shown but not counted
 - a form that comes back below the mark (3/5 or lower) is marked Not achieved: it stays on its EPA's page, greyed and apart, never counts, and still tells its assessor's turnaround
+- Next: your next event in Agenda this week, one line that opens it
 - a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, patient age range for the procedure log (off unless switched on, or turned on by importing a log that has ages), and reminders
+
+**Agenda (calendar):**
+- Days: this week from Monday with marks, the chosen day as a timeline (work hours from your usual week named for the rotation, call with who's on, the night's reading with its pages, your events, Manitoba's holidays) and the rest of the week's events and call
+- Month: a Monday-first grid with call, reading, your events and holidays; tap a day for its timeline
+- your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note; add, edit and delete with Undo
+- Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
+- your usual week: work blocks per day (Thursday half day), used for the day view
+- no reminders for your events yet (coming with the reminder server)
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording

@@ -5,7 +5,7 @@ A one-person offline iPhone web app for a PGY-4 adult GI fellow in Royal College
 - What it does, every tab, how it's built, privacy: [docs/APP-BRIEF.md](docs/APP-BRIEF.md)
 - Pearls, from the phone to Anki cards: [docs/PEARLS.md](docs/PEARLS.md)
 
-Tabs: **Week** (home), **EPAs**, **Study** (with Pearls), **Endo** (scope log), **Guides** (Guidelines | Trials | IBD drugs | Biopsy), and the floating **+** (log a case, an EPA observation or a pearl).
+Tabs: **Week** (home), **Agenda** (calendar), **EPAs**, then the **+** in the middle of the bar (log a case, an EPA observation or a pearl), **Study** (with Pearls), **Endo** (scope log), **Guides** (Guidelines | Trials | IBD drugs | Biopsy). The fellows' edition keeps four tabs and a floating +.
 
 ## The user's rules
 
@@ -25,7 +25,7 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `app.js` | the Store (localStorage `epa-state-v1`), routing, render, dispatch by action prefix, sheets, backup. A new state field joins `importJSON`'s whitelist or a restore drops it |
 | `app.css` | every style; feature blocks sit just before `/* Backup */` |
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
-| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `remind`/`notify`, `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
+| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `agenda`/`agenda-view` (the Agenda tab), `remind`/`notify`, `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
 | `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` every 15 minutes |
 | `tools/ship.py` | shipping, below |

@@ -1340,17 +1340,18 @@ a.src:active { background: var(--wall-3); }
 .agu-day { padding: 10px 0; border-top: 1px solid var(--fold); }
 .agu-h { display: flex; align-items: center; justify-content: space-between; }
 .agu-h b { font-size: 15px; font-weight: 520; }
-.agu-b { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto 84px 34px; gap: 6px; align-items: center; margin-top: 6px; }
-.agu-b input { min-width: 0; height: 40px; padding: 0 8px; border-radius: 10px; font-size: 14px; color: var(--light); background: var(--field); border: 1px solid var(--fold-2); }
+.agu-b { display: grid; grid-template-columns: minmax(0, 1fr) 98px auto 98px 30px; gap: 5px; align-items: center; margin-top: 6px; }
+.agu-b input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+.agu-b input { min-width: 0; height: 40px; padding: 0 6px; border-radius: 10px; font-size: 14px; color: var(--light); background: var(--field); border: 1px solid var(--fold-2); }
 .agu-b .mono { font-size: 10px; color: var(--faint); }
-.agu-b .iconbtn { width: 34px; height: 34px; color: var(--faint); }
+.agu-b .iconbtn { width: 30px; height: 34px; color: var(--faint); }
 .agu-none { margin: 4px 0 0; font-size: 13px; color: var(--faint); }
 /* Week: the next thing in Agenda, one line. */
-.agnext { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; margin: 0 0 22px; padding: 12px 14px; text-align: left; }
+.agnext { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; margin: 14px 0 22px; padding: 12px 14px; text-align: left; }
 .agnext > .mono:first-child { font-size: 10px; color: var(--nbi-ink); }
 .agnext b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 520; }
 .agnext > .mono:nth-of-type(2) { font-size: 10px; color: var(--dim); white-space: nowrap; }
-.agnext .ic { color: var(--faint); }
+.agnext .ic { color: var(--faint); transform: rotate(-90deg); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
@@ -1382,6 +1383,8 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .bnav-in.seven .nv { font-size: 10.5px; }
 .bnav-in.seven .nv .ic { width: 23px; height: 23px; }
 .fab.mid { flex: 0 0 auto; width: 54px; height: 54px; margin: -18px 2px 0; }
+/* Endo's save bar clears the raised + (it rises 18px above the bar). */
+:root:has(.fab.mid) .savebar { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 26px); }
 
 /* Log sheet */
 .scrim { position: fixed; z-index: 30; inset: 0; background: rgba(5, 4, 14, .62); }
