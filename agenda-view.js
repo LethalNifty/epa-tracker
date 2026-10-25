@@ -2,7 +2,7 @@
 // The Agenda tab: Days and Month, the event sheet, your usual week and Add
 // from file, over agenda.js. Full app only.
 
-let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false;
+let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false, agUsual = null, agError = null;
 const agToday = () => fmtDate(getToday());
 const agDayWords = iso => { const d = agDate(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const agHeading = iso => { const t = agToday();
@@ -84,7 +84,11 @@ function viewAgenda() {
   return `<header class="ph has-gear"><button class="iconbtn phgear" data-action="agnew" aria-label="Add an event">${ic("plus")}</button>` +
     `<p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
     `<div class="segtabs ag-seg" role="group" aria-label="Agenda views">${seg("d", "Days")}${seg("m", "Month")}</div>` +
-    (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx));
+    (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) +
+    `<section class="sec"><div class="card ag-links">` +
+    `<button class="ag-link" data-action="agfilepick">${ic("download")}<span><b>Add from file</b><span>An invite or a calendar export (.ics)</span></span></button>` +
+    `<button class="ag-link" data-action="agusual">${ic("clock")}<span><b>Your usual week</b><span>The work hours shown on each day</span></span></button></div>` +
+    (agError ? `<div class="err" role="alert">${esc(agError)}</div>` : "") + `<input type="file" id="agfile" hidden></section>`;
 }
 
 // ---- The event sheet -----------------------------------------------------------------------------
@@ -125,12 +129,61 @@ function agSave() {
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
   agSheet = null;
 }
-// Typing keeps the sheet in step without a redraw (which would drop the keyboard).
+// Typing keeps a sheet in step without a redraw (which would drop the keyboard).
 function agField(t) {
-  const f = t && t.dataset && t.dataset.ag;
-  if (!f || !agSheet) return false;
-  agSheet[f] = t.value;
-  return true;
+  const ds = t && t.dataset;
+  if (ds && ds.ag && agSheet) { agSheet[ds.ag] = t.value; return true; }
+  const b = ds && ds.agu && agUsual && (agUsual.days[ds.day] || [])[+ds.i];
+  if (b) { b[ds.agu] = t.value; return true; }
+  return false;
+}
+
+// ---- Your usual week ----------------------------------------------------------------------------
+const AG_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function agUsualHTML() {
+  const u = agUsual, fresh = agSheetFresh ? " fresh" : "";
+  const day = k => `<div class="agu-day"><div class="agu-h"><b>${AG_WEEKDAYS[k]}</b><button class="textbtn sm" data-action="agblockadd" data-day="${k}">Add</button></div>` +
+    (u.days[k].length ? u.days[k].map((b, i) => { const at = `data-day="${k}" data-i="${i}"`;
+      return `<div class="agu-b"><input type="text" value="${esc(b.t)}" data-agu="t" ${at} aria-label="What" autocapitalize="sentences">` +
+        `<input type="time" value="${esc(b.a)}" data-agu="a" ${at} aria-label="From"><span class="mono">to</span>` +
+        `<input type="time" value="${esc(b.b)}" data-agu="b" ${at} aria-label="To">` +
+        `<button class="iconbtn" data-action="agblockdel" ${at} aria-label="Remove">${ic("x", "sm")}</button></div>`; }).join("")
+      : `<p class="agu-none">Nothing</p>`) + `</div>`;
+  return `<div class="scrim${fresh}" data-action="agusualclose"></div><div class="sheet agusual${fresh}" role="dialog" aria-modal="true" aria-label="Your usual week">` +
+    `<div class="grab"></div><div class="shead"><b>Your usual week</b><button class="iconbtn" data-action="agusualclose" aria-label="Close">${ic("x")}</button></div>` +
+    `<p class="ssub">Your work hours on each day. Work takes the rotation's name.</p>` +
+    [1, 2, 3, 4, 5, 6, 0].map(day).join("") +
+    (u.err ? `<div class="err" role="alert">${esc(u.err)}</div>` : "") +
+    `<div class="sactions"><button class="btn primary" data-action="agusualsave">Save</button></div></div>`;
+}
+function agUsualSave() {
+  const all = Object.values(agUsual.days).flat();
+  if (all.some(b => !AG_HM.test(b.a) || !AG_HM.test(b.b) || b.b <= b.a)) { agUsual.err = "Each block needs to end after it starts."; return; }
+  const before = agSnapshot();
+  agSetUsual(agUsual); agUsual = null;
+  showToast("Usual week saved", () => agRestore(before));
+}
+
+// ---- Add from file ----------------------------------------------------------------------------------
+// A file's events, or a call file handed to Call; what happened goes in a toast, or why not on the page.
+function agImportText(text, name) {
+  const r = agImport(text, name);
+  if (!r.ok) { agError = r.error || "Couldn't read that file. Try again."; return r; }
+  agError = null;
+  if (r.call) return r;
+  const n = r.added + r.changed + r.removed;
+  showToast(!n ? "Already up to date" : r.added && !r.changed && !r.removed ? `Added ${r.added} event${r.added === 1 ? "" : "s"}` :
+    "Updated: " + [r.added && `${r.added} new`, r.changed && `${r.changed} changed`, r.removed && `${r.removed} removed`].filter(Boolean).join(", "),
+    n ? () => agRestore(r.before) : null);
+  return r;
+}
+// No accept filter on the picker, as with Call's: iOS greys out .ics files in some places when one is set.
+function agReadFile(f) {
+  if (!f) return;
+  const done = text => { agImportText(text, f.name); route.keepScroll = true; render(); };
+  const fail = () => { agError = "Couldn't read that file. Try again."; route.keepScroll = true; render(); };
+  if (typeof f.arrayBuffer === "function") f.arrayBuffer().then(b => done(icsText(new Uint8Array(b))), fail);
+  else { const rd = new FileReader(); rd.onload = () => done(icsText(new Uint8Array(rd.result))); rd.onerror = fail; rd.readAsArrayBuffer(f); }
 }
 
 // ---- Taps --------------------------------------------------------------------------------------
@@ -157,5 +210,11 @@ function agDispatch(act, d) {
   else if (act === "agallday" && agSheet) agSheet.allDay = !agSheet.allDay;
   else if (act === "agmulti" && agSheet) { agSheet.multi = !agSheet.multi; if (agSheet.multi && !(agSheet.d2 > agSheet.d)) agSheet.d2 = agAddDays(agSheet.d, 1); }
   else if (act === "agrep" && agSheet) agSheet.rep = d.rep || null;
+  else if (act === "agusual") { agUsual = JSON.parse(JSON.stringify(agState().usual)); agSheetFresh = true; }
+  else if (act === "agusualclose") agUsual = null;
+  else if (act === "agusualsave" && agUsual) agUsualSave();
+  else if (act === "agblockadd" && agUsual) agUsual.days[d.day].push({a: "08:00", b: "17:00", t: "Work"});
+  else if (act === "agblockdel" && agUsual) agUsual.days[d.day].splice(+d.i, 1);
+  else if (act === "agfilepick") { agError = null; const f = document.getElementById("agfile"); if (f) f.click(); return false; }
   return true;
 }

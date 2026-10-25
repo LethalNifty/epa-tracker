@@ -164,3 +164,46 @@ test("Edit and delete with Undo; an event from a file says so", () => {
   h.click("undo");
   assert.equal(h.saved().agenda.items[0].t, "Dentist cleaning");
 });
+
+// ---- Your usual week and Add from file ------------------------------------------------------
+test("your usual week: change Thursday's half day, add and remove a block, refuse one that ends before it starts", () => {
+  const h = agenda("2026-10-27");
+  h.click("agusual");
+  let html = h.html();
+  assert.match(html, /aria-label="Your usual week"/);
+  assert.match(html, /<b>Thursday<\/b>[^]*?value="Work"[^]*?value="08:00"[^]*?value="12:00"[^]*?value="Half day"[^]*?value="12:00"[^]*?value="17:00"/);
+  h.fire("input", {dataset: {agu: "b", day: "4", i: "1"}, value: "16:00"});
+  h.click("agblockadd", {day: "6"});
+  assert.deepEqual(h.val("agUsual.days[6]"), [{a: "08:00", b: "17:00", t: "Work"}]);
+  h.click("agblockdel", {day: "6", i: "0"});
+  assert.deepEqual(h.val("agUsual.days[6]"), []);
+  h.click("agusualsave");
+  assert.equal(h.val("agUsual"), null);
+  assert.equal(h.saved().agenda.usual.days["4"][1].b, "16:00");
+  assert.match(h.html(), /Usual week saved/);
+  assert.deepEqual(h.val(`agDay("2026-10-29").filter(r => r.k === "work").map(r => r.to)`), ["12:00", "16:00"]);
+  h.click("agusual");
+  h.fire("input", {dataset: {agu: "b", day: "1", i: "0"}, value: "07:00"});
+  h.click("agusualsave");
+  assert.match(h.html(), /Each block needs to end after it starts\./);
+  assert.notEqual(h.val("agUsual"), null);
+});
+
+test("Add from file: on the page, a file's events land with Undo, a call file goes to Call, a bad file says why", () => {
+  const h = agenda("2026-10-27");
+  assert.match(h.html(), /data-action="agfilepick"/);
+  assert.match(h.html(), /<input type="file" id="agfile" hidden>/);
+  h.ctx.__src = ["BEGIN:VCALENDAR", "BEGIN:VEVENT", "UID:x1", "SUMMARY:Journal club", "DTSTART:20261104T120000", "DTEND:20261104T130000",
+    "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  h.run(`agImportText(__src, "invite.ics"); render()`);
+  assert.match(h.html(), /Added 1 event/);
+  assert.equal(h.saved().agenda.items[0].t, "Journal club");
+  h.click("undo");
+  assert.deepEqual(h.saved().agenda.items, []);
+  h.ctx.__src = sample;
+  h.run(`agImportText(__src, "GI-Call-Block5.ics"); render()`);
+  assert.match(h.html(), /Imported \d+ call shifts/);
+  h.ctx.__src = "hello";
+  h.run(`agImportText(__src, "notes.txt"); render()`);
+  assert.match(h.html(), /<div class="err" role="alert">That file isn't a calendar\. Pick an \.ics file\.<\/div>/);
+});

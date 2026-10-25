@@ -1331,6 +1331,20 @@ a.src:active { background: var(--wall-3); }
 .cm-leg span { display: inline-flex; align-items: center; gap: 6px; }
 .ag-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ag-times .lbl { min-width: 0; }
+.ag-links { padding: 2px 14px; }
+.ag-link { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: center; width: 100%; padding: 13px 0; text-align: left; }
+.ag-link + .ag-link { border-top: 1px solid var(--fold); }
+.ag-link > .ic { width: 20px; height: 20px; color: var(--nbi); }
+.ag-link b { display: block; font-size: 15px; font-weight: 520; }
+.ag-link b + span { font-size: 12.5px; color: var(--dim); }
+.agu-day { padding: 10px 0; border-top: 1px solid var(--fold); }
+.agu-h { display: flex; align-items: center; justify-content: space-between; }
+.agu-h b { font-size: 15px; font-weight: 520; }
+.agu-b { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto 84px 34px; gap: 6px; align-items: center; margin-top: 6px; }
+.agu-b input { min-width: 0; height: 40px; padding: 0 8px; border-radius: 10px; font-size: 14px; color: var(--light); background: var(--field); border: 1px solid var(--fold-2); }
+.agu-b .mono { font-size: 10px; color: var(--faint); }
+.agu-b .iconbtn { width: 34px; height: 34px; color: var(--faint); }
+.agu-none { margin: 4px 0 0; font-size: 13px; color: var(--faint); }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
