@@ -220,3 +220,82 @@ function agNext(now) {
   }
   return null;
 }
+
+// ---- Add from file (.ics) -----------------------------------------------------------------------
+// A wall time in a named zone (America/New_York) as epoch ms, or null for a
+// zone this phone doesn't know (Outlook's "Central Standard Time").
+function agZonedMs(y, mo, d, h, mi, tz) {
+  let fmt;
+  try { fmt = new Intl.DateTimeFormat("en-US", {timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric"}); }
+  catch (e) { return null; }
+  const want = Date.UTC(y, mo - 1, d, h, mi);
+  let t = want;
+  for (let i = 0; i < 3; i++) {
+    const p = {};
+    for (const x of fmt.formatToParts(new Date(t))) p[x.type] = +x.value;
+    t += want - Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+  }
+  return t;
+}
+// DTSTART or DTEND as this phone's day and time (hm null for a whole day).
+// UTC and known zones convert; a floating time or an unknown zone is read as written.
+function agIcsWhen(p) {
+  const m = p && /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/i.exec(p.value.trim());
+  if (!m) return null;
+  const day = `${m[1]}-${m[2]}-${m[3]}`;
+  if (m[4] === undefined) return agValidIso(day) ? {d: day, hm: null} : null;
+  const [y, mo, d, h, mi] = m.slice(1, 6).map(Number);
+  const t = m[7] ? Date.UTC(y, mo - 1, d, h, mi) : p.params.TZID ? agZonedMs(y, mo, d, h, mi, p.params.TZID) : null;
+  return t === null ? {d: day, hm: `${m[4]}:${m[5]}`} : {d: fmtDate(new Date(t)), hm: agHM(t)};
+}
+const AG_FREQ = {WEEKLY: "w", MONTHLY: "m", YEARLY: "y"};
+// A calendar file's events, or a call file (handed to Call), or why not.
+function agParseICS(text) {
+  const cal = parseICS(text);
+  if (!cal.calendar) return {ok: false, error: "That file isn't a calendar. Pick an .ics file."};
+  if (cal.events.some(ev => Object.keys(ev).some(k => k.startsWith("X-GI-CALL-")))) return {ok: true, call: true, items: [], cancelled: []};
+  const items = [], cancelled = [];
+  for (const ev of cal.events) {
+    const txt = k => ev[k] ? icsUnescape(ev[k].value).replace(/\s+/g, " ").trim() : "";
+    const uid = txt("UID") || null;
+    if (/^cancel/i.test(txt("STATUS"))) { if (uid) cancelled.push(uid); continue; }
+    const a = agIcsWhen(ev.DTSTART);
+    if (!a) continue;
+    let z = ev.DTEND ? agIcsWhen(ev.DTEND) : null;
+    if (!z && ev.DURATION) {
+      const t = icsEnd(agDate(a.d).getTime() + (a.hm ? agMin(a.hm) * 60000 : 0), ev.DURATION.value);
+      if (t !== null) z = {d: fmtDate(new Date(t)), hm: a.hm ? agHM(t) : null};
+    }
+    // A whole-day event's DTEND is the day after its last day.
+    let d2 = null, e = null;
+    if (!a.hm) { const last = z && !z.hm ? agAddDays(z.d, -1) : a.d; d2 = last > a.d ? last : null; }
+    else if (z && z.hm) { e = z.hm; d2 = z.d > a.d ? z.d : null; }
+    const fq = /FREQ=(WEEKLY|MONTHLY|YEARLY)/i.exec(txt("RRULE"));
+    items.push({t: txt("SUMMARY") || "Event", d: a.d, d2, s: a.hm, e, rep: fq ? AG_FREQ[fq[1].toUpperCase()] : null,
+      n: [txt("LOCATION"), txt("DESCRIPTION")].filter(Boolean).join(" · "), uid});
+  }
+  if (!items.length && !cancelled.length) return {ok: false, error: "No events in that file."};
+  return {ok: true, call: false, items, cancelled};
+}
+// Adds a file's events, matched by UID so a second import updates them; a
+// cancelled one goes. before: the agenda as it was, for Undo.
+function agImport(text, name) {
+  const p = agParseICS(text);
+  if (!p.ok) return p;
+  if (p.call) { const r = callImport(text, name); return {ok: r.ok, call: true, error: r.error}; }
+  const before = agSnapshot(), a = agState(), taken = new Set(a.items.map(x => x.id)), ts = new Date().toISOString();
+  let added = 0, changed = 0, removed = 0;
+  for (const x of p.items) {
+    const i = x.uid ? a.items.findIndex(it => it.uid === x.uid) : -1;
+    if (i >= 0) {
+      const it = agItemClean({...a.items[i], ...x, id: a.items[i].id});
+      if (it && JSON.stringify(it) !== JSON.stringify(a.items[i])) { a.items[i] = it; changed++; }
+    } else {
+      const it = agItemClean({...x, id: agNewId(taken), ts});
+      if (it) { taken.add(it.id); a.items.push(it); added++; }
+    }
+  }
+  for (const uid of p.cancelled) { const n = a.items.length; a.items = a.items.filter(it => it.uid !== uid); removed += n - a.items.length; }
+  Store.save();
+  return {ok: true, call: false, added, changed, removed, before};
+}

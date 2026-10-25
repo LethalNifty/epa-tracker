@@ -177,3 +177,57 @@ test("the next thing: your next event in the coming week, not one that's over", 
   const far = load({today: "2026-10-27", state: state({}, {agenda: {items: [ev("a9", "Far", "2026-11-09", "09:00", "10:00")]}})});
   assert.equal(far.val("agNext(callNow())"), null);
 });
+
+// ---- Add from file ------------------------------------------------------------------------
+const ics = (...evs) => ["BEGIN:VCALENDAR", "VERSION:2.0", ...evs.flatMap(e => ["BEGIN:VEVENT", ...e, "END:VEVENT"]), "END:VCALENDAR"].join("\r\n");
+const imp = (h, src) => { h.ctx.__src = src; return h.val(`(() => { const r = agImport(__src, "x.ics"); delete r.before; return r; })()`); };
+const byUid = (h, uid) => h.val(`Store.state.agenda.items.find(x => x.uid === ${JSON.stringify(uid)}) || null`);
+
+test("a call file goes to Call, not to your events", () => {
+  const h = load({today: "2026-10-27"});
+  const r = imp(h, sample);
+  assert.equal(r.call, true);
+  assert.ok(h.val("CallStore.list().length") > 0);
+  assert.deepEqual(h.val("Store.state.agenda.items"), []);
+});
+
+test("an invite becomes an event; an all-day one ends the day before its DTEND", () => {
+  const h = load({today: "2026-10-27"});
+  const r = imp(h, ics(["UID:x1", "SUMMARY:Journal club", "DTSTART:20261104T120000", "DTEND:20261104T130000", "LOCATION:Room 3"],
+    ["UID:x2", "SUMMARY:Florida", "DTSTART;VALUE=DATE:20261113", "DTEND;VALUE=DATE:20261118"]));
+  assert.deepEqual([r.ok, r.added, r.changed, r.removed], [true, 2, 0, 0]);
+  const jc = byUid(h, "x1"), fl = byUid(h, "x2");
+  assert.deepEqual([jc.t, jc.d, jc.d2, jc.s, jc.e, jc.n], ["Journal club", "2026-11-04", null, "12:00", "13:00", "Room 3"]);
+  assert.deepEqual([fl.t, fl.d, fl.d2, fl.s], ["Florida", "2026-11-13", "2026-11-17", null]);
+});
+
+test("time zones: a New York time converts; a Windows zone name keeps the time as written", () => {
+  const h = load({today: "2026-10-27"});
+  imp(h, ics(["UID:f1", "SUMMARY:Flight home", "DTSTART;TZID=America/New_York:20261117T093500", "DTEND;TZID=America/New_York:20261117T120500"],
+    ["UID:o1", "SUMMARY:Rounds", "DTSTART;TZID=Central Standard Time:20261105T070000", "DTEND;TZID=Central Standard Time:20261105T080000"]));
+  assert.equal(h.val(`(() => { const it = Store.state.agenda.items.find(x => x.uid === "f1"); return agDate(it.d).getTime() + agMin(it.s) * 60000; })()`),
+    Date.UTC(2026, 10, 17, 14, 35));
+  const r = byUid(h, "o1");
+  assert.deepEqual([r.d, r.s, r.e], ["2026-11-05", "07:00", "08:00"]);
+});
+
+test("a yearly repeat; the same UID again updates; cancelled removes; Undo puts it back", () => {
+  const h = load({today: "2026-10-27"});
+  const bday = (summary, extra = []) => ics(["UID:b1", "SUMMARY:" + summary, "DTSTART;VALUE=DATE:20270312", "DTEND;VALUE=DATE:20270313", "RRULE:FREQ=YEARLY", ...extra]);
+  imp(h, bday("A birthday"));
+  assert.equal(byUid(h, "b1").rep, "y");
+  assert.deepEqual(imp(h, bday("A friend's birthday")), {ok: true, call: false, added: 0, changed: 1, removed: 0});
+  assert.equal(byUid(h, "b1").t, "A friend's birthday");
+  h.ctx.__src = ics(["UID:b1", "STATUS:CANCELLED", "DTSTART;VALUE=DATE:20270312"]);
+  h.run(`window.__r = agImport(__src, "x.ics")`);
+  assert.equal(h.val("__r.removed"), 1);
+  assert.equal(byUid(h, "b1"), null);
+  h.run(`agRestore(__r.before)`);
+  assert.equal(byUid(h, "b1").t, "A friend's birthday");
+});
+
+test("a file that isn't a calendar, or has no events, says so", () => {
+  const h = load({today: "2026-10-27"});
+  assert.deepEqual(imp(h, "hello"), {ok: false, error: "That file isn't a calendar. Pick an .ics file."});
+  assert.deepEqual(imp(h, ics()), {ok: false, error: "No events in that file."});
+});
