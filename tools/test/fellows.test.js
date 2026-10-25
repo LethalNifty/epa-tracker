@@ -15,11 +15,11 @@ const setUp = (obsByPart = {}) => state(obsByPart, {setup: {d: "2026-10-01"}});
 const navPages = h => { const nav = h.html().slice(h.html().indexOf('<nav class="bnav"'));
   return [...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]); };
 
-test("the full app is untouched: its own key, five tabs, Pearl on the +", () => {
+test("the full app is untouched: its own key, six tabs, Pearl on the +", () => {
   const h = load({today: "2026-10-08", state: state({d1: many(2, "2026-07-10")})});
   assert.equal(h.val("FELLOWS"), false);
   assert.equal(h.val("KEY"), "epa-state-v1");
-  assert.deepEqual(navPages(h), ["week", "epas", "study", "endo", "guides"]);
+  assert.deepEqual(navPages(h), ["week", "agenda", "epas", "study", "endo", "guides"]);
   assert.deepEqual(h.val("PLUS.map(x => x[1])"), ["Case", "EPA", "Pearl"]);
 });
 

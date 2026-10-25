@@ -333,7 +333,7 @@ const stageSegs = cur => STAGE_ORDER.map(st => {
 
 // ---- Chrome: bottom bar, warnings, toast, crash screen ----------------------
 const NAV = FELLOWS ? [["week", "Home", "week"], ["epas", "EPAs", "epas"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]]
-  : [["week", "Week", "week"], ["epas", "EPAs", "epas"], ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
+  : [["week", "Week", "dial"], ["agenda", "Agenda", "week"], ["epas", "EPAs", "epas"], null, ["study", "Study", "study"], ["endo", "Endo", "endo"], ["guides", "Guides", "guides"]];
 // Pages that light up another tab in the bar: the year plan sits inside EPAs.
 const NAV_HOME = {plan: "epas", pearls: "study"};
 function navHTML(active) {
@@ -342,11 +342,13 @@ function navHTML(active) {
   const item = ([page, label, icon]) => `<button class="nv${active === page ? " on" : ""}" data-action="tab" data-page="${page}"` +
     (active === page ? ` aria-current="page"` : "") + `>${ic(icon)}<span>${label}</span>` +
     (dot(page) ? `<i class="nvdot" aria-label="New guidelines"></i>` : "") + `</button>`;
-  // Five even tabs; the log button floats above the bar's right end. It steps
-  // aside while Endo's own save bar is up, where it would cover Clear.
+  const plus = cls => `<button class="fab ${cls}" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`;
+  // The full app: three tabs either side of the log button (null in NAV).
+  if (!FELLOWS) return `<nav class="bnav" aria-label="Main"><div class="bnav-in seven">${NAV.map(x => x ? item(x) : plus("mid")).join("")}</div></nav>`;
+  // The fellows' four tabs; the log button floats above the bar's right end. It
+  // steps aside while Endo's own save bar is up, where it would cover Clear.
   const busy = active === "endo" && scopeTab !== "progress" && scopeCap.cards.length;
-  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.map(item).join("")}</div></nav>` +
-    (busy ? "" : `<button class="fab float" data-action="scopeopen" aria-label="Log a case">${ic("plus")}</button>`);
+  return `<nav class="bnav" aria-label="Main"><div class="bnav-in">${NAV.map(item).join("")}</div></nav>` + (busy ? "" : plus("float"));
 }
 function warningsHTML(today) {
   let h = "";
@@ -1014,7 +1016,7 @@ function render() {
   let html;
   try {
     const body = setup ? felSetupHTML() : p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
-      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "guides" ? viewGuides() : viewEpa(route.code);
+      p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "agenda" ? viewAgenda() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
@@ -1079,8 +1081,9 @@ function countUpDial() {
 }
 // Navigate. Tabs and Back return to where that page was last scrolled.
 function go(next, restore) {
-  // Biopsy lives in Guides.
+  // Biopsy lives in Guides. Agenda is the full app's.
   if (next.page === "biopsy") { next = {...next, page: "guides"}; guidesTab = "b"; }
+  if (next.page === "agenda" && FELLOWS) next = {...next, page: "week"};
   if (route.page !== "epa") scrollMemo[route.page] = window.scrollY || 0;
   const kind = liveKind(route.page, next.page);
   route = next; callError = null;

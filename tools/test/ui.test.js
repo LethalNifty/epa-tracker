@@ -23,13 +23,14 @@ test("an EPA moves to Done only once every observation is approved, not just log
   assert.match(approved, /<span class="ecount done">4\/4<\/span>/);
 });
 
-test("bottom bar: Week, EPAs, Study, Endo, Guides with the log button floating; current tab highlighted", () => {
+test("bottom bar: Week, Agenda, EPAs, the + in the middle, Study, Endo, Guides; current tab highlighted", () => {
   const h = load({today: "2026-09-24"});
   h.click("tab", {page: "study"});
   const nav = h.html().slice(h.html().indexOf('<nav class="bnav"'));
-  assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "epas", "study", "endo", "guides"]);
-  // The log button floats after the bar, not inside it, so the five tabs share the width evenly.
-  assert.ok(nav.indexOf('class="fab float"') > nav.indexOf('</nav>'));
+  assert.deepEqual([...nav.matchAll(/data-page="(\w+)"/g)].map(m => m[1]), ["week", "agenda", "epas", "study", "endo", "guides"]);
+  // The log button sits inside the bar, between EPAs and Study, three tabs either side.
+  assert.ok(nav.indexOf('data-page="epas"') < nav.indexOf('class="fab mid"') && nav.indexOf('class="fab mid"') < nav.indexOf('data-page="study"'));
+  assert.ok(nav.indexOf('class="fab mid"') < nav.indexOf('</nav>'));
   assert.match(nav, /class="nv on" data-action="tab" data-page="study"/);
 });
 

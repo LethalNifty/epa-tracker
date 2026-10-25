@@ -1301,6 +1301,11 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .fab.float { position: fixed; z-index: 21; right: max(16px, calc((100vw - 560px) / 2 + 16px));
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px); view-transition-name: fab; }
 .fab .ic { width: 26px; height: 26px; stroke-width: 2.4; }
+/* The full app's bar: three tabs either side of the log button, raised a little. */
+.bnav-in.seven { align-items: center; }
+.bnav-in.seven .nv { font-size: 10.5px; }
+.bnav-in.seven .nv .ic { width: 23px; height: 23px; }
+.fab.mid { flex: 0 0 auto; width: 54px; height: 54px; margin: -18px 2px 0; }
 
 /* Log sheet */
 .scrim { position: fixed; z-index: 30; inset: 0; background: rgba(5, 4, 14, .62); }
