@@ -112,3 +112,68 @@ test("a backup from before Agenda restores with the usual week; one with events 
   assert.equal(h2.val(`Store.importJSON(${JSON.stringify(backup)}).ok`), true);
   assert.deepEqual(h2.saved().agenda.items.map(x => [x.t, x.d, x.d2, x.s]), [["Florida", "2026-11-13", "2026-11-17", null]]);
 });
+
+// ---- A day's rows -------------------------------------------------------------------------
+const fs = require("node:fs");
+const path = require("node:path");
+const {ROOT} = require("./harness");
+const sample = fs.readFileSync(path.join(ROOT, "tools", "test", "fixtures", "call-sample.ics"), "utf8");
+// Call from the sample: Wed 28 Oct 17:00 to Thu 08:00, the weekend from Fri 30 Oct 17:00 to Mon 08:00, Tue 3 Nov.
+function withCall(today, extra = {}) {
+  const h = load({today, state: state({}, extra)});
+  h.ctx.__src = sample;
+  h.run(`callImport(__src, "call-sample.ics"); toast = null`);
+  return h;
+}
+const rows = (h, iso) => h.val(`agDay(${JSON.stringify(iso)})`);
+const ev = (id, t, d, s, e, x = {}) => ({id, t, d, s, e, ...x});
+
+test("a workday: the block's name for work, your own event, tonight's reading with its pages", () => {
+  const h = withCall("2026-10-27", {agenda: {items: [ev("a1", "Dentist", "2026-10-27", "18:30", "19:15")]}});
+  const r = rows(h, "2026-10-27");
+  assert.deepEqual(r.map(x => [x.k, x.from, x.to]), [["work", "08:00", "18:00"], ["ev", "18:30", "19:15"], ["read", "20:00", null]]);
+  assert.equal(r[0].t, "Consults SBH");
+  assert.deepEqual([r[1].t, r[1].id], ["Dentist", "a1"]);
+  assert.match(r[2].t, /^(Mayo|Yamada) \d+ · pp?\. \d+/);
+});
+
+test("Thursday keeps its half day; a holiday has no work and says its name", () => {
+  const h = withCall("2026-10-27");
+  assert.deepEqual(rows(h, "2026-10-29").filter(x => x.k === "work").map(x => [x.t, x.from, x.to]),
+    [["Consults SBH", "08:00", "12:00"], ["Half day", "12:00", "17:00"]]);
+  const hol = rows(h, "2026-10-12");
+  assert.deepEqual(hol.map(x => x.k), ["hol"]);
+  assert.equal(hol[0].t, "Thanksgiving");
+});
+
+test("call: the night it starts, the morning it ends, and a whole day in the middle of a weekend", () => {
+  const h = withCall("2026-10-27");
+  const wed = rows(h, "2026-10-28");
+  const call = wed.find(x => x.k === "call");
+  assert.deepEqual([call.t, call.from, call.more], ["On call", "17:00", true]);
+  assert.match(call.sub, /^to Thu 08:00 · HSC Attending A · St\. B Attending B$/);
+  const read = wed.find(x => x.k === "read");
+  assert.deepEqual([read.t, read.sub, read.off], ["No reading tonight", "On call", true]);
+  const thu = rows(h, "2026-10-29").find(x => x.k === "call");
+  assert.deepEqual([thu.from, thu.to, thu.cont], [null, "08:00", true]);
+  const sat = rows(h, "2026-10-31");
+  assert.deepEqual(sat.map(x => x.k), ["call"]);
+  assert.equal(sat[0].allDay, true);
+});
+
+test("marks for the strip and the month", () => {
+  const h = withCall("2026-10-27", {agenda: {items: [ev("a1", "Dentist", "2026-10-28", "14:30", "15:30")]}});
+  assert.deepEqual(h.val(`agMarks("2026-10-28")`), {hol: null, call: true, read: false, ev: 1});
+  assert.deepEqual(h.val(`agMarks("2026-10-27")`), {hol: null, call: false, read: true, ev: 0});
+  assert.deepEqual(h.val(`agMarks("2026-10-12")`), {hol: "Thanksgiving", call: false, read: false, ev: 0});
+});
+
+test("the next thing: your next event in the coming week, not one that's over", () => {
+  const items = [ev("a1", "Old", "2026-10-26", "10:00", "11:00"), ev("a2", "Lunch", "2026-10-27", "11:00", "12:00"),
+    ev("a3", "Dentist", "2026-10-28", "14:30", "15:30")];
+  const h = withCall("2026-10-27", {agenda: {items}});
+  h.setNow("2026-10-27T12:00");
+  assert.deepEqual(h.val("agNext(callNow())"), {iso: "2026-10-28", from: "14:30", t: "Dentist", id: "a3"});
+  const far = load({today: "2026-10-27", state: state({}, {agenda: {items: [ev("a9", "Far", "2026-11-09", "09:00", "10:00")]}})});
+  assert.equal(far.val("agNext(callNow())"), null);
+});

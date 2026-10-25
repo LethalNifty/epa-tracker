@@ -356,7 +356,8 @@ function studyPace(day, st) {
 // either side belong to the blocks around it (out); those after it show the
 // next block's first pages. state: "done" (read on a reading night),
 // "missed", "extra" (read on an off night), "today", "future" or "past";
-// pages: the plan for tonight and nights to come, as if each goes to plan.
+// pages: the plan for tonight and nights to come, as if each goes to plan,
+// and run: those pages' run indices [from, to), for naming them.
 function studyNights(b, day, st, stretches) {
   const s = st || studyBlank(), log = s.log || {}, today = fmtDate(day);
   const t = studyTonight(day, s, stretches);
@@ -367,14 +368,14 @@ function studyNights(b, day, st, stretches) {
   for (let d = first; d <= last; d = studyAddDays(d, 1)) {
     const key = fmtDate(d), kind = studyNightKind(d, stretches, s.pauses);
     const moved = key in log && log[key] > studyCursorBefore(log, d);
-    let state, pages = 0;
+    let state, pages = 0, run = null;
     if (key < today) state = moved ? (kind === "read" ? "done" : "extra") : kind === "read" ? "missed" : "past";
-    else if (key === today) { state = "today"; pages = t.kind === "read" ? t.n : 0; }
+    else if (key === today) { state = "today"; pages = t.kind === "read" ? t.n : 0; if (pages) run = [t.from, t.to]; }
     else {
       state = "future";
-      if (kind === "read") { const sh = studyShare(d, sim, stretches, s.pauses); if (sh) { pages = sh.to - sh.from; sim = sh.to; } }
+      if (kind === "read") { const sh = studyShare(d, sim, stretches, s.pauses); if (sh) { pages = sh.to - sh.from; run = [sh.from, sh.to]; sim = sh.to; } }
     }
-    out.push({date: d, key, kind, state, pages, moved, out: d < a || d > z});
+    out.push({date: d, key, kind, state, pages, run, moved, out: d < a || d > z});
   }
   return out;
 }
