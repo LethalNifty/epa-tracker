@@ -1093,6 +1093,7 @@ function go(next, restore) {
 }
 function dispatch(act, d) {
   if (act === "plusto") { plusTo(d.to); route.keepScroll = true; render(); return; }
+  if (act.startsWith("ag")) { if (agDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }

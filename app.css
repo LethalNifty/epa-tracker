@@ -1276,6 +1276,60 @@ a.src:active { background: var(--wall-3); }
 .yrv-es { color: var(--dim); font-size: 13px; }
 .yrv-entry > .chev { width: 16px; height: 16px; color: var(--faint); transform: rotate(-90deg); }
 
+/* Agenda: Days and Month. Colours by kind: work quiet, call white, reading yellow, yours purple. */
+.ag-seg { margin: 12px 0 14px; }
+.ag-strip { display: grid; grid-template-columns: 26px 1fr 26px; align-items: center; gap: 2px; margin-bottom: 22px; }
+.ag-step { width: 26px; height: 40px; color: var(--faint); }
+.ag-step .ic { width: 15px; height: 15px; }
+.ag-step.fwd .ic { transform: scaleX(-1); }
+.wstrip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.ws { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; padding: 8px 0 7px; border-radius: 12px; }
+.ws .mono { font-size: 9px; color: var(--faint); }
+.ws b { font: 500 16px/1 var(--mono); color: var(--light); font-variant-numeric: tabular-nums; }
+.ws.today, .mc.today { box-shadow: inset 0 0 0 1.5px var(--mucosa); }
+.ws.sel, .mc.sel { background: rgba(213, 140, 255, .16); box-shadow: inset 0 0 0 1.5px var(--nbi); }
+.mk { display: flex; gap: 3px; height: 5px; align-items: center; }
+.mk i { display: block; }
+.m-call { width: 10px; height: 2px; border-radius: 1px; background: var(--wli); }
+.m-read { width: 5px; height: 5px; border-radius: 50%; background: var(--flu); }
+.m-ev { width: 5px; height: 5px; border-radius: 50%; background: var(--nbi); }
+.m-hol { width: 5px; height: 5px; border-radius: 1px; background: var(--mucosa); }
+.ag-list { padding: 4px 14px; }
+.ag-row { position: relative; display: grid; grid-template-columns: 46px 14px 1fr; gap: 8px; align-items: start; width: 100%; padding: 11px 0; text-align: left; }
+.ag-row + .ag-row { border-top: 1px solid var(--fold); }
+.ag-row .ct { padding-top: 2px; font-size: 11px; color: var(--dim); letter-spacing: .04em; white-space: nowrap; }
+.ag-row .cdot { width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: var(--k); box-shadow: 0 0 10px -1px var(--k); }
+.ag-row .cm { min-width: 0; display: grid; gap: 2px; }
+.ag-row .cm b { font-size: 15px; font-weight: 520; line-height: 1.3; }
+.ag-row .cm span { font-size: 12.5px; color: var(--dim); line-height: 1.35; }
+.ag-row.k-work { --k: rgba(179, 174, 208, .55); }
+.ag-row.k-work .cdot { box-shadow: none; }
+.ag-row.k-work .cm b { color: var(--dim); font-weight: 480; }
+.ag-row.k-call { --k: var(--wli); }
+.ag-row.k-read { --k: var(--flu); }
+.ag-row.k-ev, .ag-row.k-all { --k: var(--nbi); }
+.ag-row.off .cdot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--k); }
+.ag-row.off .cm b, .ag-row.done .cm b { color: var(--dim); }
+.ag-hol { padding: 10px 0 2px; font-size: 10px; color: var(--mucosa); }
+.ag-now { position: relative; height: 0; margin-left: 46px; border-top: 1.5px solid var(--mucosa); }
+.ag-now .mono { position: absolute; left: -46px; top: -7px; font-size: 9.5px; color: var(--mucosa); }
+.ag-empty { margin: 0; padding: 14px 0; font-size: 13.5px; color: var(--faint); }
+.ag-later-d { padding: 12px 0 2px; font-size: 10px; color: var(--faint); }
+.ag-later-d + .ag-row { border-top: 0; }
+.ag-list > .ag-later-d:not(:first-child) { border-top: 1px solid var(--fold); }
+.ag-month { padding: 12px 12px 14px; margin-bottom: 26px; }
+.cm-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cm-head b { font-size: 16px; font-weight: 540; }
+.cm-days, .cm-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cm-days { margin-bottom: 6px; text-align: center; font-size: 9.5px; color: var(--faint); }
+.mc { aspect-ratio: 1 / 1.05; min-width: 0; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.mc > span { font: 500 13px/1 var(--mono); color: var(--light); font-variant-numeric: tabular-nums; }
+.mc.out > span, .mc.past > span { color: var(--faint); }
+.mc.out { opacity: .55; }
+.mc.past .mk { opacity: .55; }
+.cm-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; padding-left: 2px; font-size: 9.5px; color: var(--faint); }
+.cm-leg span { display: inline-flex; align-items: center; gap: 6px; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }
