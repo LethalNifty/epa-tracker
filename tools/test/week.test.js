@@ -53,7 +53,7 @@ test("recap: none in Block 1 week 1; week 1 looks back at the previous block's w
 test("pace estimate uses the last 8 weeks", () => {
   const h = load({today: "2026-09-24", state: state({c8a: many(16, "2026-09-01")})});
   assert.deepEqual(h.val(`(() => { const r = paceFinish(Store.state.obs, ${dateExpr("2026-09-24")});
-    return [fmtDate(r.date), r.onTrack]; })()`), ["2027-10-25", false]);
+    return [fmtDate(r.date), r.onTrack]; })()`), ["2027-10-04", false]);
 });
 
 test("pace estimate: a spare form past an EPA's requirement doesn't count", () => {

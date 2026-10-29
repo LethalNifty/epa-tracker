@@ -215,11 +215,11 @@ test("EPAs tab: Transition to Discipline is marked as behind you", () => {
 test("the dial has one tick per required observation, lit by status and stage", () => {
   const h = load({today: "2026-09-24", state: state({f1b: [...many(3, "2026-09-10"), obs("2026-09-11", {status: "pending"})]})});
   const html = h.html();
-  assert.equal((html.match(/<line class="t /g) || []).length, 139);
+  assert.equal((html.match(/<line class="t /g) || []).length, 133);
   assert.equal((html.match(/class="t lit st-f"/g) || []).length, 3);
   assert.equal((html.match(/class="t pend st-f"/g) || []).length, 1);
   assert.equal((html.match(/class="t off next st-f"/g) || []).length, 27);   // the rest of Foundations, tinted as next
-  assert.match(html, /<div class="dial-num" data-count="4">4<\/div><div class="dial-lbl">of 139 logged<\/div>/);
+  assert.match(html, /<div class="dial-num" data-count="4">4<\/div><div class="dial-lbl">of 133 logged<\/div>/);
 });
 
 test("Week's arc: logged ticks run violet to apricot, and a sun marks how far the active stage has got", () => {

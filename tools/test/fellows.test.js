@@ -185,12 +185,12 @@ test("finish line on Home: what is left, a month's worth, the pace, against an e
   st.goal = {year: "pgy4", start: "2026-07-01", by: "2027-12-31"};
   const html = fellow({state: st}).html();
   assert.match(html, /<h2>Finish line<\/h2><span class="mono">Goal Dec 31, 2027<\/span>/);
-  // 30 of 139 logged: 10 dated in the last 8 weeks, and the 20 caught up at setup spread from July 1
-  // to today, 56 of those 99 days in the window (about 11 more). 109 left at about 2.7 a week: July 2027.
+  // 30 of 133 logged: 10 dated in the last 8 weeks, and the 20 caught up at setup spread from July 1
+  // to today, 56 of those 99 days in the window (about 11 more). 103 left at about 2.7 a week: July 2027.
   assert.match(html, /<div class="fin-val ok">Jul 2027<\/div><div class="fin-note">About 21 in the last 8 weeks<\/div>/);
-  assert.match(html, /<div class="fin-val">8 a month<\/div><div class="fin-note">109 left · 15 months<\/div>/);
+  assert.match(html, /<div class="fin-val">7 a month<\/div><div class="fin-note">103 left · 15 months<\/div>/);
   assert.match(html, /Ahead of an even pace\./);
-  assert.match(html, /<i class="plan" style="width:18\.1/);
+  assert.match(html, /<i class="plan" style="width:18\.9/);
   // Set up before there was a finish date: Home asks for one.
   assert.match(fellow({state: setUp()}).html(), /Pick a finish date/);
 });

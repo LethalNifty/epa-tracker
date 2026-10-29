@@ -211,10 +211,10 @@ test("year so far: procedures by month, the cecum, the best run and the busiest 
   assert.equal(y.tx, 1);
 });
 
-test("year so far: D2 answered only, EPAs against the 139, and the reading", () => {
+test("year so far: D2 answered only, EPAs against the 133, and the reading", () => {
   const {h, y} = yearOf();
   assert.deepEqual(y.d2, {yes: 1, of: 2, left: 2});
-  assert.equal(y.epas.req, 139);
+  assert.equal(y.epas.req, 133);
   assert.equal(y.epas.logged, h.val("tally(PARTS).logged"));
   assert.equal(y.epas.stage, h.val("STAGE_NAMES[currentStage()]"));
   assert.deepEqual([y.study.pages, y.study.nights, y.study.answered, y.study.right], [12, 3, 2, 1]);

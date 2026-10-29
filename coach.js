@@ -24,9 +24,9 @@ const PLAN = {
   7:{c1:2, c3:2, c7:1, f3a:2, f4:2, c8a:2},
   8:{f3a:1, f4:2, c6:6, c7:3, c8a:8, c8b:1},
   9:{f3b:1, c8b:1, c7:1},
-  10:{c3:2, c6:2, c8a:5, c9a:2, c9b:3, c7:2},
+  10:{c3:2, c6:2, c8a:5, c9a:2, c7:2},
   11:{c2:6, c3:1, c4:1, c6:2, c8a:4},
-  12:{c2:3, c3:1, c6:2, c8a:6, c8b:1, c9a:2, c9b:3},
+  12:{c2:3, c3:1, c6:2, c8a:6, c8b:1, c9a:2},
   13:{p1:5}
 };
 // What each rotation is good for. "f" is what to chase while Foundations is
@@ -63,7 +63,7 @@ const PART_SHORT = {d1:"GI emergencies", d2a:"Consent", d2b:"Scope preparation",
   f1b:"Assessment and plan", f2:"Nutrition", f3a:"EGD", f3b:"EGD note", f4:"Flex sig", c1:"Complex patients",
   c2:"Chronic care", c3:"Exacerbations", c4:"Referrals", c5:"Complex nutrition", c6:"Colonoscopy",
   c7:"Endoscopic findings", c8a:"Therapeutics", c8b:"Therapeutic note", c9a:"Inpatient lead",
-  c9b:"Interprofessional care", p1:"Endoscopy list"};
+  p1:"Endoscopy list"};
 // An EPA's short name: its one part's, or its own when it has two.
 const EPA_SHORT = {D2: "Pre-procedure assessment", F1: "Uncomplicated patients", F3: "EGD", C8: "Therapeutic endoscopy", C9: "Inpatient service"};
 // Every part in EPA order: {id, code, label, stage, required, items}.
@@ -385,7 +385,7 @@ const ASK = [
   {id: "fu", n: "Follow-ups", parts: ["c2", "c3", "c4", "c5", "f2"], not: /^inpatient$/i, pre: "outpatient"},
   {id: "new", n: "New patients", parts: ["f1b", "f1a", "c1", "c4", "c5", "f2"], not: /^inpatient$/i, pre: "outpatient"},
   {id: "scope", n: "Scopes", parts: ["f3a", "f3b", "f4", "c6", "c7", "c8a", "c8b", "p1", "d2a", "d2b"], not: null, pre: null},
-  {id: "ward", n: "Ward and call", parts: ["c9a", "c9b", "c1", "c3", "d1", "c8a", "c8b", "f1b", "f1a", "c4", "c5", "f2"], not: /^outpatient$/i, pre: "inpatient"},
+  {id: "ward", n: "Ward and call", parts: ["c9a", "c1", "c3", "d1", "c8a", "c8b", "f1b", "f1a", "c4", "c5", "f2"], not: /^outpatient$/i, pre: "inpatient"},
 ];
 // The parts still short of their count for a setting, each with its open
 // checklist groups (kinds of case first).

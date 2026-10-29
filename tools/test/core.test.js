@@ -3,11 +3,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {load} = require("./harness");
 
-test("EPA data: 16 EPAs, 21 parts, 139 required", () => {
+test("EPA data: 16 EPAs, 20 parts, 133 required (Entrada, October 2026)", () => {
   const h = load({today: "2026-09-24"});
   assert.equal(h.val("EPA_DATA.length"), 16);
-  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).length"), 21);
-  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).reduce((a, p) => a + p.required, 0)"), 139);
+  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).length"), 20);
+  assert.equal(h.val("EPA_DATA.flatMap(e => e.parts).reduce((a, p) => a + p.required, 0)"), 133);
 });
 
 test("PLAN column sums equal each part's required count", () => {

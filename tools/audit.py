@@ -4,16 +4,18 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent / "index.html"
 
-# Expected table derived from GI EPA Tracker.xlsx (Sheet1 B2:H205).
+# Expected table derived from GI EPA Tracker.xlsx (Sheet1 B2:H205), with the
+# Core EPAs matched to Entrada's requirements in October 2026 (C1 and C2 lines
+# added, C2 and C6 extra lines gone, assessors on C8, no C9 Part B).
 # (partId, required, n_lines, n_headers, n_target2_lines)
 EXPECTED = [
     ("d1", 4, 7, 1, 0),  ("d2a", 2, 2, 0, 0), ("d2b", 4, 6, 0, 0),
     ("f1a", 2, 2, 0, 0), ("f1b", 12, 7, 0, 0), ("f2", 2, 2, 0, 0),
     ("f3a", 6, 2, 0, 0), ("f3b", 3, 2, 0, 0), ("f4", 6, 2, 0, 0),
-    ("c1", 5, 16, 1, 0), ("c2", 14, 11, 1, 6), ("c3", 10, 18, 0, 0),
-    ("c4", 3, 5, 0, 0),  ("c5", 2, 2, 0, 0),  ("c6", 12, 10, 0, 0),
-    ("c7", 8, 14, 1, 0), ("c8a", 25, 34, 0, 0), ("c8b", 4, 0, 0, 0),
-    ("c9a", 4, 2, 0, 0), ("c9b", 6, 8, 0, 0),  ("p1", 5, 3, 0, 0),
+    ("c1", 5, 18, 1, 0), ("c2", 14, 12, 1, 9), ("c3", 10, 18, 0, 0),
+    ("c4", 3, 5, 0, 0),  ("c5", 2, 2, 0, 0),  ("c6", 12, 8, 0, 0),
+    ("c7", 8, 14, 1, 0), ("c8a", 25, 37, 0, 0), ("c8b", 4, 2, 0, 0),
+    ("c9a", 4, 2, 0, 0),  ("p1", 5, 3, 0, 0),
 ]
 EXPECTED_CODES = ["D1","D2","F1","F2","F3","F4","C1","C2","C3","C4","C5","C6","C7","C8","C9","P1"]
 STAGE = {"D":"ttd","F":"f","C":"core","P":"ttp"}

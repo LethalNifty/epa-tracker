@@ -63,7 +63,7 @@ test("All EPAs shows every part grouped by stage", () => {
   h.click("sheet");
   h.click("pickall");
   assert.match(h.html(), /<div class="pickgrp mono st-core"><i><\/i>Core<\/div>/);
-  assert.equal((h.html().match(/data-action="pickpart"/g) || []).length, 21);
+  assert.equal((h.html().match(/data-action="pickpart"/g) || []).length, 20);
 });
 
 test("EPA detail: log button opens the sheet; no emoji or check glyphs left", () => {

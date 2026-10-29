@@ -39,9 +39,9 @@ test("an observation counts on its date, else the day it was logged", () => {
   assert.equal(h.val(`attrDate({})`), null);
 });
 
-test("parts index: 21 parts with labels and short names", () => {
-  assert.equal(h.val(`PARTS.length`), 21);
+test("parts index: 20 parts with labels and short names", () => {
+  assert.equal(h.val(`PARTS.length`), 20);
   assert.equal(h.val(`PART_BY_ID.c8a.label`), "C8-A");
   assert.equal(h.val(`PART_BY_ID.c2.label`), "C2");
-  assert.equal(h.val(`Object.keys(PART_SHORT).length`), 21);
+  assert.equal(h.val(`Object.keys(PART_SHORT).length`), 20);
 });

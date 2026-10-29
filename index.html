@@ -700,6 +700,16 @@ const EPA_DATA = [
       "id": "c1-16",
       "label": "Significant family history of malignancy",
       "target": 1
+     },
+     {
+      "id": "c1-17",
+      "label": "Social barriers to health care",
+      "target": 1
+     },
+     {
+      "id": "c1-18",
+      "label": "Cultural, social and/or religious barriers to communication and/or care",
+      "target": 1
      }
     ]
    }
@@ -771,16 +781,6 @@ const EPA_DATA = [
       "target": 1
      },
      {
-      "id": "c2-4",
-      "label": "1 direct observation",
-      "target": 1
-     },
-     {
-      "id": "c2-5",
-      "label": "2 direct observation",
-      "target": 1
-     },
-     {
       "h": "2 of each following presentations:"
      },
      {
@@ -811,6 +811,21 @@ const EPA_DATA = [
      {
       "id": "c2-11",
       "label": "Functional abdominal pain/irritable bowel syndrome (IBS-D, IBS-C)",
+      "target": 2
+     },
+     {
+      "id": "c2-12",
+      "label": "Hereditary disorder such as familial adenomatous polyposis or Lynch syndrome",
+      "target": 2
+     },
+     {
+      "id": "c2-13",
+      "label": "Post-bariatric surgery",
+      "target": 2
+     },
+     {
+      "id": "c2-14",
+      "label": "Motility disorders",
       "target": 2
      }
     ]
@@ -1027,12 +1042,12 @@ const EPA_DATA = [
      },
      {
       "id": "c4-4",
-      "label": "1 advanced GI care referral",
+      "label": "1 Advanced endoscopic care referral",
       "target": 1
      },
      {
       "id": "c4-5",
-      "label": "1 referral from other service",
+      "label": "1 Other service referral",
       "target": 1
      }
     ]
@@ -1184,16 +1199,6 @@ const EPA_DATA = [
      {
       "id": "c6-8",
       "label": "4 difficult colonoscopy",
-      "target": 1
-     },
-     {
-      "id": "c6-9",
-      "label": "1 DOPS",
-      "target": 1
-     },
-     {
-      "id": "c6-10",
-      "label": "2 DOPS",
       "target": 1
      }
     ]
@@ -1371,6 +1376,21 @@ const EPA_DATA = [
     "required": 25,
     "items": [
      {
+      "id": "c8a-35",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c8a-36",
+      "label": "2 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c8a-37",
+      "label": "3 Assessor",
+      "target": 1
+     },
+     {
       "id": "c8a-1",
       "label": "1 variceal hemostasis",
       "target": 1
@@ -1546,7 +1566,18 @@ const EPA_DATA = [
     "id": "c8b",
     "name": "Part B: Procedure note",
     "required": 4,
-    "items": []
+    "items": [
+     {
+      "id": "c8b-1",
+      "label": "1 Assessor",
+      "target": 1
+     },
+     {
+      "id": "c8b-2",
+      "label": "2 Assessor",
+      "target": 1
+     }
+    ]
    }
   ],
   "ref": {
@@ -1626,53 +1657,6 @@ const EPA_DATA = [
       "target": 1
      }
     ]
-   },
-   {
-    "id": "c9b",
-    "name": "Part B: Interprofessional care",
-    "required": 6,
-    "items": [
-     {
-      "id": "c9b-1",
-      "label": "1 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-2",
-      "label": "2 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-3",
-      "label": "3 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-4",
-      "label": "4 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-5",
-      "label": "5 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-6",
-      "label": "6 observer",
-      "target": 1
-     },
-     {
-      "id": "c9b-7",
-      "label": "1 other health care professional",
-      "target": 1
-     },
-     {
-      "id": "c9b-8",
-      "label": "2 other health care professional",
-      "target": 1
-     }
-    ]
    }
   ],
   "ref": {
@@ -1688,14 +1672,6 @@ const EPA_DATA = [
      "method": "Chart or case review by supervisor (Form 1)",
      "collects": [],
      "rule": "Collect 4 observations of achievement — at least 2 different assessors."
-    },
-    {
-     "part": "Part B: Interprofessional care",
-     "method": "Multiple observers provide feedback individually, which is then collated to one report (Form 3)",
-     "collects": [
-      "Role of observer: supervisor; nurse; other health care professional; junior resident; student"
-     ],
-     "rule": "Collect feedback from at least 6 observers — at least 2 other health care professionals."
     }
    ],
    "milestones": [
@@ -1711,22 +1687,6 @@ const EPA_DATA = [
       "HA 1.2 Work with patients and their families to increase opportunities to adopt healthy behaviours",
       "COM 5.1 Document clinical encounters in an accurate, complete, timely and accessible manner",
       "L 2.1 Allocate health care resources for optimal patient care"
-     ]
-    },
-    {
-     "part": "Part B: Interprofessional care",
-     "list": [
-      "ME 1.1 Demonstrate responsibility and accountability for decisions regarding patient care, acting in the role of junior attending",
-      "COL 1.2 Make effective use of the scope and expertise of other health care professionals",
-      "COL 2.1 Delegate tasks and responsibilities in an appropriate and respectful manner",
-      "COL 1.1 Respond appropriately to input from other health care professionals",
-      "COL 1.3 Communicate effectively with other health care professionals",
-      "COL 2.1 Show respect toward collaborators",
-      "HA 1.1 Facilitate timely patient access to services and resources",
-      "P 1.1 Respond punctually to requests from patients or other health care providers",
-      "COM 1.5 Manage disagreements and emotionally charged conversations with patients and/or families",
-      "P 1.1 Demonstrate professional behaviours, such as punctuality, integrity and compassion",
-      "L 4.2 Run the service efficiently, safely, and effectively"
      ]
     }
    ]

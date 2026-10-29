@@ -6,7 +6,7 @@ const {load, obs, state, many, dateExpr} = require("./harness");
 const plan = (h, iso) => h.val(`coachPlan(Store.state.obs, ${dateExpr(iso)})`);
 const REQ = {
   f: {f1a: 2, f1b: 12, f2: 2, f3a: 6, f3b: 3, f4: 6},
-  core: {c1: 5, c2: 14, c3: 10, c4: 3, c5: 2, c6: 12, c7: 8, c8a: 25, c8b: 4, c9a: 4, c9b: 6},
+  core: {c1: 5, c2: 14, c3: 10, c4: 3, c5: 2, c6: 12, c7: 8, c8a: 25, c8b: 4, c9a: 4},
 };
 // Every observation of the given stages logged (pending) on 2026-09-01.
 const full = (...stages) => Object.fromEntries(stages.flatMap(st =>
