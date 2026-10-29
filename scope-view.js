@@ -510,8 +510,8 @@ function scopePickListHTML() {
       (o.n ? `<span class="mono">${o.n}</span>` : "") + `</button>`;
   }
   if (p.kind === "staff" && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddpicked">${ic("plus")}<span>Add “${esc(q)}” as new staff</span></button>`;
-  // Whatever was typed can go in as Other, with those words (full app).
-  if (!FELLOWS && SCOPE_OTHER_FIELD[p.kind] && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddother">${ic("plus")}<span>Add “${esc(q)}” as Other</span></button>`;
+  // Whatever was typed can go in as Other, with those words.
+  if (SCOPE_OTHER_FIELD[p.kind] && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddother">${ic("plus")}<span>Add “${esc(q)}” as Other</span></button>`;
   if (!h) h = `<div class="empty">No match. Try another word.</div>`;
   return h;
 }

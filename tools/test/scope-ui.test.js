@@ -546,12 +546,12 @@ test("Other: type what it was in Why, Found or Did; it shows on the card, saves,
   assert.deepEqual([h.val("scopeSheet.card.found"), h.val("scopeSheet.card.foundOther")], [[], ""]);
 });
 
-test("the fellows' picker has no Other row", () => {
+test("the fellows' picker offers Other too", () => {
   const h = load({today: "2026-09-28", edition: "fellows", state: withScopes([], {}, {setup: {d: "2026-09-01"}})});
   h.run(`go({page: "endo"})`);
   h.run(`scopeField({dataset: {scopefield: "text"}, value: "EGD with Brook"})`);
   h.click("scoperead");
   h.click("scopechip", {key: h.val("scopeCap.cards[0].key"), kind: "why"});
   h.run(`scopeField({dataset: {scopefield: "pick"}, value: "Pre-op check"})`);
-  assert.doesNotMatch(h.val("scopePickListHTML()"), /as Other/);
+  assert.match(h.val("scopePickListHTML()"), /Add “Pre-op check” as Other/);
 });
