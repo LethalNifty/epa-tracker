@@ -54,6 +54,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 
 **Endo:**
 - a scope log: say the case out loud and the app reads the procedure, staff surname, findings, interventions and how far you got; confirm and save
+- anything the lists don't have goes in as Other with your own words (search Why, Found or Did, then Add as Other); it shows on the card, in the PDF and the spreadsheet
 - Progress charts; a tap on a colon-depth dot shows that case: the day, how far you got, who with, and what else was done
 - a PDF procedure log (totals, therapeutic techniques including EMR and ESD, cecal intubation, milestones, every case in full) for the program or a job application, and a spreadsheet export, both built in the app
 

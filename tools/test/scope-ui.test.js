@@ -517,3 +517,41 @@ test("the fellows' Settings has the age switch too", () => {
   h.click("setopen");
   assert.match(h.html(), /Patient age range/);
 });
+
+test("Other: type what it was in Why, Found or Did; it shows on the card, saves, edits and comes off", () => {
+  const h = endo("2026-09-28", withScopes());
+  h.say("EGD with Brook");
+  const key = h.card().key;
+  h.click("scopechip", {key, kind: "why"});
+  h.run(`scopeField({dataset: {scopefield: "pick"}, value: "Pre-op check"})`);
+  assert.match(h.val("scopePickListHTML()"), /<button class="pkrow addnew" data-action="scopeaddother">[^]*?<span>Add “Pre-op check” as Other<\/span><\/button>/);
+  h.click("scopeaddother");
+  assert.deepEqual([h.card().why, h.card().whyOther], [["other"], "Pre-op check"]);
+  assert.match(h.html(), /<span class="chip on">Other: Pre-op check<button class="chip-x"/);
+  h.click("scopechip", {key, kind: "found"});
+  h.run(`scopeField({dataset: {scopefield: "pick"}, value: "Cameron lesion"})`);
+  h.click("scopeaddother");
+  h.click("scopechip", {key, kind: "procs"});
+  h.run(`scopeField({dataset: {scopefield: "pick"}, value: "Capsule placement"})`);
+  h.click("scopeaddother");
+  assert.deepEqual([h.card().procs, h.card().otherLabel], [["egd.dx", "other.x"], "Capsule placement"]);
+  assert.match(h.html(), /<span class="chip on">Other: Capsule placement<button/);
+  h.click("scopesave");
+  const c = h.saved().scopes.cases[0];
+  assert.deepEqual([c.why, c.whyOther, c.found, c.foundOther, c.otherLabel], [["other"], "Pre-op check", ["other"], "Cameron lesion", "Capsule placement"]);
+  // Opened again, the words come back; taking the chip off takes them away.
+  h.click("scopeedit", {id: c.id});
+  assert.equal(h.val("scopeSheet.card.foundOther"), "Cameron lesion");
+  h.click("scopedrop", {key: h.val("scopeSheet.card.key"), kind: "found", code: "other"});
+  assert.deepEqual([h.val("scopeSheet.card.found"), h.val("scopeSheet.card.foundOther")], [[], ""]);
+});
+
+test("the fellows' picker has no Other row", () => {
+  const h = load({today: "2026-09-28", edition: "fellows", state: withScopes([], {}, {setup: {d: "2026-09-01"}})});
+  h.run(`go({page: "endo"})`);
+  h.run(`scopeField({dataset: {scopefield: "text"}, value: "EGD with Brook"})`);
+  h.click("scoperead");
+  h.click("scopechip", {key: h.val("scopeCap.cards[0].key"), kind: "why"});
+  h.run(`scopeField({dataset: {scopefield: "pick"}, value: "Pre-op check"})`);
+  assert.doesNotMatch(h.val("scopePickListHTML()"), /as Other/);
+});

@@ -99,7 +99,8 @@ const SCOPE_WHY = [
   ["ugib", "Upper GI bleed", "upper gi bleed(?:ing)?|ugib|upper bleed"],
   ["lgib", "Lower GI bleed", "lower gi bleed(?:ing)?|lgib|lower bleed"],
   ["ogib", "Obscure or small bowel bleed", "obscure (?:gi )?bleed(?:ing)?|small bowel bleed(?:ing)?|obscure"],
-  ["ida", "Iron deficiency anemia", "iron deficiency(?: anemia| anaemia)?|ida|low iron|anemia|anaemia"],
+  ["ida", "Iron deficiency anemia", "iron deficiency(?: anemia| anaemia)?|ida|low iron"],
+  ["anemia", "Anemia", "anemia|anaemia|low (?:hemoglobin|haemoglobin|hgb|hb)"],
   ["dysphagia", "Dysphagia", "dysphagia|trouble swallowing|difficulty swallowing|food sticking"],
   ["odynophagia", "Odynophagia", "odynophagia|painful swallowing"],
   ["reflux", "Reflux", "reflux|gerd|heartburn"],
@@ -137,7 +138,7 @@ const SCOPE_FOUND = [
   ["pud", "Peptic ulcer", "peptic ulcers?|pud|ulcers?"],
   ["angio", "Angiodysplasia", "angiodysplasias?|angioectasias?|avms?|ectasias?"],
   ["gave", "GAVE", "gave|watermelon stomach"],
-  ["dieulafoy", "Dieulafoy", "dieulafoy"],
+  ["dieulafoy", "Dieulafoy", "dieulafoy'?s?|dulafoy|delafoy|dieulafoi"],
   ["mass", "Mass or cancer", "mass|cancer|tumou?r|malignancy|carcinoma|adenocarcinoma|neoplasm"],
   ["polyp", "Polyp", "polyps?|adenomas?"],
   ["divertic", "Diverticulosis", "diverticulosis|diverticula|diverticulum|tics"],
@@ -163,6 +164,10 @@ const scopeAgeBand = n => n < 18 || n > 120 ? null : n <= 49 ? "18-49" : n <= 75
 const SCOPE_DECADES = {twenties: 20, thirties: 30, forties: 40, fifties: 50, sixties: 60, seventies: 70, eighties: 80, nineties: 90};
 const scopeWhyLabel = c => (SCOPE_WHY.find(x => x.code === c) || {label: c}).label;
 const scopeFoundLabel = c => (SCOPE_FOUND.find(x => x.code === c) || {label: c}).label;
+// Other, with the words typed for it on this case: "Other: Cameron lesion".
+const SCOPE_OTHER_MAX = 60;
+const scopeWhyText = (c, code) => code === "other" && c.whyOther ? "Other: " + c.whyOther : scopeWhyLabel(code);
+const scopeFoundText = (c, code) => code === "other" && c.foundOther ? "Other: " + c.foundOther : scopeFoundLabel(code);
 
 // Manitoba statutory holidays through Year 1 (a call shift on one is a weekend shift).
 const SCOPE_STAT_DAYS = ["2026-07-01", "2026-08-03", "2026-09-07", "2026-09-30", "2026-10-12", "2026-11-11",
@@ -625,9 +630,9 @@ function scopeReadCase(text, ctx) {
       }
     }
   };
-  vocab(SCOPE_WHY.filter(x => !["ida", "crc", "surv", "fb"].includes(x.code)), draft.why);
+  vocab(SCOPE_WHY.filter(x => !["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why);
   vocab(SCOPE_FOUND, draft.found);
-  vocab(SCOPE_WHY.filter(x => ["ida", "crc", "surv", "fb"].includes(x.code)), draft.why);
+  vocab(SCOPE_WHY.filter(x => ["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why);
   if (draft.procs.includes("egd.fb")) add(draft.why, "fb");
   // "Dilated with bougies": the named type is the dilation.
   if (draft.procs.some(c => c.startsWith("egd.dil."))) draft.procs = draft.procs.filter(c => c !== "egd.dil");
@@ -1095,8 +1100,8 @@ function scopeCSV(cases, staff) {
   for (const c of cases.slice().sort(scopeByDate)) {
     rows.push([c.d, scopeFams(c).map(scopeFamLabel).join(" + "), scopeTresCodes(c).join("; "),
       scopeHasBase(c) && c.reach ? scopeReachLabel(c.reach) : "", ...(d2s ? [scopeD2Ok(c.d2) ? SCOPE_D2.find(x => x[0] === c.d2)[1] : ""] : []),
-      (c.why || []).map(scopeWhyLabel).join("; "),
-      (c.found || []).map(scopeFoundLabel).join("; "), name(c.staff), site(c.site), loc(c.loc),
+      (c.why || []).map(x => scopeWhyText(c, x)).join("; "),
+      (c.found || []).map(x => scopeFoundText(c, x)).join("; "), name(c.staff), site(c.site), loc(c.loc),
       c.urg === "urgent" ? "Urgent" : c.urg === "elective" ? "Elective" : "", ...(ages ? [scopeAgeLabel(c.age)] : []), c.note || ""]);
   }
   return "﻿" + rows.map(r => r.map(q).join(",")).join("\r\n") + "\r\n";
@@ -1104,6 +1109,12 @@ function scopeCSV(cases, staff) {
 
 // ---- Import ------------------------------------------------------------------------------------
 // Merges a {kind: "gi-scopes"} file: staff by name, cases by id (again is harmless).
+// The words typed for Other (why, found, a procedure), kept when present.
+function scopeOtherWords(c) {
+  const out = {};
+  for (const k of ["whyOther", "foundOther", "otherLabel"]) if (typeof c[k] === "string" && c[k].trim()) out[k] = c[k].trim().slice(0, SCOPE_OTHER_MAX);
+  return out;
+}
 function scopeImport(scopes, file) {
   if (!file || file.kind !== "gi-scopes" || !Array.isArray(file.cases))
     return {ok: false, error: "That isn't a GI Hub cases file."};
@@ -1129,7 +1140,8 @@ function scopeImport(scopes, file) {
     }
     next.cases.push({id: c.id, d: c.d, staff: c.staff ? idMap[c.staff] || null : null, site: c.site || null, loc: c.loc || null,
       urg: c.urg || null, procs: (c.procs || []).filter(p => SCOPE_PROC[p]), reach: c.reach || null, ...(scopeD2Ok(c.d2) ? {d2: c.d2} : {}), why: (c.why || []).slice(),
-      found: (c.found || []).slice(), ...(isAge(c.age) ? {age: c.age} : {}), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z"});
+      found: (c.found || []).slice(), ...(isAge(c.age) ? {age: c.age} : {}), note: c.note || "", src: "import", ts: c.ts || c.d + "T12:00:00.000Z",
+      ...scopeOtherWords(c)});
     fresh.push(next.cases[next.cases.length - 1]); have.set(c.id, next.cases[next.cases.length - 1]); added++;
   }
   scopeFillSites(fresh);

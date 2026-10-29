@@ -207,7 +207,7 @@ function scopeReportProc(c) {
   return s.replace("polypectomy, large polypectomy", "polypectomy, 10 mm or larger");
 }
 function scopeReportWhy(c) {
-  const why = (c.why || []).map(scopeWhyLabel), found = (c.found || []).map(scopeFoundLabel);
+  const why = (c.why || []).map(x => scopeWhyText(c, x)), found = (c.found || []).map(x => scopeFoundText(c, x));
   return [why.join(", "), found.join(", ")].filter(Boolean).join("; ");
 }
 // opts: {cases, staff, from, to, label, name, today}

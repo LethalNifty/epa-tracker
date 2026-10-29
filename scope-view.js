@@ -81,7 +81,7 @@ function scopeCardFromCase(c, copy) {
   return {key: scopeNewKey(), d: copy ? fmtDate(getToday()) : c.d, staff: c.staff, staffHeard: null, staffAlt: [], staffSaid: null,
     site: c.site, loc: c.loc, urg: c.urg, procs: (c.procs || []).slice(), reach: c.reach || null, d2: copy ? null : c.d2 || null, why: (c.why || []).slice(),
     found: (c.found || []).slice(), age: copy ? null : c.age || null, leftover: [], note: copy ? "" : c.note || "", n: 1, epa: {}, carried: {}, err: null,
-    editId: copy ? null : c.id, otherLabel: c.otherLabel || ""};
+    editId: copy ? null : c.id, otherLabel: c.otherLabel || "", whyOther: c.whyOther || "", foundOther: c.foundOther || ""};
 }
 // EPA parts this card could count toward: active stage, still needing observations.
 // What each saved case has already added as an EPA observation, read once per draw.
@@ -176,9 +176,9 @@ function scopeCardHTML(card, i, o = {}) {
     `<div class="sc-where">${scopeSegHTML(card, "site", SCOPE_SITES)}${scopeSegHTML(card, "loc", SCOPE_LOCS)}</div>` +
     (scopeAgeOn() ? `<div class="srowk sc-age"><span class="mono">Age</span>${scopeSegHTML(card, "age", SCOPE_AGES)}</div>` : "") +
     scopeD2HTML(card) + scopeReachHTML(card) +
-    scopeListRow(card, "procs", "Did", card.procs, scopeProcChipLabel) +
-    scopeListRow(card, "why", "Why", card.why, scopeWhyLabel) +
-    scopeListRow(card, "found", "Found", card.found, scopeFoundLabel) +
+    scopeListRow(card, "procs", "Did", card.procs, x => x === "other.x" && card.otherLabel ? "Other: " + card.otherLabel : scopeProcChipLabel(x)) +
+    scopeListRow(card, "why", "Why", card.why, x => scopeWhyText(card, x)) +
+    scopeListRow(card, "found", "Found", card.found, x => scopeFoundText(card, x)) +
     epa + left +
     `<label class="snote"><span class="mono">Note</span><input type="text" value="${esc(card.note || "")}" placeholder="No patient details" data-scopenote="${card.key}" autocomplete="off"></label>` +
     errs + `</article>`;
@@ -212,7 +212,7 @@ function scopeCardsHTML() {
 // ---- Log -------------------------------------------------------------------------------------------
 function scopeRowHTML(c) {
   const sub = [scopeWho(c.staff), scopeSiteShort(c.site), scopeLocShort(c.loc)].filter(Boolean).join(" · ");
-  const found = (c.found || []).filter(x => x !== "normal" || (c.found || []).length === 1).slice(0, 2).map(scopeFoundLabel).join(", ");
+  const found = (c.found || []).filter(x => x !== "normal" || (c.found || []).length === 1).slice(0, 2).map(x => scopeFoundText(c, x)).join(", ");
   return `<div class="srow${c.urg === "urgent" ? " urgent" : ""}${scopeLit === c.id ? " lit" : ""}"><button class="srow-b" data-action="scopeedit" data-id="${esc(c.id)}">` +
     `<span class="srow-g">${scopeGlyph(c)}</span><span class="srow-m"><b>${esc(scopeSummary(c))}</b>` +
     `<span class="srow-s">${esc(sub || "No staff recorded")}${found ? ` · <span class="found">${esc(found)}</span>` : ""}</span></span>` +
@@ -237,8 +237,8 @@ function scopeHintHTML() {
 function scopeRecentHTML() {
   const t = fmtDate(getToday()), q = scopeSearch.trim().toLowerCase();
   let list = scopeData().cases.filter(c => c.d !== t).slice().sort((a, b) => -scopeByDate(a, b));
-  if (q) list = list.filter(c => (scopeSummary(c) + " " + scopeWho(c.staff) + " " + (c.found || []).map(scopeFoundLabel).join(" ") + " " +
-    (c.why || []).map(scopeWhyLabel).join(" ") + " " + scopeSiteShort(c.site) + " " + scopeDayLabel(c.d) + " " + (c.note || "")).toLowerCase().includes(q));
+  if (q) list = list.filter(c => (scopeSummary(c) + " " + scopeWho(c.staff) + " " + (c.found || []).map(x => scopeFoundText(c, x)).join(" ") + " " +
+    (c.why || []).map(x => scopeWhyText(c, x)).join(" ") + " " + scopeSiteShort(c.site) + " " + scopeDayLabel(c.d) + " " + (c.note || "")).toLowerCase().includes(q));
   const total = list.length, shown = scopeAllRecent || q ? list : list.slice(0, 24);
   if (!total) return `<div class="card empty">${q ? "Nothing matches. Try a staff name, procedure or finding." : "Earlier cases show up here."}</div>`;
   let h = "", lastD = "";
@@ -303,7 +303,7 @@ function scopeDotNoteHTML(c, p, dot, sc, last) {
   const d = scopeIsoDate(c.d), who = scopeWho(c.staff);
   const tx = (c.procs || []).filter(x => scopeFam(x) === "colo" && SCOPE_PROC[x] && !SCOPE_PROC[x].base)
     .map(x => /^[A-Z]{2,}$/.test(SCOPE_PROC[x].label) ? SCOPE_PROC[x].label : SCOPE_PROC[x].label.toLowerCase()).join(", ");
-  const sub = [tx && tx[0].toUpperCase() + tx.slice(1), ...(c.found || []).filter(x => x !== "normal").slice(0, 2).map(scopeFoundLabel),
+  const sub = [tx && tx[0].toUpperCase() + tx.slice(1), ...(c.found || []).filter(x => x !== "normal").slice(0, 2).map(x => scopeFoundText(c, x)),
     ...scopeFams(c).filter(f => f !== "colo").map(f => "+ " + scopeFamShort(f)),
     scopeSiteShort(c.site), c.loc && c.loc !== "suite" ? scopeLocShort(c.loc) : "", c.urg === "urgent" ? "Urgent" : ""].filter(Boolean).join(" · ");
   const fx = dot.x / sc.w, fy = dot.y / sc.h;
@@ -510,6 +510,8 @@ function scopePickListHTML() {
       (o.n ? `<span class="mono">${o.n}</span>` : "") + `</button>`;
   }
   if (p.kind === "staff" && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddpicked">${ic("plus")}<span>Add “${esc(q)}” as new staff</span></button>`;
+  // Whatever was typed can go in as Other, with those words (full app).
+  if (!FELLOWS && SCOPE_OTHER_FIELD[p.kind] && q.length > 1) h += `<button class="pkrow addnew" data-action="scopeaddother">${ic("plus")}<span>Add “${esc(q)}” as Other</span></button>`;
   if (!h) h = `<div class="empty">No match. Try another word.</div>`;
   return h;
 }
@@ -544,7 +546,9 @@ function scopeCaseOf(card, id) {
   const c = {id: id || scopeId(), d: card.d || fmtDate(getToday()), staff: card.staff || null, site: card.site || null, loc: card.loc || null,
     urg: card.urg || null, procs: card.procs.slice(), reach: scopeHasBase(card) ? card.reach : null, why: card.why.slice(), found: card.found.slice(),
     note: (card.note || "").trim(), src: card.src || "dictated", ts: new Date().toISOString()};
-  if (card.otherLabel) c.otherLabel = card.otherLabel;
+  if (card.otherLabel && c.procs.includes("other.x")) c.otherLabel = card.otherLabel;
+  if (card.whyOther && c.why.includes("other")) c.whyOther = card.whyOther;
+  if (card.foundOther && c.found.includes("other")) c.foundOther = card.foundOther;
   if (card.age) c.age = card.age;
   if (scopeD2Ok(card.d2) && c.procs.includes("egd.dx")) c.d2 = card.d2;
   return c;
@@ -578,6 +582,15 @@ function scopeSaveAll() {
   scopeLit = list[list.length - 1].id;
   showToast(`${n === 1 ? "Case" : n + " procedures"} saved${epa.length ? " · " + epa.join(", ") + " pending" : ""}`,
     () => { Store.restoreScopes(before.scopes); Store.state.obs = before.obs; Store.save(); });
+}
+// Other on a card: its code in the list and the words typed for it, joined
+// when there's more than one.
+const SCOPE_OTHER_FIELD = {why: ["other", "whyOther"], found: ["other", "foundOther"], procs: ["other.x", "otherLabel"]};
+function scopeAddOther(card, kind, words) {
+  const [code, field] = SCOPE_OTHER_FIELD[kind];
+  if (!card[kind].includes(code)) card[kind].push(code);
+  card[field] = (card[field] ? card[field] + ", " + words : words).slice(0, SCOPE_OTHER_MAX);
+  if (card.err) scopeValidate(card);
 }
 function scopeApplyPick(kind, code) {
   const p = scopePick, card = scopeCardByKey(p.key), s = scopeData();
@@ -621,6 +634,8 @@ function scopeDispatch(act, d = {}) {
   else if (act === "scopedrop" && card) {
     scopeCardsFresh = false;
     card[d.kind] = card[d.kind].filter(x => x !== d.code);
+    const other = SCOPE_OTHER_FIELD[d.kind];
+    if (other && other[0] === d.code) card[other[1]] = "";
     if (d.kind === "procs" && !scopeHasBase(card)) card.reach = null;
   }
   else if (act === "scopechip" && card) { scopePick = {key: card.key, kind: d.kind, q: ""}; scopePickFresh = true; scopeCardsFresh = false; }
@@ -629,6 +644,11 @@ function scopeDispatch(act, d = {}) {
   else if (act === "scopeaddpicked") {
     const name = (scopePick.q || "").trim(), c = scopeCardByKey(scopePick.key);
     if (name && c) { const id = Store.addStaff(name); c.staff = id; c.staffHeard = null; c.staffAlt = []; }
+    scopePick = null;
+  }
+  else if (act === "scopeaddother") {
+    const words = (scopePick.q || "").trim(), c = scopeCardByKey(scopePick.key);
+    if (words && c && SCOPE_OTHER_FIELD[scopePick.kind]) scopeAddOther(c, scopePick.kind, words);
     scopePick = null;
   }
   else if (act === "scopepickclose") scopePick = null;

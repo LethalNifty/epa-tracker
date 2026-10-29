@@ -479,3 +479,27 @@ test("the fellows' edition never takes a site from the owner's block names", () 
   const r = f.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify(file)})`);
   assert.deepEqual(r.next.cases.map(c => c.site), [null, "grace"]);
 });
+
+test("anemia is its own indication; iron deficiency anemia stays IDA", () => {
+  assert.deepEqual(h.one("EGD with Brook for anemia").why, ["anemia"]);
+  assert.deepEqual(h.one("EGD with Brook for anaemia").why, ["anemia"]);
+  assert.deepEqual(h.one("EGD with Brook, low hemoglobin").why, ["anemia"]);
+  assert.deepEqual(h.one("colonoscopy with Brook for iron deficiency anemia").why, ["ida"]);
+  assert.deepEqual(h.one("colonoscopy with Brook for IDA").why, ["ida"]);
+});
+
+test("Dieulafoy, however dictation spells it", () => {
+  for (const said of ["Dieulafoy lesion", "Dieulafoy's lesion", "dulafoy", "delafoy lesion", "dieulafoi"])
+    assert.ok(h.one("EGD with Brook, " + said).found.includes("dieulafoy"), said);
+});
+
+test("Other with its own words: in the spreadsheet, the report and an import", () => {
+  const c = {id: "1", d: "2026-10-20", procs: ["other.x"], otherLabel: "Capsule placement", staff: "b", site: "hsc", loc: "suite", urg: "elective",
+    why: ["anemia", "other"], whyOther: "Pre-op check", found: ["dieulafoy", "other"], foundOther: "Cameron lesion", note: ""};
+  const csv = h.val(`scopeCSV(${JSON.stringify([c])}, T_STAFF)`);
+  assert.match(csv, /,Anemia; Other: Pre-op check,Dieulafoy; Other: Cameron lesion,/);
+  assert.equal(h.val(`scopeSummary(${JSON.stringify(c)})`), "Capsule placement");
+  assert.equal(h.val(`scopeReportWhy(${JSON.stringify(c)})`), "Anemia, Other: Pre-op check; Dieulafoy, Other: Cameron lesion");
+  const r = h.val(`scopeImport({cases: [], staff: [], learned: []}, ${JSON.stringify({kind: "gi-scopes", v: 1, staff: [], cases: [c]})})`);
+  assert.deepEqual([r.next.cases[0].otherLabel, r.next.cases[0].whyOther, r.next.cases[0].foundOther], ["Capsule placement", "Pre-op check", "Cameron lesion"]);
+});
