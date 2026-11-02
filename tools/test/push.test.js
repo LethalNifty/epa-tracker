@@ -1,7 +1,6 @@
 "use strict";
 // The reminder sender (tools/push): message encryption checked against the
 // RFC's own worked example, VAPID signatures, and which reminders fall due.
-process.env.TZ = "America/Winnipeg";
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -10,6 +9,7 @@ const path = require("node:path");
 const {encrypt, vapidAuth, sendPush, keyPair, b64u, unb64u} = require("../push/webpush");
 const {dueReminders, parseCallTimes, windowFor, wallMs} = require("../push/schedule");
 const {callStarts} = require("../push/call-times");
+require("../push/send"); // last, so these tests run on the sender's own clock
 
 const at = (y, m, d, h = 0, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
 
@@ -82,12 +82,21 @@ test("sending: the right headers, and a body only the phone can read", async () 
   assert.deepEqual(JSON.parse(decrypt(seen.init.body, phone.priv, auth)), {kind: "call", t: 1, s: 2});
 });
 
-test("Monday and Wednesday at 08:00 Winnipeg time, through the clock change; nothing on Thursday", () => {
-  // Oct 26 and 28 are before the change (CDT), Nov 2 and 4 after (CST): 08:00 local every time.
+test("Monday and Wednesday at 08:00 Winnipeg time, with no clock change in November; nothing on Thursday", () => {
+  // Manitoba stays on UTC-5 all year from November 2026: 13:00 UTC before and after Nov 1.
   const due = dueReminders(at(2026, 10, 25, 12), at(2026, 11, 6, 12), []).filter(x => x.kind === "week" || x.kind === "ask");
   assert.deepEqual(due, [{kind: "week", t: at(2026, 10, 26, 8)}, {kind: "ask", t: at(2026, 10, 28, 8)},
     {kind: "week", t: at(2026, 11, 2, 8)}, {kind: "ask", t: at(2026, 11, 4, 8)}]);
-  assert.deepEqual(due.map(x => new Date(x.t).toISOString().slice(11, 16)), ["13:00", "13:00", "14:00", "14:00"]);
+  assert.deepEqual(due.map(x => new Date(x.t).toISOString().slice(11, 16)), ["13:00", "13:00", "13:00", "13:00"]);
+});
+
+test("after Nov 1 the call, reading and pearls reminders land on Winnipeg's clock too", () => {
+  const starts = parseCallTimes('{"v":1,"starts":["2026-11-10T17:00"]}');
+  assert.deepEqual(starts, [Date.UTC(2026, 10, 10, 22)]);
+  const due = kind => dueReminders(Date.UTC(2026, 10, 8), Date.UTC(2026, 10, 11), starts).filter(x => x.kind === kind).map(x => x.t);
+  assert.deepEqual(due("call"), [Date.UTC(2026, 10, 10, 21)]);
+  assert.deepEqual(due("pearls"), [Date.UTC(2026, 10, 8, 22)]);
+  assert.deepEqual(due("study"), [Date.UTC(2026, 10, 10, 1)]);
 });
 
 test("an hour before each call, and nothing twice across back-to-back windows", () => {

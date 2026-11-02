@@ -143,14 +143,14 @@ test("a file covering other dates adds to the schedule; a cancelled shift goes",
 
 // ---- Stretches and time -----------------------------------------------------------------------
 
-test("the weekend's three shifts form one stretch, Fri 17:00 to Mon 08:00 (64 h across the clock change)", () => {
+test("the weekend's three shifts form one stretch, Fri 17:00 to Mon 08:00 (63 h, no clock change any more)", () => {
   const h = withBlock("2026-10-27T12:00");
   const st = h.val(`callStretches(CallStore.list())`);
   assert.equal(st.length, 3);
   assert.equal(st[1].s, at(2026, 10, 30, 17));
   assert.equal(st[1].e, at(2026, 11, 2, 8));
   assert.equal(st[1].segs.length, 3);
-  assert.equal(h.run(`callHours(${st[1].s}, ${st[1].e})`), 64);
+  assert.equal(h.run(`callHours(${st[1].s}, ${st[1].e})`), 63);
   assert.equal(h.run(`callTitle(callStretches(CallStore.list())[1])`), "Weekend");
   assert.equal(h.run(`callTitle(callStretches(CallStore.list())[0])`), "Wednesday night");
   assert.equal(h.run(`callRange(${st[1].s}, ${st[1].e})`), "17:00 → Mon 08:00");
@@ -221,7 +221,7 @@ test("Week on call: the panel leads the page with both sites, the off time and s
   const html = h.html();
   assert.ok(html.indexOf('class="callnow"') < html.indexOf('class="monitor"'), "panel before the dial");
   assert.match(html, /<span class="live-tag"><i><\/i>On call now<\/span><span>Off Mon 08:00<\/span>/);
-  assert.match(html, /<b data-until="\d+">2 d 14 h<\/b>left/);
+  assert.match(html, /<b data-until="\d+">2 d 13 h<\/b>left/);
   assert.match(html, /<div class="site-h mono">HSC<\/div><div class="who"><span class="role mono">Attending<\/span><b>Attending C<\/b><\/div>/);
   assert.match(html, /<div class="site-h mono">St. Boniface<\/div>[\s\S]*?<b>Attending D<\/b>[\s\S]*?<b>Resident G<\/b>/);
   assert.match(html, /<span class="role mono">Resident<\/span><span class="none">No resident<\/span>/);
@@ -271,7 +271,7 @@ test("the Call screen: by-week trace, each shift of the weekend, numbers and sch
   h.click("callopen");
   assert.equal(h.val(`route.page`), "call");
   const html = h.html();
-  assert.match(html, /<h1 class="title">Call<\/h1><div class="ph-meta mono"><b>3<\/b> shifts left · <b>94<\/b> hours<\/div>/);
+  assert.match(html, /<h1 class="title">Call<\/h1><div class="ph-meta mono"><b>3<\/b> shifts left · <b>93<\/b> hours<\/div>/);
   assert.match(html, /<h2>By week<\/h2>/);
   assert.equal((html.match(/class="wk-row/g) || []).length, 2);
   assert.match(html, /<article class="cst next">[\s\S]*?Wednesday night[\s\S]*?In <b data-until="\d+">1 d 5 h<\/b>/);

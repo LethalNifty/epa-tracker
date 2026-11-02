@@ -3,7 +3,8 @@
 // <script src> files, in page order) inside a Node vm context with just enough
 // DOM to run, so tests call the app's own functions. Top-level const, let and
 // function declarations are shared across the scripts exactly as in a browser.
-process.env.TZ = "America/Winnipeg";
+// A phone in Winnipeg: UTC-5 all year (see clock.test.js).
+process.env.TZ = "Etc/GMT+5";
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");

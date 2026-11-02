@@ -1,6 +1,6 @@
 "use strict";
 // Which reminders fall due in a window of time. Pure: wall times are read in
-// the process's time zone, which send.js sets to America/Winnipeg.
+// the process's time zone, which send.js sets to Winnipeg's clock.
 const HOUR = 3600000;
 // EPAs: Monday 08:00, the week's plan; Wednesday 08:00, the last day of each
 // block week, what's still due so you can ask for it.

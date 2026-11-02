@@ -156,14 +156,29 @@ function callMerge(prev, parsed) {
 }
 
 // ---- Saved on this phone ---------------------------------------------------------
+// Manitoba stopped changing its clocks in November 2026, so Winnipeg stays on
+// UTC-5. Block 5 was read before this phone knew and saved on the old winter
+// clock, so from Nov 1 it reads an hour late: 09:00 for 08:00, 18:00 for 17:00.
+// Those go back an hour once the phone is on the new clock. Later blocks are
+// read on the new clock and never match.
+function callClockFix(shifts) {
+  if (new Date(2026, 10, 15, 12).getTimezoneOffset() !== 300) return false;
+  const from = Date.UTC(2026, 10, 1, 7), to = Date.UTC(2026, 10, 19, 15);
+  const late = t => { const d = new Date(t); return t >= from && t < to && !d.getMinutes() && (d.getHours() === 9 || d.getHours() === 18); };
+  let fixed = false;
+  for (const x of Object.values(shifts)) for (const k of ["s", "e"]) if (late(x[k])) { x[k] -= HOUR_MS; fixed = true; }
+  return fixed;
+}
 const callBlank = () => ({v: 1, shifts: {}, nums: {hsc: "", stb: ""}, last: null});
 const CallStore = {
   state: callBlank(),
   load() {
     try {
       const s = JSON.parse(localStorage.getItem(CALL_KEY));
-      if (s && s.v === 1 && s.shifts && typeof s.shifts === "object")
+      if (s && s.v === 1 && s.shifts && typeof s.shifts === "object") {
         this.state = {v: 1, shifts: s.shifts, nums: {hsc: "", stb: "", ...s.nums}, last: s.last || null};
+        if (callClockFix(this.state.shifts)) this.save();
+      }
     } catch (e) {}
   },
   save() { try { localStorage.setItem(CALL_KEY, JSON.stringify(this.state)); } catch (e) {} },

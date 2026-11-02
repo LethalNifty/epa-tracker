@@ -4,7 +4,10 @@
 // The push says only what kind of reminder it is and when; the phone writes
 // the words from what it has saved, so no names ever leave the phone.
 // Logs stay generic: this repository is public.
-process.env.TZ = "America/Winnipeg";
+// Winnipeg's clock: UTC-5 all year since Manitoba stopped changing its clocks in
+// November 2026. A fixed offset (the sign is reversed in this name), because
+// Node's data for America/Winnipeg may still fall back to UTC-6.
+process.env.TZ = "Etc/GMT+5";
 const {sendPush} = require("./webpush");
 const {dueReminders, parseCallTimes, windowFor} = require("./schedule");
 
