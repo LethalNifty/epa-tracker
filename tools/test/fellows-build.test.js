@@ -32,7 +32,7 @@ test("the fellows' build: every cached file, the switch before any script, no st
     // asks, the saved key, the hidden owner path, the key field or the codes list.
     const walk = d => fs.readdirSync(d, {withFileTypes: true}).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
     for (const f of walk(out).filter(f => /\.(js|css|html|json|webmanifest|txt|ics)$|_headers$/.test(f)))
-      assert.doesNotMatch(fs.readFileSync(f, "utf8"), /WATCH_SITE|gi-watch-v1|gi-owner|watchPathFor|Admin key|Fellows' codes|GI_ADMIN/,
+      assert.doesNotMatch(fs.readFileSync(f, "utf8"), /WATCH_SITE|gi-watch-v1|gi-owner|watchPathFor|Admin key|[Ff]ellows' codes|watch\.js|GI_ADMIN/,
         "admin in " + path.relative(out, f));
     assert.ok(!fs.existsSync(path.join(out, "studyq.json")));
     for (const f of assets) if (f !== "./") assert.ok(fs.existsSync(path.join(out, f)), "missing " + f);

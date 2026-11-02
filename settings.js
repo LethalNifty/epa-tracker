@@ -1,7 +1,6 @@
 "use strict";
 // GI Hub settings: one sheet, opened from the gear on Week, holding the
-// version (and whether this phone is up to date), backup, reminders and the
-// fellows' codes (watch.js).
+// version (and whether this phone is up to date), backup and reminders.
 // Loaded after remind.js and before app.js; uses app.js helpers when it runs.
 
 let setSheet = null, setFresh = false;

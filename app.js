@@ -1327,7 +1327,6 @@ Store.load();
 CallStore.load();
 render();
 // The fellows' edition has no reminders or study questions; it checks its invite code instead.
-// The full app looks in on the fellows' codes (watch.js).
 if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); }
 else felCheckAccess();
 guidesInit();
