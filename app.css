@@ -64,6 +64,11 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; background: var(--field); }
+/* iOS 26 gives the installed app a screen only as tall as a page shorter than
+   the phone, so the tab bar floated above the bottom edge (Agenda: an 896pt page
+   on a 932pt screen). A page as tall as the screen gets all of it; the cap keeps
+   a page from scrolling where the status bar isn't see-through. */
+@media (display-mode: standalone) { html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); } }
 body {
   margin: 0; background: transparent; color: var(--light);
   font: 400 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
@@ -1383,8 +1388,10 @@ nav.bnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 
 .bnav-in.seven .nv { font-size: 10.5px; }
 .bnav-in.seven .nv .ic { width: 23px; height: 23px; }
 .fab.mid { flex: 0 0 auto; width: 54px; height: 54px; margin: -18px 2px 0; }
-/* Endo's save bar clears the raised + (it rises 18px above the bar). */
-:root:has(.fab.mid) .savebar { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 26px); }
+/* Endo's save bar clears the raised + (it rises 18px above the bar). Only the
+   page's: this outranks the + sheet's own save bar rules, and in the sheet it
+   floated mid-sheet over the case being edited. */
+:root:has(.fab.mid) .page .savebar { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 26px); }
 
 /* Log sheet */
 .scrim { position: fixed; z-index: 30; inset: 0; background: rgba(5, 4, 14, .62); }
@@ -1885,8 +1892,9 @@ button.chip.on { padding-right: 12px; }
 .savebar { position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px); z-index: 5; display: flex; gap: 8px; margin-top: 12px;
   padding: 8px; border-radius: 16px; background: rgba(23, 20, 46, .92); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   box-shadow: 0 0 0 1px var(--fold-2), 0 16px 40px rgba(0, 0, 0, .45); }
+/* Counted from inside the sheet's padding, which already clears the home bar, or
+   the keyboard's toolbar with the keys up (--kbbar). */
 .scopesheet .savebar { bottom: 0; }
-html.kb .scopesheet .savebar { bottom: var(--kbbar); }
 .savebar .btn { margin: 0; }
 .savebar .btn.primary { flex: 1; }
 .btn.ghostbtn { flex: 0 0 auto; width: auto; padding: 0 16px; background: transparent; color: var(--dim); }

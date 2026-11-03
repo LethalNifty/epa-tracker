@@ -44,6 +44,22 @@ test("off-label has its own colour, apart from every drug class", () => {
   }
 });
 
+test("the + sheet's save bar stays at the sheet's foot: only the Endo page's save bar rises to clear the +", () => {
+  const css = read("app.css");
+  assert.match(css, /:root:has\(\.fab\.mid\) \.page \.savebar \{ bottom: calc\(var\(--nav-h\) \+ env\(safe-area-inset-bottom\) \+ 26px\); \}/);
+  // The rise outranks the sheet's own rules, so it must never reach a save bar in a sheet.
+  for (const [rule] of css.matchAll(/[^{}\n]*:has\(\.fab\.mid\)[^{}\n]*\.savebar \{/g)) assert.match(rule, /\.page \.savebar/, rule);
+  // A sticky bar counts from inside the sheet's padding, which already clears the home bar,
+  // or the keyboard's toolbar with the keys up; adding the toolbar again floated it mid-sheet.
+  assert.match(css, /\.scopesheet \.savebar \{ bottom: 0; \}/);
+  assert.doesNotMatch(css, /\.savebar \{ bottom: var\(--kbbar\)/);
+});
+
+test("a page shorter than the phone still fills the screen in the installed app, so the tab bar sits on the bottom edge", () => {
+  const css = read("app.css");
+  assert.match(css, /@media \(display-mode: standalone\) \{ html \{ min-height: min\(100lvh, calc\(100% \+ env\(safe-area-inset-top\)\)\); \} \}/);
+});
+
 test("the look loads nothing from other sites: Outfit is served from the app", () => {
   const css = read("app.css");
   assert.doesNotMatch(css, /@import|googleapis|gstatic/);
