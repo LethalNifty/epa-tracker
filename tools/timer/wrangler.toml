@@ -1,0 +1,10 @@
+# GI Hub's reminder timer (worker.mjs): its own Worker, no public address,
+# running every 15 minutes. Deploy from this folder: npx wrangler deploy
+# The GitHub token is a secret: npx wrangler secret put GH_TOKEN
+name = "gi-hub-timer"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[triggers]
+crons = ["*/15 * * * *"]

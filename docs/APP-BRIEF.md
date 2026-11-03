@@ -88,7 +88,8 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
   - the cache name changes with every release, and the app reloads itself when an update lands
 - **Hosting:** GitHub Pages from `main`.
 - **Reminders:**
-  - a GitHub Actions cron (`.github/workflows/reminders.yml`, every 15 minutes) runs `tools/push/send.js`
+  - a GitHub Actions workflow (`.github/workflows/reminders.yml`) runs `tools/push/send.js`
+  - a free Cloudflare Worker (`tools/timer/`) starts it every 15 minutes; GitHub's own schedule, kept as a backup, runs it hours apart
   - each push carries only the kind of reminder and the time
   - the phone writes the words from what it has saved
 - **Tests:** about 360, using Node's built-in runner with a small vm harness and no DOM (`node --test tools/test/*.test.js`).

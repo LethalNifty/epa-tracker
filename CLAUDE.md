@@ -27,7 +27,8 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
 | feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `agenda`/`agenda-view` (the Agenda tab), `remind`/`notify`, `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
-| `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` every 15 minutes |
+| `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` |
+| `tools/timer/` | a Cloudflare Worker that starts that workflow every 15 minutes (GitHub's own schedule runs it hours apart); its own Worker, never in `functions/` |
 | `tools/ship.py` | shipping, below |
 | `tools/preview/` | phone screenshots and the one-file phone preview, below |
 

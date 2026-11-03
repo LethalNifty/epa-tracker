@@ -2,7 +2,9 @@
 # at 08:00 (what's still due, to ask for), an hour before each call (who's on),
 # 20:00 on reading nights (tonight's pages) and Sundays at 17:00 (pearls to
 # send). Pushes carry no names; the phone writes the notification from what
-# it has saved. See tools/push/.
+# it has saved. See tools/push/. The Cloudflare Worker in tools/timer/ starts
+# this every 15 minutes; GitHub's own schedule below runs it hours apart and
+# stays as a backup.
 name: Reminders
 
 on:
