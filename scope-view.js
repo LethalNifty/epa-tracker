@@ -54,6 +54,7 @@ function scopeGlyph(c, o = {}) {
     if (fam === "colo") return svg(scopeHasBase(c) ? colon(c.reach, true) : colon("ti", false, true));
     if (fam === "fs") return svg(colon("desc", false));
     if (fam === "egd") return svg(upper(true));
+    if (fam === "entero") return svg(upper(true) + `<path class="tg-s" d="${SCOPE_JEJUNUM}"/><path class="tg-on" d="${SCOPE_JEJUNUM}" style="--k:3"/>`);
     if (fam === "ercp") return svg(upper(false, true));
     if (fam === "para") return svg(`<path class="tg-s" d="M7 6.5C5 9 4.6 14 5.4 18.2C6.4 23 10 25.4 14 25.4S21.6 23 22.6 18.2C23.4 14 23 9 21 6.5"/>` +
       `<path class="tg-on" d="M14 11.4C12.4 13.6 11.2 15.4 11.2 17A2.8 2.8 0 0 0 16.8 17C16.8 15.4 15.6 13.6 14 11.4Z"/>`);
@@ -122,7 +123,7 @@ function scopeReachHTML(card) {
 }
 // An EGD's D2, optional: Not recorded until said or tapped, never asked for.
 function scopeD2HTML(card) {
-  if (FELLOWS || !card.procs.includes("egd.dx")) return "";
+  if (FELLOWS || !card.procs.includes("egd.dx") || card.procs.includes("egd.entero")) return "";
   const v = card.d2 || "";
   return `<div class="srowk sc-d2"><span class="mono">D2</span><div class="sseg" role="group" aria-label="D2 yourself">` +
     SCOPE_D2.map(([k, label]) => `<button class="${v === k ? "on" : ""}" data-action="scoped2" data-key="${card.key}" data-v="${k}" aria-pressed="${v === k}">${label}</button>`).join("") +
@@ -333,7 +334,7 @@ function scopeTotalsHTML() {
   const rows = SCOPE_FAMS.filter(([f]) => cols[2][1][f] > 0 || ["egd", "colo"].includes(f));
   return `<section class="sec"><div class="sec-head"><h2>Totals</h2><span class="mono">By procedure</span></div><div class="card ttable" role="table" aria-label="Procedure totals">` +
     `<div class="tr th" role="row"><span role="columnheader"></span>${cols.map(([l]) => `<span class="mono" role="columnheader">${l}</span>`).join("")}</div>` +
-    rows.map(([f, label]) => `<div class="tr" role="row"><span class="tf" role="rowheader">${scopeGlyph({procs: [f + (f === "other" ? ".ileo" : ".dx")], reach: f === "colo" ? "ti" : null}, {cls: "sm"})}${esc(label)}</span>` +
+    rows.map(([f, label]) => `<div class="tr" role="row"><span class="tf" role="rowheader">${scopeGlyph({procs: [f === "entero" ? "egd.entero" : f + (f === "other" ? ".ileo" : ".dx")], reach: f === "colo" ? "ti" : null}, {cls: "sm"})}${esc(label)}</span>` +
       cols.map(([, t]) => `<span class="tn" role="cell">${t ? t[f] : "–"}</span>`).join("") + `</div>`).join("") +
     `<div class="tr tsum" role="row"><span role="rowheader">All procedures</span>${cols.map(([, t]) => `<span class="tn" role="cell">${t ? t.procs : "–"}</span>`).join("")}</div></div></section>`;
 }
@@ -491,7 +492,7 @@ function scopePickOptions() {
       if (k === "why") opts = opts.concat(vocab("why", SCOPE_WHY, x => x.label));
       if (k === "found") opts = opts.concat(vocab("found", SCOPE_FOUND, x => x.label));
       if (k === "procs") opts = opts.concat(SCOPE_PROCS.filter(x => x.code !== "other.x").map(x => ({kind: "procs", code: x.code,
-        label: (x.base ? scopeProcChipLabel(x.code) : scopeFamShort(x.fam) + ": " + x.label), n: use["procs:" + x.code] || 0, words: x.tres})));
+        label: (x.base ? scopeProcChipLabel(x.code) : x.code === "egd.entero" ? x.label : scopeFamShort(x.fam) + ": " + x.label), n: use["procs:" + x.code] || 0, words: x.tres})));
     }
   }
   const card = scopeCardByKey(p.key);
@@ -603,6 +604,8 @@ function scopeApplyPick(kind, code) {
     const list = card[kind];
     if (!list.includes(code)) list.push(code);
     if (kind === "procs" && (code === "colo.dx" || code === "colo.screen")) card.procs = card.procs.filter(x => x === code || (x !== "colo.dx" && x !== "colo.screen"));
+    // A push enteroscopy is the upper scope itself, so it takes a plain EGD's place, and back.
+    if (kind === "procs" && (code === "egd.dx" || code === "egd.entero")) card.procs = card.procs.filter(x => x === code || (x !== "egd.dx" && x !== "egd.entero"));
     if (p.kind === "teach" && p.teach) {
       Store.learn(kind === "procs" ? "proc" : kind, p.teach, code);
       card.leftover = card.leftover.filter(w => w !== p.teach);

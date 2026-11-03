@@ -266,7 +266,7 @@ function scopeReportPDF(o) {
   // Procedures by type, with how many carried a therapeutic intervention.
   section("Procedures");
   // Columns: [label, value of a family or "procs"], then how many of the period's carried a therapy.
-  const famTx = (cases, f) => cases.filter(c => scopeFams(c).includes(f) && (c.procs || []).some(p => scopeFam(p) === f && SCOPE_TX_CODES.has(p))).length;
+  const famTx = (cases, f) => cases.filter(c => scopeFams(c).includes(f) && (c.procs || []).some(p => scopeFamIn(c, p) === f && SCOPE_TX_CODES.has(p))).length;
   const pc = whole ? [["Total", tA, M + CW - 100], ["Therapeutic", null, M + CW]]
     : [["This period", tP, M + CW - 200], ["Therapeutic", null, M + CW - 100], ["Total", tA, M + CW]];
   pc.forEach(([l, , x]) => doc.text(x, y, l, {size: 7.5, bold: true, color: RP.faint, align: "right", spacing: .2}));
@@ -277,7 +277,7 @@ function scopeReportPDF(o) {
     for (const [, t, x] of pc) {
       if (t) { doc.text(x, y, String(t[f]), {size: 10, align: "right"}); continue; }
       const tx = famTx(whole ? upTo : inP, f);
-      if (["egd", "colo", "fs", "ercp"].includes(f)) doc.text(x, y, String(tx), {size: 10, align: "right", color: tx ? RP.ink2 : RP.faint});
+      if (["egd", "entero", "colo", "fs", "ercp"].includes(f)) doc.text(x, y, String(tx), {size: 10, align: "right", color: tx ? RP.ink2 : RP.faint});
     }
     doc.line(M, y + 6, M + CW, y + 6, {stroke: RP.hair, lw: .5});
     y += 18;
