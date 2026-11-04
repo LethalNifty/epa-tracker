@@ -18,8 +18,30 @@ self.addEventListener("activate", e => {
 });
 // The study questions and the guideline library change without an app
 // update, so they come from the network first; the cached copy covers the
-// phone when it's offline.
-const LIVE = ["/studyq.json", "/guides.json"];
+// phone when it's offline, and after 3 seconds on wifi that connects but
+// passes nothing (hospital guest networks). A copy that lands after that is
+// kept, and the app is told so it can read it.
+const LIVE = ["/studyq.json", "/guides.json"], LIVE_WAIT = 3000;
+function liveAnswer(e, path) {
+  let late = false;
+  const net = fetch(e.request).then(res => {
+    if (res.ok) {
+      const copy = res.clone();
+      const kept = caches.open(CACHE).then(c => c.put(e.request, copy));
+      if (late) kept.then(() => self.clients.matchAll({type: "window"}))
+        .then(list => { for (const w of list) w.postMessage({fresh: path.slice(path.lastIndexOf("/") + 1)}); });
+    }
+    return res;
+  });
+  const mine = () => caches.match(e.request, {ignoreSearch: true});
+  e.respondWith(new Promise((resolve, reject) => {
+    const timer = setTimeout(() => mine().then(hit => { if (hit) { late = true; resolve(hit); } }), LIVE_WAIT);
+    net.then(res => { clearTimeout(timer); resolve(res); },
+      err => { clearTimeout(timer); mine().then(hit => (hit ? resolve(hit) : reject(err))); });
+  }));
+  // The worker stays up until the network's copy is saved.
+  if (e.waitUntil) e.waitUntil(net.catch(() => {}));
+}
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url), path = url.pathname;
   // Only this app's own files: another site and anything but a plain GET go
@@ -29,12 +51,7 @@ self.addEventListener("fetch", e => {
   // fellows' app asks whether its invite code still works at /__access; those
   // answers must never come from, or be kept in, this cache.
   if (path.endsWith("/sw.js") || path.endsWith("/__access")) return;
-  if (LIVE.some(f => path.endsWith(f))) {
-    e.respondWith(fetch(e.request).then(res => { if (res.ok) { const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; })
-      .catch(() => caches.match(e.request, {ignoreSearch: true})));
-    return;
-  }
+  if (LIVE.some(f => path.endsWith(f))) { liveAnswer(e, path); return; }
   e.respondWith(caches.match(e.request, {ignoreSearch: true}).then(hit => hit ||
     fetch(e.request).then(res => { if (res.ok) { const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; })));

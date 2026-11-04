@@ -1321,8 +1321,16 @@ if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)] && !FEL
   route = {...APP_LINKS[location.hash.slice(1)]};
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
+// From the service worker: a tapped reminder ({go}), or a new copy of the
+// guideline library or the questions that landed after the phone's own was shown.
+function appMessage(m) {
+  if (!m) return;
+  if (m.go) appOpenFromLink(m.go);
+  if (m.fresh === "guides.json") guidesInit();
+  else if (m.fresh === "studyq.json" && !FELLOWS) studyqInit();
+}
 if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
-  navigator.serviceWorker.addEventListener("message", ev => { if (ev.data && ev.data.go) appOpenFromLink(ev.data.go); });
+  navigator.serviceWorker.addEventListener("message", ev => appMessage(ev.data));
 Store.load();
 CallStore.load();
 render();
