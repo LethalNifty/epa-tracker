@@ -229,7 +229,7 @@ const SCOPE_AGAIN = phrase("another one|another like that|same again|same thing|
 
 const SCOPE_LM = [
   ["ti", "neo-?terminal ileum|terminal ileum|neo-?ti|ti|ileum|ileal"],
-  ["cecum", "base of the c(?:a)?ecum|c(?:a)?ecum|c(?:a)?ecal|appendiceal orifice|ileoc(?:a)?ecal valve|icv"],
+  ["cecum", "base of the c(?:a)?ecum|c(?:a)?ecal (?:base|pole)|c(?:a)?ecum|c(?:a)?ecal|appendi(?:ceal|cial) orifice|ao|ileoc(?:a)?ecal valve|icv"],
   ["hf", "hepatic flexure|hepatic|hf|ascending(?: colon)?"],
   ["tverse", "transverse(?: colon)?|t-?verse"],
   ["sf", "splenic flexure|splenic|sf"],
@@ -327,6 +327,10 @@ function scopeNormalize(text) {
     .replace(/\b(dr|st|mr|mrs|ms|vs|approx|pt)\./gi, "$1")
     // Spelled-out initials from dictation: "E G D" -> "EGD", "T. I." -> "TI".
     .replace(/\b[A-Z](?:[ .]+[A-Z]\b)+\.?/g, m => m.replace(/[ .]/g, ""))
+    // How dictation spells the landmarks: "secum", "seacum", "ileo secal", "terminal ilium".
+    .replace(/\bil[eiy]o[- ]?[cs](?:ae|ee|ea|e)[ck]al\b/gi, "ileocecal")
+    .replace(/\b[cs](?:ae|ee|ea|e)[ck](um|al)\b/gi, (m, end) => "cec" + end)
+    .replace(/\bili(um|al)\b/gi, (m, end) => "ile" + end)
     .replace(/\s+/g, " ").trim();
 }
 

@@ -59,6 +59,20 @@ test("reach phrases", () => {
   assert.equal(h.one("colon, polyp in the ascending").reach, null);
 });
 
+test("the cecum and TI however dictation spells or says them", () => {
+  for (const t of ["Colonoscopy with Brook to the secum", "Colonoscopy with Brook to the seacum", "Colonoscopy with Brook to the seekum",
+    "Colonoscopy with Brook to the caecum", "Colonoscopy with Brook to the cecal base", "Colonoscopy with Brook to the cecal pole",
+    "Colonoscopy with Brook to the AO", "Colonoscopy with Brook to the appendicial orifice", "Colonoscopy with Brook to the ileo secal valve",
+    "Colonoscopy with Brook, secal intubation"]) {
+    const c = h.one(t);
+    assert.equal(c.reach, "cecum", t);
+    assert.deepEqual(c.leftover, [], t);
+  }
+  assert.equal(h.one("Colonoscopy with Brook to the terminal ilium").reach, "ti");
+  // Said as a place, it is still read, not left over.
+  assert.deepEqual(h.one("Colonoscopy with Brook to the TI, polyp in the secum, cold snare").leftover, []);
+});
+
 test("dictation without punctuation still reads", () => {
   const c = h.one("colonoscopy with alpha i got to the hepatic flexure staff took it to the cecum two cold snare polypectomies");
   assert.equal(c.reach, "hf");
