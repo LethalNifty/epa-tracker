@@ -1186,6 +1186,15 @@ a.src:active { background: var(--wall-3); }
 .watchnew .textbtn { justify-self: start; padding: 0; }
 .watchalert b { font-weight: 600; }
 
+/* Cloud backup (backup.js, the full app only) */
+.cbk > .rnote:first-child { margin-top: 0; }
+.cbk > .rnote + .btn, .cbk > .err + .btn, .cbk > .lbl + .btn { margin-top: 14px; }
+.cbk > .lbl:first-of-type { margin-top: 12px; }
+.cbk > .cbk-cancel { display: block; margin: 8px auto 0; color: var(--dim); }
+.cbk-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-top: 10px; }
+.cbk-acts .textbtn { padding: 0; color: var(--dim); }
+.cbk-acts .textbtn.danger { color: var(--mucosa); }
+
 /* Next pass: the log sheet's named chips and the picked EPA in full, Log
    another on the save toast, spare forms in the chase list, the weekday note on
    What to ask for, the EPAs list in short names, and the pace under the dial. */

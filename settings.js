@@ -1,6 +1,7 @@
 "use strict";
 // GI Hub settings: one sheet, opened from the gear on Week, holding the
 // version (and whether this phone is up to date), backup and reminders.
+// The full app draws its own backup card (bkSetHTML).
 // Loaded after remind.js and before app.js; uses app.js helpers when it runs.
 
 let setSheet = null, setFresh = false;
@@ -64,12 +65,16 @@ function setVersionHTML() {
     `<p class="rnote">${row[1]}</p>${row[2]}` +
     (liveCalm() ? `<p class="rnote">Reduce Motion is on, so animations are gentle.</p>` : "") + `</div></div>`;
 }
+// Export and Import: a backup as a file, in both editions.
+const setFileHTML = () => `<button class="btn" data-action="export">${ic("share")}Export backup</button>` +
+  `<button class="btn" data-action="importpick">${ic("download")}Import backup</button>` +
+  `<input type="file" id="importfile" accept=".json,application/json" hidden>`;
+// The full app's card has more in it (bkSetHTML).
 function setBackupHTML() {
+  if (!FELLOWS) return bkSetHTML();
   const lb = Store.state.lastBackup;
   return `<div class="setgrp"><div class="set-h mono"><span>Backup</span><span>Last: ${lb ? esc(dayLabel(fmtDate(new Date(lb)))) : "never"}</span></div>` +
-    `<div class="card pad"><button class="btn" data-action="export">${ic("share")}Export backup</button>` +
-    `<button class="btn" data-action="importpick">${ic("download")}Import backup</button>` +
-    `<input type="file" id="importfile" accept=".json,application/json" hidden>` +
+    `<div class="card pad">${setFileHTML()}` +
     `<p class="bnote mono">Saved on this phone only</p>` +
     (backupError ? `<div class="err">${esc(backupError)}</div>` : "") + `</div></div>`;
 }

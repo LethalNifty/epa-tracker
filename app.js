@@ -1181,6 +1181,7 @@ function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("bk")) { if (!FELLOWS && bkDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("watch")) { if (watchDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("review")) { if (reviewDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act === "studytab") { studyDispatch(act, d); liveSwap(render, "seg"); return; }
@@ -1278,6 +1279,8 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
+  // The backup passphrase stays in memory, out of every draft.
+  if (!FELLOWS && bkField(ev.target)) return;
   if (agField(ev.target) || felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
@@ -1379,7 +1382,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
   if (!FELLOWS) remindOpened();
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
-  if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) watchCheck(); }
+  if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) { watchCheck(); backupDaily(); } }
   if (document.visibilityState === "visible" && !anySheet() &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
     if (updateNow()) return;
@@ -1418,8 +1421,8 @@ render();
 // once for it to be kept (granted to apps on the home screen).
 if (navigator.storage && navigator.storage.persist)
   navigator.storage.persisted().then(kept => kept || navigator.storage.persist()).catch(() => {});
-// The fellows' edition has no reminders or study questions; it checks its invite code instead.
-if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); }
+// The fellows' edition has no reminders, study questions or daily backup; it checks its invite code instead.
+if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); backupDaily(); }
 else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------

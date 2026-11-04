@@ -1,0 +1,12 @@
+# GI Hub's backup (worker.mjs): its own Worker, with the public address the
+# phone backs up to. Deploy from this folder: npx wrangler deploy
+# Storage is the KV namespace BACKUPS, made once with
+# npx wrangler kv namespace create BACKUPS, its id below.
+name = "gi-hub-backup"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "BACKUPS"
+id = "REPLACE_WITH_THE_NAMESPACE_ID"

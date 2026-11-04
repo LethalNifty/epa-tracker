@@ -4,12 +4,13 @@
 //
 //   node tools/fellows/build.mjs [outDir]
 //
-// The same files as the full app, minus the study questions and the owner's
-// watch on the codes (watch.js), with four changes:
+// The same files as the full app, minus the study questions, the owner's
+// watch on the codes (watch.js) and the owner's daily backup (backup.js), with
+// four changes:
 // index.html sets window.GI_EDITION = "fellows" before any script runs and asks
 // search engines to stay away; sw.js stops caching studyq.json; the manifest
 // describes the fellows' edition; app.css loses the styles for the owner's list
-// of codes. robots.txt keeps crawlers out too.
+// of codes and backup card. robots.txt keeps crawlers out too.
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -18,8 +19,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const OUT = path.resolve(process.argv[2] || path.join(ROOT, "dist"));
 // LF throughout, so a Windows checkout (core.autocrlf) builds the same as Cloudflare's.
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\r\n/g, "\n");
-// The owner's watch on the fellows' codes (watch.js) never reaches the fellows.
-const LEFT_OUT = new Set(["./", "studyq.json", "watch.js"]);
+// The owner's watch on the fellows' codes (watch.js) and daily backup to
+// Cloudflare (backup.js) never reach the fellows.
+const OWNER_ONLY = ["watch.js", "backup.js"];
+const LEFT_OUT = new Set(["./", "studyq.json", ...OWNER_ONLY]);
 const DESCRIPTION = "EPA tracker, procedure log and guideline library for GI fellows.";
 
 function must(text, from, to, what) {
@@ -41,18 +44,24 @@ for (const f of assets) {
 }
 
 let html = read("index.html");
-html = must(html, `<script src="watch.js"></script>\n`, "", "watch.js in index.html");
+for (const f of OWNER_ONLY) html = must(html, `<script src="${f}"></script>\n`, "", f + " in index.html");
 html = must(html, "<body>\n", `<body>\n<script>window.GI_EDITION = "fellows";</script>\n`, "<body>");
 html = must(html, /<meta name="description" content="[^"]*">/.exec(html)?.[0] ?? "<meta name=\"description\"",
   `<meta name="description" content="${DESCRIPTION}">\n<meta name="robots" content="noindex, nofollow">`, "the description");
 fs.writeFileSync(path.join(OUT, "index.html"), html);
 
-// Nothing of the owner's list of codes reaches the fellows, not even its styles:
-// the block from its heading comment to the next blank line.
-const css = read("app.css"), codes = /\/\* Fellows' codes [^*]*\*\/\n[\s\S]*?\n\n/.exec(css);
-fs.writeFileSync(path.join(OUT, "app.css"), must(css, codes ? codes[0] : "/* Fellows' codes", "", "the codes styles in app.css"));
+// Nothing of the owner's list of codes or backup card reaches the fellows, not
+// even its styles: each block from its heading comment to the next blank line.
+let css = read("app.css");
+for (const head of ["Fellows' codes", "Cloud backup"]) {
+  const block = new RegExp(`/\\* ${head} [^*]*\\*/\\n[\\s\\S]*?\\n\\n`).exec(css);
+  css = must(css, block ? block[0] : "/* " + head, "", `the ${head} styles in app.css`);
+}
+fs.writeFileSync(path.join(OUT, "app.css"), css);
 
-fs.writeFileSync(path.join(OUT, "sw.js"), must(must(sw, ` "studyq.json",`, "", "studyq.json in ASSETS"), ` "watch.js",`, "", "watch.js in ASSETS"));
+let swOut = must(sw, ` "studyq.json",`, "", "studyq.json in ASSETS");
+for (const f of OWNER_ONLY) swOut = must(swOut, ` "${f}",`, "", f + " in ASSETS");
+fs.writeFileSync(path.join(OUT, "sw.js"), swOut);
 
 const manifest = JSON.parse(read("manifest.webmanifest"));
 manifest.description = DESCRIPTION;

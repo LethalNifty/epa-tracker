@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const {execFileSync} = require("node:child_process");
-const {ROOT} = require("./harness");
+const {ROOT, load, state, obs} = require("./harness");
 
 test("the fellows' build: every cached file, the switch before any script, no study questions, no crawlers", () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "gi-fellows-"));
@@ -24,16 +24,19 @@ test("the fellows' build: every cached file, the switch before any script, no st
     // The owner's watch on the codes never reaches the fellows.
     assert.ok(!assets.includes("watch.js") && !fs.existsSync(path.join(out, "watch.js")));
     assert.doesNotMatch(html, /watch\.js/);
+    // Nor the owner's daily backup to Cloudflare (backup.js).
+    assert.ok(!assets.includes("backup.js") && !fs.existsSync(path.join(out, "backup.js")));
+    assert.doesNotMatch(html, /backup\.js/);
     // Not even the styles for the owner's list of codes.
     const css = fs.readFileSync(path.join(out, "app.css"), "utf8");
-    assert.doesNotMatch(css, /Fellows' codes|\.watch/);
+    assert.doesNotMatch(css, /Fellows' codes|\.watch|Cloud backup|\.cbk/);
     assert.match(css, /\.pick \.pn/, "the rest of the stylesheet is still there");
     // No file in the build carries the owner's admin: the fellows' site address it
     // asks, the saved key, the hidden owner path, the key field or the codes list.
     const walk = d => fs.readdirSync(d, {withFileTypes: true}).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
     for (const f of walk(out).filter(f => /\.(js|css|html|json|webmanifest|txt|ics)$|_headers$/.test(f)))
-      assert.doesNotMatch(fs.readFileSync(f, "utf8"), /WATCH_SITE|gi-watch-v1|gi-owner|watchPathFor|Admin key|[Ff]ellows' codes|watch\.js|GI_ADMIN/,
-        "admin in " + path.relative(out, f));
+      assert.doesNotMatch(fs.readFileSync(f, "utf8"), /WATCH_SITE|gi-watch-v1|gi-owner|watchPathFor|Admin key|[Ff]ellows' codes|watch\.js|GI_ADMIN|BACKUP_URL|gi-hub-backup|backup\.js/,
+        "owner-only in " + path.relative(out, f));
     assert.ok(!fs.existsSync(path.join(out, "studyq.json")));
     for (const f of assets) if (f !== "./") assert.ok(fs.existsSync(path.join(out, f)), "missing " + f);
     // The version the Settings check reads is the full app's.
@@ -48,6 +51,25 @@ test("the fellows' build: every cached file, the switch before any script, no st
     const start = /DTSTART:(\d{4})(\d{2})(\d{2})T080000/.exec(ics);
     assert.equal(new Date(+start[1], +start[2] - 1, +start[3]).getDay(), 3);
     assert.match(fs.readFileSync(path.join(out, "_headers"), "utf8"), /\/reminder\.ics\n  Content-Type: text\/calendar/);
+  } finally {
+    fs.rmSync(out, {recursive: true, force: true});
+  }
+});
+
+test("the fellows' build runs without the full app's own files", () => {
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "gi-fellows-"));
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, "tools", "fellows", "build.mjs"), out]);
+    const f = load({root: out, edition: "fellows", today: "2026-11-03",
+      state: state({f3a: [obs("2026-11-01")]}, {setup: {d: "2026-10-01"}})});
+    assert.equal(f.val("FELLOWS"), true);
+    f.click("setopen");
+    assert.match(f.html(), /data-action="export"/);
+    // Typing passes the full app's own field handlers on its way.
+    f.fire("input", {dataset: {}, value: "x"});
+    f.click("setclose");
+    f.click("tab", {page: "week"});
+    assert.match(f.html(), /data-action="tab"/);
   } finally {
     fs.rmSync(out, {recursive: true, force: true});
   }

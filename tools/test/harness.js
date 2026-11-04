@@ -13,15 +13,15 @@ const ROOT = path.resolve(__dirname, "..", "..");
 // opts.edition "fellows" boots the fellows' edition, which saves under its own key.
 const KEYS = {full: "epa-state-v1", fellows: "gihub-fellows-v1"};
 
-function pageScripts() {
-  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+function pageScripts(root = ROOT) {
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const out = [];
   const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g;
   let m;
   while ((m = re.exec(html))) {
     const src = /\bsrc="([^"]+)"/.exec(m[1] || "");
     out.push(src
-      ? {name: src[1], code: fs.readFileSync(path.join(ROOT, src[1]), "utf8")}
+      ? {name: src[1], code: fs.readFileSync(path.join(root, src[1]), "utf8")}
       : {name: "index.html#script" + out.length, code: m[2]});
   }
   return out;
@@ -35,6 +35,7 @@ function dateExpr(iso) {
 
 // opts.store: another load's storage, for the same phone opening the app again.
 // opts.location: the address it opens at, as a tapped reminder's link.
+// opts.root: another copy of the app to boot, such as the fellows' build.
 function load(opts = {}) {
   const store = opts.store || new Map(), KEY = KEYS[opts.edition || "full"];
   if (opts.state) store.set(KEY, JSON.stringify(opts.state));
@@ -70,12 +71,14 @@ function load(opts = {}) {
     scrollTo() {},
   };
   if (opts.location) Object.assign(ctx, {location: opts.location, history: {replaceState() {}}});
+  // opts.fetch: the network as the page sees it, there from the first script on.
+  if (opts.fetch) ctx.fetch = opts.fetch;
   ctx.window = ctx;
   vm.createContext(ctx);
   const run = code => vm.runInContext(code, ctx);
   if (opts.today) run(`window.__today = ${dateExpr(opts.today)};`);
   if (opts.edition) run(`window.GI_EDITION = ${JSON.stringify(opts.edition)};`);
-  for (const s of pageScripts()) vm.runInContext(s.code, ctx, {filename: s.name});
+  for (const s of pageScripts(opts.root)) vm.runInContext(s.code, ctx, {filename: s.name});
   return {
     ctx, store, downloads, els, run,
     val: expr => { const s = run(`JSON.stringify(${expr})`); return s === undefined ? undefined : JSON.parse(s); },
