@@ -27,6 +27,21 @@ test("push enteroscopy is read however it's said, short forms and a misheard 'en
   }
 });
 
+test("push enteroscopy is read the ways iPhone dictation mishears it", () => {
+  for (const t of ["Push interoscopy with Brook for IDA", "Push entero scopy with Brook for IDA", "Push enter oscopy with Brook for IDA",
+    "Push intro scopy with Brook for IDA", "Push entroscopy with Brook for IDA", "Push entry scopy with Brook for IDA",
+    "Push enteros copy with Brook for IDA", "Push-enteroscopy with Brook for IDA", "Bush enteroscopy with Brook for IDA",
+    "Push enteroscope with Brook for IDA", "Push enter with Brook for IDA", "Interoscopy with Brook for IDA"]) {
+    const c = h.one(t);
+    assert.deepEqual(c.procs, ["egd.entero"], t);
+    assert.deepEqual(c.leftover, [], t);
+  }
+  // A push of a drug is not a push enteroscopy.
+  for (const t of ["EGD with Brook for melena after an IV push of pantoprazole", "EGD with Brook, push intravenous pantoprazole"]) {
+    assert.deepEqual(h.one(t).procs, ["egd.dx"], t);
+  }
+});
+
 test("an EGD that goes on to a push enteroscopy is one case, not two", () => {
   const c = h.one("EGD and push enteroscopy with Brook for melena");
   assert.deepEqual(c.procs, ["egd.entero"]);

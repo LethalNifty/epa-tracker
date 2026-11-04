@@ -211,8 +211,10 @@ const phrase = src => re(WORD_B + "(?:" + src + ")" + WORD_E);
 
 const SCOPE_FAM_RX = [
   ["egd", phrase("egds?|egd's|gastroscop\\w*|upper endoscop\\w*|an upper|the upper|upper scope|ogd|esophagogastroduodenoscop\\w*")],
-  // "Push endoscopy" is how dictation often hears it.
-  ["egd:entero", phrase("push entero\\w*|push endoscop\\w*|(?:small bowel )?enteroscop\\w*")],
+  // How dictation hears it: "push endoscopy", "push interoscopy", "push enter oscopy", "bush entero".
+  // After "push" the word must look like entero, so a push of a drug stays a drug.
+  ["egd:entero", phrase("(?:push|bush)[ -](?:endoscop\\w*|(?:en|in)t(?:ero|er|ro|ry|r)(?:s?[ -]?o?s?cop(?:e|es|y|ies))?)|" +
+    "(?:small bowel )?(?:en|in)t(?:ero|er|ro)[ -]?o?scop\\w*")],
   ["colo", phrase("colonoscop\\w*|colons?|colo|lower endoscop\\w*|a lower")],
   ["fs", phrase("flex(?:ible)? sig\\w*|flexi[- ]?sig\\w*|flexsig\\w*|sigmoidoscop\\w*|flex|flexes")],
   ["ercp", phrase("ercps?")],
