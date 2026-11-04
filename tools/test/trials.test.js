@@ -283,7 +283,7 @@ test("Trials opens with the running list from the weekly watch, newest first, fo
   assert.match(html, /New from the weekly watch<\/span><span>8<\/span>/);
   assert.equal(rows(html), 4);
   assert.ok(html.indexOf("RESOLVE") < html.indexOf("REFIT2"), "newest first");
-  assert.ok(html.indexOf("New from the weekly watch") < html.indexOf('id="trialsq"'), "above the search");
+  assert.ok(html.indexOf('id="trialsq"') < html.indexOf("New from the weekly watch"), "under the search");
   assert.match(html, /data-action="guidestrwmore">Show all 8</);
   h.click("guidestrwmore");
   html = h.html();

@@ -163,13 +163,12 @@ function viewIbd() {
   const q = ibdTerm.trim();
   const sit = ibdChip.startsWith("s:") ? ibdSituation(ibdChip.slice(2), IBD_DRUGS) : null;
   const pin = IBD_PINS.find(p => p.id === ibdChip);
-  let h = ibdMapHTML();
-  // The shared card opens by itself when the search is about it.
-  const prepHit = q && searchNorm(JSON.stringify(IBD_PREP) + " " + IBD_ADV.map(id => IBD_BASE[id][0]).join(" ")).includes(searchNorm(q));
-  h += ibdPrepHTML(ibdPrepOpen || !!prepHit);
-  h += `<div class="qwrap">${ic("search")}<input id="ibdq" type="search" placeholder="Search: Skyrizi, TPMT, ECG, Shingrix" aria-label="Search IBD drugs" ` +
+  let h = `<div class="qwrap">${ic("search")}<input id="ibdq" type="search" placeholder="Search: Skyrizi, TPMT, ECG, Shingrix" aria-label="Search IBD drugs" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(ibdTerm)}">` +
     (ibdTerm ? `<button class="qclear" data-action="guidesdclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
+  // The shared card opens by itself when the search is about it.
+  const prepHit = q && searchNorm(JSON.stringify(IBD_PREP) + " " + IBD_ADV.map(id => IBD_BASE[id][0]).join(" ")).includes(searchNorm(q));
+  h += ibdMapHTML() + ibdPrepHTML(ibdPrepOpen || !!prepHit);
   const chips = [["all", "All"], ["uc", "UC"], ["cd", "Crohn's"]].concat(IBD_SITS.map(s => ["s:" + s.id, s.n]));
   h += `<div class="bcats gcats ibdcats" id="ibd-list">` + chips.map(([id, label], i) =>
     `${i === 3 ? '<span class="cat-gap" aria-hidden="true"></span>' : ""}<button class="bcat${ibdChip === id ? " on" : ""}${id.startsWith("s:") ? " sit" : ""}" data-action="guidesdchip" data-chip="${id}">${esc(label)}</button>`).join("") + `</div>`;

@@ -180,10 +180,11 @@ function viewGuides() {
   const unseen = news.filter(n => guidesVisit.has(n.k)), newsKeys = guidesVisit;
   const q = guidesTerm.trim();
   let h = head(`${D.topics.length} topics · Canadian first`, `<p class="ph-note">Current guidelines by topic, best one first. Links open the publisher's page.</p>`) + guidesSwitchHTML();
-  if (!q && guidesChip === "all") h += guidesLightHTML(D, today) + guidesNewsHTML(news, unseen);
+  // Search first, as on Trials and IBD drugs: it's what Guides is opened for on the ward.
   h += `<div class="qwrap">${ic("search")}<input id="guidesq" type="search" placeholder="Search: Baveno, vedolizumab, celiac" aria-label="Search Guides" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(guidesTerm)}">` +
     (guidesTerm ? `<button class="qclear" data-action="guidesclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
+  if (!q && guidesChip === "all") h += guidesLightHTML(D, today) + guidesNewsHTML(news, unseen);
   if (q) return h + guidesFindHTML(q, D, {newsKeys}) + guidesFootHTML();
   const blockTopics = blk ? guidesForBlock(D.topics, blk.num) : [];
   const chips = [["all", "All", null]];

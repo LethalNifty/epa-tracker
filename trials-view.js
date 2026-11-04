@@ -142,11 +142,10 @@ function viewTrials() {
   const today = getToday(), blk = FELLOWS ? null : blockFor(today), q = trialsTerm.trim();
   const watch = trialsWatch(Guides.data);
   if (!trialsVisit) trialsVisit = new Set(trialsWatchUnseen(watch, Store.state.guides.seen).map(r => r.k));
-  let h = "";
-  if (!q && trialsChip === "all") h += trialsMonitorHTML(today) + trialsWatchHTML(watch);
-  h += `<div class="qwrap">${ic("search")}<input id="trialsq" type="search" placeholder="Search: PREDESCI, albumin, Villanueva" aria-label="Search trials" ` +
+  let h = `<div class="qwrap">${ic("search")}<input id="trialsq" type="search" placeholder="Search: PREDESCI, albumin, Villanueva" aria-label="Search trials" ` +
     `autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(trialsTerm)}">` +
     (trialsTerm ? `<button class="qclear" data-action="guidestrclear" aria-label="Clear">${ic("x")}</button>` : "") + `</div>`;
+  if (!q && trialsChip === "all") h += trialsMonitorHTML(today) + trialsWatchHTML(watch);
   const blockTrials = blk && Guides.data ? trialsForBlock(Guides.data.topics, blk.num) : [];
   const chips = [["all", "All", null]];
   if (blockTrials.length) chips.push(["block", `Block ${blk.num} · ${GUIDES_FAMILY_LABEL[BLOCK_FAMILY[blk.num]] || esc(blk.name)}`, "week"]);

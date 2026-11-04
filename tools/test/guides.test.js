@@ -139,6 +139,20 @@ test("the tab: white-light monitor, new, search, chips and every topic", () => {
   assert.match(html, /class="nv on" data-action="tab" data-page="guides"/);
 });
 
+test("search sits right under the tabs on Guidelines, Trials and IBD drugs, before the chart and the New list", () => {
+  const h = phone();
+  const order = (html, ...marks) => {
+    const at = marks.map(m => html.indexOf(m));
+    assert.ok(at.every(i => i >= 0), "all present: " + marks.filter((m, i) => at[i] < 0).join(", "));
+    assert.deepEqual(at.slice().sort((a, b) => a - b), at, "in order: " + marks.join(" < "));
+  };
+  order(h.html(), 'class="segtabs four"', 'id="guidesq"', 'class="monitor guidemon"', "New · last 30 days");
+  h.click("guidestab", {tab: "t"});
+  order(h.html(), 'class="segtabs four"', 'id="trialsq"', 'class="monitor guidemon ltmon');
+  h.click("guidestab", {tab: "d"});
+  order(h.html(), 'class="segtabs four"', 'id="ibdq"', 'class="monitor guidemon ibdmon', 'id="ibd-prep"');
+});
+
 test("the list opens on this block's topics, then every section folded to one row", () => {
   const h = phone();
   let html = h.html();
