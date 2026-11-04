@@ -29,8 +29,6 @@ const SCOPE_UPPER_SEGS = [
   ["duod", "M9.4 17C7.4 17.4 6.4 19 6.6 20.8C6.8 22.8 8.6 24 10.8 23.8C12.6 23.6 13.8 22.8 14.6 21.8"],
 ];
 const SCOPE_BILIARY = "M6.8 20.4C8.4 19.4 9.6 17.6 10.4 14.4M10.4 14.4L8.6 11.4M10.4 14.4L13.2 12";
-// Past the duodenal sweep into the first loop of jejunum: a push enteroscopy.
-const SCOPE_JEJUNUM = "M14.6 21.8C16.6 21.2 18.4 22.2 19.6 23.6C20.8 25 22.6 25.2 24 24";
 
 // Rolling median of the last k values (smooths the reach trend without
 // inventing points).
@@ -117,10 +115,9 @@ function scopeVolumeScene(cases, o = {}) {
   const runs = {egd: [], colo: [], rest: []}, cnt = {egd: 0, colo: 0, rest: 0};
   for (const c of sorted) {
     const f = scopeFams(c);
-    // A push enteroscopy is an upper scope here: the chart keeps to three lines.
-    if (f.includes("egd") || f.includes("entero")) cnt.egd++;
+    if (f.includes("egd")) cnt.egd++;
     if (f.includes("colo")) cnt.colo++;
-    if (f.some(x => !["egd", "entero", "colo"].includes(x))) cnt.rest++;
+    if (f.some(x => !["egd", "colo"].includes(x))) cnt.rest++;
     for (const k in runs) runs[k].push([c.d, cnt[k]]);
   }
   const max = Math.max(4, cnt.egd, cnt.colo, cnt.rest), step = max <= 10 ? 2 : max <= 40 ? 10 : max <= 100 ? 25 : 50;

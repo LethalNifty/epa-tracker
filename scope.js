@@ -18,10 +18,8 @@ const scopeReachShort = r => (SCOPE_REACH.find(x => x[0] === r) || [, , ""])[2];
 // How a reach reads in a sentence: "Colonoscopy to cecum", "to HF".
 const SCOPE_REACH_SAY = {sig: "sigmoid", desc: "descending", sf: "SF", tverse: "transverse", hf: "HF", cecum: "cecum", ti: "TI"};
 
-// A push enteroscopy is an upper scope underneath (its codes are EGD codes, as
-// in T-Res) but counts as its own procedure: see scopeFamIn.
-const SCOPE_FAMS = [["egd", "Gastroscopy", "EGD"], ["entero", "Push enteroscopy", "Push enteroscopy"], ["colo", "Colonoscopy", "Colonoscopy"],
-  ["fs", "Flex sig", "Flex sig"], ["ercp", "ERCP", "ERCP"], ["para", "Paracentesis", "Paracentesis"], ["other", "Other", "Other"]];
+const SCOPE_FAMS = [["egd", "Gastroscopy", "EGD"], ["colo", "Colonoscopy", "Colonoscopy"], ["fs", "Flex sig", "Flex sig"],
+  ["ercp", "ERCP", "ERCP"], ["para", "Paracentesis", "Paracentesis"], ["other", "Other", "Other"]];
 const scopeFamLabel = f => (SCOPE_FAMS.find(x => x[0] === f) || [, "Other"])[1];
 const scopeFamShort = f => (SCOPE_FAMS.find(x => x[0] === f) || [, , "Other"])[2];
 
@@ -552,8 +550,9 @@ function scopeReadCase(text, ctx) {
   }
   const hasEntero = famAt.some(x => x.f === "egd:entero");
   for (const f of fams) {
-    // An EGD that goes on into the jejunum is the push enteroscopy, not an EGD as well.
-    if (f === "egd") add(draft.procs, hasEntero ? "egd.entero" : "egd.dx");
+    // A push enteroscopy is an EGD that goes on into the jejunum: it counts as
+    // the EGD, with the push enteroscopy done during it.
+    if (f === "egd") { add(draft.procs, "egd.dx"); if (hasEntero) add(draft.procs, "egd.entero"); }
     if (f === "fs") add(draft.procs, "fs.dx");
     if (f === "ercp") add(draft.procs, "ercp.dx");
     if (f === "para") add(draft.procs, therapeuticTap ? "para.ther" : "para.dx");
@@ -757,6 +756,8 @@ function scopeSplitPatients(text, ctx) {
     cuts.push(bare && nameAt(bare[1]) ? from + bare.index : p);
   }
   const who = d => d.staff || (d.staffHeard || "").toLowerCase() || (d.staffAlt || []).join("|");
+  // A push enteroscopy is the EGD going on into the jejunum: "EGD and push enteroscopy" is one patient.
+  const kinds = d => scopeFams(d).map(f => (f === "egd" && d.procs.includes("egd.entero") ? "entero" : f));
   const out = [];
   let cur = null, last = 0;
   for (const c of cuts.concat(text.length)) {
@@ -766,7 +767,7 @@ function scopeSplitPatients(text, ctx) {
     const d = scopeReadCase(t, ctx);
     if (!cur) { cur = {t, d}; continue; }
     const a = who(cur.d), b = who(d);
-    const again = scopeFams(d).some(f => scopeFams(cur.d).includes(f)) && (b || d.reach);
+    const again = kinds(d).some(f => kinds(cur.d).includes(f)) && (b || d.reach);
     if ((a && b) || again) { out.push(cur.t); cur = {t, d}; }
     else { const joined = cur.t + ", " + t; cur = {t: joined, d: scopeReadCase(joined, ctx)}; }
   }
@@ -860,9 +861,7 @@ function scopeInfer(draft, env = {}) {
 }
 
 // ---- Case helpers -----------------------------------------------------------------------------
-// A code's family in this case: in a push enteroscopy its EGD codes are the enteroscopy's.
-const scopeFamIn = (c, p) => { const x = scopeFam(p); return x === "egd" && (c.procs || []).includes("egd.entero") ? "entero" : x; };
-const scopeFams = c => { const f = []; for (const p of c.procs || []) { const x = scopeFamIn(c, p); if (!f.includes(x)) f.push(x); }
+const scopeFams = c => { const f = []; for (const p of c.procs || []) { const x = scopeFam(p); if (!f.includes(x)) f.push(x); }
   return f.sort((a, b) => SCOPE_FAMS.findIndex(x => x[0] === a) - SCOPE_FAMS.findIndex(x => x[0] === b)); };
 const scopeHasBase = c => (c.procs || []).some(p => p === "colo.dx" || p === "colo.screen");
 // "Colonoscopy to HF · polypectomy" / "EGD · biopsy, clip, injection"
@@ -875,7 +874,7 @@ function scopeSummary(c, o = {}) {
     if (f === "egd" && c.d2 === "yes" && c.procs.includes("egd.dx")) head += " to D2";
     if (f === "other") head = c.procs.includes("other.ileo") ? "Ileoscopy" : (c.otherLabel || "Other");
     if (f === "para") head = c.procs.includes("para.ther") ? "Paracentesis, therapeutic" : "Paracentesis";
-    const tx = (c.procs || []).filter(p => scopeFamIn(c, p) === f && SCOPE_PROC[p] && !SCOPE_PROC[p].base && p !== "egd.entero")
+    const tx = (c.procs || []).filter(p => scopeFam(p) === f && SCOPE_PROC[p] && !SCOPE_PROC[p].base)
       .map(p => /^[A-Z]{2,}$/.test(SCOPE_PROC[p].label) ? SCOPE_PROC[p].label
         : SCOPE_PROC[p].label.toLowerCase().replace("nj tube", "NJ tube").replace("barrett's", "Barrett's").replace("savary", "Savary").replace("maloney", "Maloney"));
     parts.push(head + (tx.length && !o.heads ? " · " + tx.join(", ") : ""));
@@ -889,7 +888,7 @@ const scopeC8 = c => { const s = new Set(); for (const p of c.procs || []) if (S
 // EPA parts a case could count toward.
 function scopeEpaParts(c) {
   const out = [], f = scopeFams(c);
-  if (f.includes("egd") || f.includes("entero")) out.push("f3a");
+  if (f.includes("egd")) out.push("f3a");
   if (f.includes("fs") || (scopeHasBase(c) && c.reach)) out.push("f4");
   if (scopeHasBase(c)) out.push("c6");
   if (scopeC8(c).size) out.push("c8a");
@@ -907,7 +906,7 @@ const scopeByDate = (a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : String(a.ts || "
 // ---- Numbers ------------------------------------------------------------------------------------
 const scopeIn = (c, from, to) => (!from || c.d >= from) && (!to || c.d <= to);
 function scopeTotals(cases, from, to) {
-  const t = {egd: 0, entero: 0, colo: 0, fs: 0, ercp: 0, para: 0, other: 0, cases: 0, procs: 0};
+  const t = {egd: 0, colo: 0, fs: 0, ercp: 0, para: 0, other: 0, cases: 0, procs: 0};
   for (const c of cases) {
     if (!scopeIn(c, from, to)) continue;
     t.cases++;
@@ -984,7 +983,6 @@ const SCOPE_FIRSTS = [
   ["First colonoscopy to the cecum", c => scopeHasBase(c) && scopeRank(c.reach) >= 5],
   ["First terminal ileum intubation", c => scopeHasBase(c) && c.reach === "ti"],
   ["First flex sig", c => scopeFams(c).includes("fs")],
-  ["First push enteroscopy", c => scopeFams(c).includes("entero")],
   ["First polypectomy", c => scopeC8(c).has("polypectomy")],
   ["First polyp 10 mm or larger", c => scopeC8(c).has("polypectomy >1 cm")],
   ["First EMR", c => (c.procs || []).some(p => p === "egd.emr" || p === "colo.emr")],
