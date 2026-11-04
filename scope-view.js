@@ -11,7 +11,9 @@ let scopeTab = "log";
 let scopeCap = {text: "", cards: [], removed: 0};
 let scopeSheet = null, scopeSheetFresh = false;   // {kind: "capture" | "edit" | "staff" | "report"}
 let scopePick = null, scopePickFresh = false;     // {key, kind, q, teach}
-let scopeSearch = "", scopeAllRecent = false, scopeDot = null, scopeDotFresh = false, scopePeriod = "since";
+let scopeSearch = "", scopeMore = 0, scopeSearchTimer = null, scopeDot = null, scopeDotFresh = false, scopePeriod = "since";
+// Earlier draws 24 cases (a search its first 50 matches), then 50 more a tap.
+const SCOPE_FIRST = 24, SCOPE_PAGE = 50;
 let scopeCardsFresh = false, scopeIntroDone = false, scopeLit = null, scopeErr = null, scopeKeySeq = 0, scopeFocus = null;
 
 // ---- Small helpers ------------------------------------------------------------------------
@@ -240,7 +242,7 @@ function scopeRecentHTML() {
   let list = scopeData().cases.filter(c => c.d !== t).slice().sort((a, b) => -scopeByDate(a, b));
   if (q) list = list.filter(c => (scopeSummary(c) + " " + scopeWho(c.staff) + " " + (c.found || []).map(x => scopeFoundText(c, x)).join(" ") + " " +
     (c.why || []).map(x => scopeWhyText(c, x)).join(" ") + " " + scopeSiteShort(c.site) + " " + scopeDayLabel(c.d) + " " + (c.note || "")).toLowerCase().includes(q));
-  const total = list.length, shown = scopeAllRecent || q ? list : list.slice(0, 24);
+  const total = list.length, shown = list.slice(0, (q ? SCOPE_PAGE : SCOPE_FIRST) + scopeMore * SCOPE_PAGE);
   if (!total) return `<div class="card empty">${q ? "Nothing matches. Try a staff name, procedure or finding." : "Earlier cases show up here."}</div>`;
   let h = "", lastD = "";
   for (const c of shown) {
@@ -248,7 +250,7 @@ function scopeRecentHTML() {
     h += scopeRowHTML(c);
   }
   h += `</div>`;
-  if (shown.length < total) h += `<button class="btn morebtn" data-action="scopemore">Show all ${total}</button>`;
+  if (shown.length < total) h += `<button class="btn morebtn" data-action="scopemore">Show ${Math.min(SCOPE_PAGE, total - shown.length)} more</button>`;
   return h;
 }
 function scopeLogHTML() {
@@ -694,7 +696,7 @@ function scopeDispatch(act, d = {}) {
   }
   else if (act === "scopeage") { scopeData().ageOn = d.v === "on"; Store.save(); }
   else if (act === "scopehintoff") { scopeData().hintOff = fmtDate(getToday()); Store.save(); }
-  else if (act === "scopemore") scopeAllRecent = true;
+  else if (act === "scopemore") scopeMore++;
   else if (act === "scopedot") { scopeDot = scopeDot === d.id ? null : d.id || null; scopeDotFresh = !!scopeDot; }
   else if (act === "scopeperiod") scopePeriod = d.p;
   else if (act === "scopereport") { scopeExportReport(); return false; }
@@ -713,7 +715,9 @@ function scopeField(t) {
   if (d.scopefield === "text") { scopeCap.text = t.value; const other = document.querySelectorAll ? document.querySelectorAll(".capbox") : [];
     for (const el of other) if (el !== t) el.value = t.value; scopeGrow(t); return true; }
   if (d.scopefield === "pick" && scopePick) { scopePick.q = t.value; const box = document.getElementById("scopepicklist"); if (box) box.innerHTML = scopePickListHTML(); return true; }
-  if (d.scopefield === "search") { scopeSearch = t.value; const box = document.getElementById("scoperecent"); if (box) box.innerHTML = scopeRecentHTML(); return true; }
+  // A new search starts from its first page, drawn once typing pauses.
+  if (d.scopefield === "search") { scopeSearch = t.value; scopeMore = 0; clearTimeout(scopeSearchTimer);
+    scopeSearchTimer = setTimeout(() => { const box = document.getElementById("scoperecent"); if (box) box.innerHTML = scopeRecentHTML(); }, 200); return true; }
   if (d.scopefield === "name") { scopeData().reportName = t.value.slice(0, 80); Store.save(); return true; }
   if (d.scopefield === "addstaff" && scopeSheet) { scopeSheet.add = t.value; return true; }
   if (d.scopenote) { const c = scopeCardByKey(d.scopenote); if (c) c.note = t.value.slice(0, 200); return true; }
