@@ -73,7 +73,11 @@ body {
   margin: 0; background: transparent; color: var(--light);
   font: 400 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
+  /* Safari 26 evens out a paragraph's lines so none ends on a lone word; older iPhones ignore it. */
+  text-wrap: pretty;
 }
+/* Text being typed keeps plain wrapping, so words don't hop lines mid-dictation. */
+textarea, input { text-wrap: wrap; }
 /* The foot clears the floating + (16px above the bar, 58px tall) with room to
    spare, so a page's last line is never under it. */
 #app { max-width: 560px; margin: 0 auto; padding: 0 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 92px); }
@@ -1539,9 +1543,13 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
   45% { background: var(--flu-ink); box-shadow: 0 0 18px 3px rgba(255, 200, 114, .8); transform: scale(1.18); }
   100% { background: var(--flu); box-shadow: 0 0 7px rgba(255, 200, 114, .35); transform: scale(1); } }
 .pit.stain { animation: stain .75s var(--ease-out) both; animation-delay: calc(var(--k) * 90ms + 160ms); }
-/* Tonight's stop: its pages, then every stop of the night, read ones ticked. */
-.sm-tonight { margin-top: 12px; }
-.sm-tonight .pit { flex: 0 0 15px; }
+/* Tonight's stop: its pages as one thin bar (read in full gold, the page you're
+   on brighter, the rest a faint track), then every stop of the night, read ones ticked. */
+.sm-tonight { margin-top: 14px; gap: 4px; }
+.sm-tonight .pit { flex: 1 1 0; max-width: none; height: 4px; aspect-ratio: auto; border-radius: 2px; animation: none; box-shadow: none;
+  background: color-mix(in srgb, var(--flu) 16%, transparent); }
+.sm-tonight .pit.lit { background: var(--flu); }
+.sm-tonight .pit.tn:first-child, .sm-tonight .pit.lit + .pit.tn { background: color-mix(in srgb, var(--flu) 60%, transparent); }
 .sm-stops { list-style: none; margin: 16px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(255, 200, 114, .1); display: grid; gap: 2px; }
 .sm-stops .st-h { display: flex; justify-content: space-between; padding-bottom: 4px; color: var(--faint); font-size: 10px; letter-spacing: .06em; }
 .sm-stops li:not(.st-h) { display: grid; grid-template-columns: 18px auto 1fr auto; gap: 8px; align-items: center; min-height: 28px; font-size: 13px; }
