@@ -1103,7 +1103,7 @@ function render() {
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
-      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (toast ? toastHTML() : "");
+      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -1144,7 +1144,7 @@ function holdPage(on) {
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual);
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq);
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1289,6 +1289,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
+  if (agReqField(t)) return;
   if (agField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) { draftsKeep(); return; }
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (t.id === "agfile") { agReadFile(t.files && t.files[0]); t.value = ""; return; }

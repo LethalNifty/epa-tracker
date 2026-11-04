@@ -2,8 +2,8 @@
 // Agenda: one calendar for call, reading nights, work and your own events.
 // The model: saved events made whole, which days an event covers (repeats,
 // several days, past midnight), Manitoba's general holidays, your usual week,
-// a day's rows and .ics files. Events live in the EPA store
-// (Store.state.agenda), so they go in the backup. Full app only. Reads
+// call requests, a day's rows and .ics files. Events and days off live in the
+// EPA store (Store.state.agenda), so they go in the backup. Full app only. Reads
 // call.js and study.js when it runs, never while this file loads.
 
 const AG_ISO = /^\d{4}-\d{2}-\d{2}$/, AG_HM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -59,7 +59,7 @@ function agNewId(taken) {
   do id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));
   return id;
 }
-const agBlank = () => ({items: [], usual: agDefaultUsual()});
+const agBlank = () => ({items: [], usual: agDefaultUsual(), off: []});
 // The saved agenda made whole: blanks dropped, every id present and unique.
 function agClean(raw) {
   const items = [], taken = new Set();
@@ -69,7 +69,7 @@ function agClean(raw) {
     if (!it.id || taken.has(it.id)) it.id = agNewId(taken);
     taken.add(it.id); items.push(it);
   }
-  return {items, usual: agUsualClean(raw && raw.usual)};
+  return {items, usual: agUsualClean(raw && raw.usual), off: agOffClean(raw && raw.off)};
 }
 // Whether an occurrence of the event starts on day o.
 function agStartsOn(it, o) {
@@ -116,6 +116,76 @@ function agHoliday(iso) {
   const y = iso.slice(0, 4), list = agHolidayMemo[y] || (agHolidayMemo[y] = agHolidays(+y));
   const h = list.find(x => x.d === iso);
   return h ? h.name : null;
+}
+// Stats as the call schedule keeps them: the general holidays, then Boxing Day
+// and Terry Fox Day (the first Monday in August), which the hospitals keep too.
+function agStat(iso) {
+  const d = agDate(iso);
+  return agHoliday(iso) || (iso.slice(5) === "12-26" ? "Boxing Day" : d.getMonth() === 7 && d.getDay() === 1 && d.getDate() <= 7 ? "Terry Fox Day" : null);
+}
+
+// ---- Call requests ------------------------------------------------------------------------------
+// A block's call requests (blocks run Thursday to Wednesday): no call on
+// Thursday evenings, one weekend settled with the co-fellow, none that a
+// Friday or Monday stat stretches to three days on, and days off.
+const AG_OFF_MAX = 400;
+// Days off: real days, each once, in order.
+function agOffClean(raw) { return [...new Set(Array.isArray(raw) ? raw.filter(agValidIso) : [])].sort().slice(-AG_OFF_MAX); }
+// Dates as a request reads them: "Dec 17", "Wed Nov 25", "Dec 18 to 21", "Dec 30 to Jan 2".
+const agMD = iso => { const d = agDate(iso); return MONTHS[d.getMonth()] + " " + d.getDate(); };
+const agSpanWords = (a, b) => agMD(a) + " to " + (a.slice(0, 7) === b.slice(0, 7) ? agDate(b).getDate() : agMD(b));
+const agRunWords = ([a, b]) => a === b ? DAYS[agDate(a).getDay()] + " " + agMD(a) : agSpanWords(a, b);
+// Days in a row as runs, each [first, last].
+function agRuns(days) {
+  const runs = [];
+  for (const x of days) { const r = runs[runs.length - 1]; if (r && agAddDays(r[1], 1) === x) r[1] = x; else runs.push([x, x]); }
+  return runs;
+}
+// "a", "a or b", "a, b or c".
+const agOr = xs => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " or " + xs[xs.length - 1];
+const agBlockDays = num => [fmtDate(blockStart(num)), fmtDate(blockEnd(num))];
+
+// Block num's request: its Thursdays; its four weekends, Friday evening to
+// Monday morning, each with why it won't do (a stat on the Friday or Monday,
+// a day off Friday to Sunday) or null; its runs of days off; the text to paste.
+function agRequest(num) {
+  const [start, end] = agBlockDays(num), mine = agState().off.filter(x => x >= start && x <= end);
+  const days = Array.from({length: 28}, (_, k) => agAddDays(start, k));
+  const weekends = days.filter((_, k) => k % 7 === 1).map(fri => {
+    const mon = agAddDays(fri, 3), st = agStat(fri) ? [agStat(fri), "Friday"] : agStat(mon) ? [agStat(mon), "Monday"] : null;
+    const name = st && st[0].replace(/^(Christmas|New Year's) Day$/, "$1"), offs = [0, 1, 2].filter(k => mine.includes(agAddDays(fri, k))).length;
+    const why = st ? (name.endsWith(st[1]) ? name : name + " " + st[1]) + " · 3 days on" : offs > 1 ? "Days off" : offs ? "Day off" : null;
+    return {fri, mon, why};
+  });
+  const thursdays = days.filter((_, k) => k % 7 === 0), runs = agRuns(mine), clear = weekends.filter(w => !w.why).map(w => agSpanWords(w.fri, w.mon));
+  const text = `Block ${num} (${agMD(start)} to ${agMD(end)}) call requests:\n` +
+    `- No call Thursday evenings: ${thursdays.map(agMD).join(", ")}.\n` +
+    `- Weekend: ${clear.length ? agOr(clear) + ", confirming with my co-fellow" : "to settle with my co-fellow"}.\n` +
+    (runs.length ? `- ${mine.length > 1 ? "Days" : "Day"} off: ${runs.map(agRunWords).join(", ")}.` : "- No days off this block.");
+  return {num, name: BLOCK_NAMES[num], start, end, thursdays, weekends, runs, text};
+}
+// All-day events that don't repeat, as the days of block num they cover: [{id, t, days}].
+function agAwayIn(num) {
+  const [start, end] = agBlockDays(num), out = [];
+  for (const it of agState().items) {
+    if (it.s || it.rep) continue;
+    const days = [];
+    for (let x = it.d < start ? start : it.d; x <= (it.d2 || it.d) && x <= end; x = agAddDays(x, 1)) days.push(x);
+    if (days.length) out.push({id: it.id, t: it.t, days});
+  }
+  return out;
+}
+// Days off go in one at a time, or a run from an event; a run inside the block comes out whole.
+function agOffAdd(num, days) {
+  const [start, end] = agBlockDays(num), a = agState(), keep = days.filter(x => agValidIso(x) && x >= start && x <= end);
+  if (!keep.length) return;
+  a.off = agOffClean(a.off.concat(keep)); Store.save();
+}
+function agOffDrop(num, day) {
+  const [start, end] = agBlockDays(num), a = agState();
+  const run = agRuns(a.off.filter(x => x >= start && x <= end)).find(([x, y]) => day >= x && day <= y);
+  if (!run) return;
+  a.off = a.off.filter(x => x < run[0] || x > run[1]); Store.save();
 }
 
 // ---- Saving ----------------------------------------------------------------------------------

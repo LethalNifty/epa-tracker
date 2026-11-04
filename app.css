@@ -1359,6 +1359,28 @@ a.src:active { background: var(--wall-3); }
 .agu-b .mono { font-size: 10px; color: var(--faint); }
 .agu-b .iconbtn { width: 30px; height: 34px; color: var(--faint); }
 .agu-none { margin: 4px 0 0; font-size: 13px; color: var(--faint); }
+/* Call requests: the block's weekends (clear, or why not), Thursdays, days off, then the text to paste. */
+.rq-seg { margin: 4px 0 12px; }
+.rq-sub { margin: 2px 0 14px; color: var(--dim); font-size: 11px; letter-spacing: .08em; }
+.rq-list { padding: 2px 14px; }
+.rq { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 50px; border-top: 1px solid var(--fold); }
+.rq:first-child { border-top: 0; }
+.rq .ic { width: 16px; height: 16px; }
+.rq.ok .ic { color: var(--offlabel); }
+.rq.bad .ic { color: var(--capillary); }
+.rq b { font-weight: 520; font-size: 15.5px; }
+.rq.bad b { color: var(--dim); }
+.rq span { color: var(--dim); font-size: 13px; text-align: right; }
+.rq-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rq-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 99px;
+  font-size: 13.5px; background: var(--wall-2); border: 1px solid var(--fold-2); color: var(--light); }
+.rq-chip.add { color: var(--nbi-ink); border-style: dashed; }
+.rq-chip.none { color: var(--dim); }
+.rq-chip.on .ic { width: 13px; height: 13px; margin-right: -3px; color: var(--dim); }
+/* The day picker lies over its chip, so a tap opens it; 16px keeps iOS from zooming. */
+.rq-chip input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+.rq-txt { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--solid); border: 1px solid var(--fold);
+  font: 400 13.5px/1.5 var(--sans); color: var(--light); white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
 /* Week: the next thing in Agenda, one line. */
 .agnext { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; margin: 14px 0 22px; padding: 12px 14px; text-align: left; }
 .agnext > .mono:first-child { font-size: 10px; color: var(--nbi-ink); }

@@ -1,8 +1,8 @@
 "use strict";
-// The Agenda tab: Days and Month, the event sheet, your usual week and Add
-// from file, over agenda.js. Full app only.
+// The Agenda tab: Days and Month, the event sheet, your usual week, Add from
+// file and call requests, over agenda.js. Full app only.
 
-let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false, agUsual = null, agError = null;
+let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false, agUsual = null, agError = null, agReq = null;
 const agToday = () => fmtDate(getToday());
 const agDayWords = iso => { const d = agDate(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const agHeading = iso => { const t = agToday();
@@ -87,7 +87,8 @@ function viewAgenda() {
     (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) +
     `<section class="sec"><div class="card ag-links">` +
     `<button class="ag-link" data-action="agfilepick">${ic("download")}<span><b>Add from file</b><span>An invite or a calendar export (.ics)</span></span></button>` +
-    `<button class="ag-link" data-action="agusual">${ic("clock")}<span><b>Your usual week</b><span>The work hours shown on each day</span></span></button></div>` +
+    `<button class="ag-link" data-action="agusual">${ic("clock")}<span><b>Your usual week</b><span>The work hours shown on each day</span></span></button>` +
+    agReqLinkHTML() + `</div>` +
     (agError ? `<div class="err" role="alert">${esc(agError)}</div>` : "") + `<input type="file" id="agfile" hidden></section>`;
 }
 
@@ -186,6 +187,54 @@ function agReadFile(f) {
   else { const rd = new FileReader(); rd.onload = () => done(icsText(new Uint8Array(rd.result))); rd.onerror = fail; rd.readAsArrayBuffer(f); }
 }
 
+// ---- Call requests -------------------------------------------------------------------------------
+// The blocks a request can still be for: the next two.
+function agReqBlocks() {
+  const b = blockFor(getToday());
+  return b ? [b.num + 1, b.num + 2].filter(n => blockFor(blockStart(n))) : [];
+}
+function agReqLinkHTML() {
+  const nums = FELLOWS ? [] : agReqBlocks();
+  return nums.length ? `<button class="ag-link" data-action="agreq">${ic("phone")}<span><b>Call requests</b><span>Block ${nums[0]}, ready to paste</span></span></button>` : "";
+}
+// The weekends with why each won't do, Thursdays, days off (an all-day event
+// offered as days away with one tap), and the request to paste.
+function agReqHTML() {
+  const r = agRequest(agReq.num), nums = agReqBlocks(), fresh = agSheetFresh ? " fresh" : "", off = agState().off;
+  const away = agAwayIn(r.num), todo = away.filter(a => a.days.some(x => !off.includes(x)));
+  const seg = nums.length > 1 ? `<div class="segtabs rq-seg" role="group" aria-label="Which block">` + nums.map(n =>
+    `<button class="${n === r.num ? "on" : ""}" data-action="agreqblock" data-num="${n}" aria-pressed="${n === r.num}">Block ${n}</button>`).join("") + `</div>` : "";
+  const wk = w => `<div class="rq ${w.why ? "bad" : "ok"}">${ic(w.why ? "x" : "check")}<b>${agSpanWords(w.fri, w.mon)}</b><span>${w.why || "Clear"}</span></div>`;
+  const days = r.runs.map(run => { const w = agRunWords(run);
+    return `<button class="rq-chip on" data-action="agreqoff" data-day="${run[0]}" aria-label="Remove ${w}">${w}${ic("x", "sm")}</button>`; }).join("") +
+    todo.map(a => `<button class="rq-chip add" data-action="agreqaway" data-id="${esc(a.id)}">+ ${esc(a.t)} · ${agRunWords([a.days[0], a.days[a.days.length - 1]])}</button>`).join("") +
+    `<label class="rq-chip add">+ Add a day<input type="date" data-agreq="add" min="${r.start}" max="${r.end}" aria-label="Add a day off"></label>` +
+    (away.length ? "" : `<span class="rq-chip none">Away in Agenda: none</span>`);
+  return `<div class="scrim${fresh}" data-action="agreqclose"></div><div class="sheet agreq${fresh}" role="dialog" aria-modal="true" aria-label="Call requests">` +
+    `<div class="grab"></div><div class="shead"><b>Call requests</b><button class="iconbtn" data-action="agreqclose" aria-label="Close">${ic("x")}</button></div>` +
+    seg + `<p class="rq-sub mono">Block ${r.num} · ${esc(r.name)} · ${agMD(r.start)} to ${agMD(r.end)}</p>` +
+    `<div class="set-h mono"><span>Weekend</span><span>Settle with your co-fellow</span></div><div class="card rq-list">${r.weekends.map(wk).join("")}</div>` +
+    `<div class="setgrp"><div class="set-h mono"><span>No call</span><span>Thursdays</span></div>` +
+    `<div class="rq-chips">${r.thursdays.map(t => `<span class="rq-chip">${agMD(t)}</span>`).join("")}</div></div>` +
+    `<div class="setgrp"><div class="set-h mono"><span>Days off</span><span>Mon to Wed fits best</span></div><div class="rq-chips">${days}</div></div>` +
+    `<div class="setgrp"><div class="set-h mono"><span>Ready to paste</span></div><p class="rq-txt">${esc(r.text)}</p></div>` +
+    `<div class="setgrp"><button class="btn flu" data-action="agreqcopy">${ic("copy")}Copy request</button></div></div>`;
+}
+function agReqCopy() {
+  const text = agRequest(agReq.num).text;
+  const done = ok => { showToast(ok ? "Request copied" : "Copy isn't available here"); route.keepScroll = true; render(); };
+  if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+  else done(false);
+}
+// A day picked in + Add a day.
+function agReqField(t) {
+  if (!(t && t.dataset && t.dataset.agreq === "add")) return false;
+  if (agReq) agOffAdd(agReq.num, [t.value]);
+  route.keepScroll = true; render();
+  return true;
+}
+
 // ---- Week's Next line ----------------------------------------------------------------------------
 function agNextHTML() {
   const nx = agNext(callNow());
@@ -226,5 +275,11 @@ function agDispatch(act, d) {
   else if (act === "agblockadd" && agUsual) agUsual.days[d.day].push({a: "08:00", b: "17:00", t: "Work"});
   else if (act === "agblockdel" && agUsual) agUsual.days[d.day].splice(+d.i, 1);
   else if (act === "agfilepick") { agError = null; const f = document.getElementById("agfile"); if (f) f.click(); return false; }
+  else if (act === "agreq") { const n = agReqBlocks()[0]; if (n && !FELLOWS) { agReq = {num: n}; agSheetFresh = true; } }
+  else if (act === "agreqclose") agReq = null;
+  else if (act === "agreqblock" && agReq && agReqBlocks().includes(+d.num)) agReq.num = +d.num;
+  else if (act === "agreqoff" && agReq) agOffDrop(agReq.num, d.day);
+  else if (act === "agreqaway" && agReq) { const a = agAwayIn(agReq.num).find(x => x.id === d.id); if (a) agOffAdd(agReq.num, a.days); }
+  else if (act === "agreqcopy" && agReq) { agReqCopy(); return false; }
   return true;
 }
