@@ -67,8 +67,8 @@ function scopeGlyph(c, o = {}) {
 // ---- Cards -------------------------------------------------------------------------------------
 function scopeNewKey() { return "c" + (++scopeKeySeq); }
 // A draft from the reader becomes a card: carried, inferred, with UI fields.
-function scopeCardsFrom(drafts) {
-  const s = scopeData(), today = getToday();
+function scopeCardsFrom(drafts, today = getToday()) {
+  const s = scopeData();
   const carried = scopeCarry(drafts, s.cases, today);
   const stretches = typeof callStretches === "function" ? callStretches(CallStore.list()) : [];
   return carried.map(d => {
@@ -192,7 +192,8 @@ function scopeCtxLine() {
 }
 function scopeBoxHTML(where) {
   const today = getToday(), n = scopeCap.cards.length;
-  return `<section class="monitor capmon" aria-label="Say the case"><div class="monitor-in">` +
+  return (scopeCap.restored ? draftStripHTML("scope", scopeCap.restored) : "") +
+    `<section class="monitor capmon" aria-label="Say the case"><div class="monitor-in">` +
     `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="capctx">${esc(scopeCtxLine())}</span></div>` +
     `<textarea id="scopebox-${where}" class="capbox" rows="3" data-scopefield="text" placeholder="EGD with Surname, biopsies for dysphagia, EoE" ` +
     `autocapitalize="sentences" enterkeyhint="done" aria-label="Say or type the case">${esc(scopeCap.text)}</textarea>` +
@@ -526,9 +527,10 @@ function scopePickHTML() {
 
 // ---- Actions -------------------------------------------------------------------------------------------
 function scopeRead() {
-  const s = scopeData();
-  const r = scopeParse(scopeCap.text, {today: getToday(), staff: s.staff, learned: s.learned, age: !!s.ageOn, d2: !FELLOWS});
-  scopeCap.cards = scopeCardsFrom(r.cases);
+  // Words kept from another day are read as that day's.
+  const s = scopeData(), today = scopeCap.day ? scopeIsoDate(scopeCap.day) : getToday();
+  const r = scopeParse(scopeCap.text, {today, staff: s.staff, learned: s.learned, age: !!s.ageOn, d2: !FELLOWS});
+  scopeCap.cards = scopeCardsFrom(r.cases, today);
   scopeCap.removed = r.removed;
   // What could identify a patient leaves the box too.
   if (r.removed) scopeCap.text = scopeGuard(scopeCap.text).text;

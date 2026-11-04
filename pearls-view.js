@@ -13,6 +13,7 @@ function pearlOpen(id) {
   pearlSheet = p ? {mode: "edit", id: p.id, t: p.t, who: p.who, topic: p.topic, d: p.d, sent: p.sent}
     : {mode: "new", t: "", who: "", topic: "", d: fmtDate(getToday()), sent: null};
   Object.assign(pearlSheet, {more: false, tq: "", err: null});
+  if (!p) draftsInto("pearl", pearlSheet);
   pearlSheetFresh = true;
 }
 // The chosen topic, then the topics the words point to (or, once Other topic
@@ -58,7 +59,7 @@ function pearlSheetHTML() {
   return `<div class="scrim${fresh}" data-action="pearlclose"></div>` +
     `<div class="sheet pearlsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
     (plusOn ? plusHeadHTML("pearlclose") : `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="pearlclose" aria-label="Close">${ic("x")}</button></div>`) +
-    `<p class="ssub">Teaching point only. No patient details.</p>` +
+    (s.restored ? draftStripHTML("pearl", s.restored) : "") + `<p class="ssub">Teaching point only. No patient details.</p>` +
     `<section class="monitor capmon prlmon" aria-label="Say the pearl"><div class="monitor-in">` +
     `<div class="ov mono"><span id="pearlday">${pearlDay(s.d)}</span><span>Pearl</span></div>` +
     `<textarea id="pearlbox" class="capbox" rows="3" data-pearl="t" placeholder="What did they teach?" autocapitalize="sentences" ` +
@@ -83,6 +84,7 @@ function pearlSave() {
     d: PEARL_ISO.test(s.d) ? s.d : fmtDate(getToday())};
   if (s.mode === "new") { const id = Store.addPearl(fields); showToast("Pearl saved", () => Store.removePearl(id)); }
   else { Store.updatePearl(s.id, {...fields, sent: s.sent}); showToast("Pearl updated"); }
+  draftsLetGo("pearl", s);
   pearlSheet = null;
 }
 // Keeps the sheet in step with typing without a redraw (which would drop the
@@ -192,7 +194,7 @@ function pearlDispatch(act, d) {
   const s = pearlSheet;
   if (act === "pearlnew") { scopeSheet = null; scopePick = null; pearlOpen(null); }
   else if (act === "pearledit") pearlOpen(d.id);
-  else if (act === "pearlclose") pearlSheet = null;
+  else if (act === "pearlclose") { draftsLetGo("pearl", pearlSheet); pearlSheet = null; }
   else if (act === "pearlsave" && s) pearlSave();
   else if (act === "pearldelete" && s) {
     const before = Store.pearlsSnapshot();

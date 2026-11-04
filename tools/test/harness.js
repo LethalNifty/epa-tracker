@@ -33,8 +33,10 @@ function dateExpr(iso) {
   return `new Date(${y}, ${m - 1}, ${d}, 12)`;
 }
 
+// opts.store: another load's storage, for the same phone opening the app again.
+// opts.location: the address it opens at, as a tapped reminder's link.
 function load(opts = {}) {
-  const store = new Map(), KEY = KEYS[opts.edition || "full"];
+  const store = opts.store || new Map(), KEY = KEYS[opts.edition || "full"];
   if (opts.state) store.set(KEY, JSON.stringify(opts.state));
   const downloads = [];
   const els = {
@@ -67,6 +69,7 @@ function load(opts = {}) {
     confirm: () => true,
     scrollTo() {},
   };
+  if (opts.location) Object.assign(ctx, {location: opts.location, history: {replaceState() {}}});
   ctx.window = ctx;
   vm.createContext(ctx);
   const run = code => vm.runInContext(code, ctx);

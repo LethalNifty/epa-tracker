@@ -844,6 +844,7 @@ function openSheet(pid, i, mi) {
   sheet = o
     ? {mode: "edit", pid, i: +at, missed, d: o.d || "", a: o.a || "", n: o.n || "", status: o.status || "pending", all: false, tick: held, held}
     : {mode: "new", pid: pid || null, d: fmtDate(getToday()), a: "", n: "", status: "pending", all: false, tick: []};
+  if (!o) draftsInto("epa", sheet);
   sheetError = null;
   sheetFresh = true;
 }
@@ -955,7 +956,8 @@ function sheetHTML() {
   return `<div class="scrim${sheetFresh ? " fresh" : ""}" data-action="closesheet"></div>` +
     `<div class="sheet${sheetFresh ? " fresh" : ""}" role="dialog" aria-modal="true" aria-label="${edit ? "Edit" : "Log"} observation">` +
     (plusOn ? plusHeadHTML("closesheet") : `<div class="grab"></div><div class="shead"><b>${edit ? "Edit observation" : "Log observation"}</b>` +
-      `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>`) + picker +
+      `<button class="iconbtn" data-action="closesheet" aria-label="Close">${ic("x")}</button></div>`) +
+    (s.restored ? draftStripHTML("epa", s.restored) : "") + picker +
     (s.pid ? `<div class="picked"><b>${PART_BY_ID[s.pid].label}</b> ${esc(partTitle(s.pid))}</div>` : "") +
     `<label class="lbl mono">Date<input type="date" value="${esc(s.d)}" data-sheet="d"></label>` +
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
@@ -986,6 +988,79 @@ function sheetFieldChange(t) {
   if (!f || !sheet) return false;
   sheet[f] = t.value;
   return true;
+}
+
+// ---- Unsent words ----------------------------------------------------------------
+// iOS closes an app it hasn't shown for a while, and words said into a sheet
+// went with it. A new case, observation or pearl is kept on this phone as it's
+// typed (apart from the saved state and the backup) and comes back the next
+// time the app opens, for a week, marked as not saved. The newest opens by
+// itself once, unless a reminder opened the app; the rest wait for their sheet.
+const DRAFTS_KEY = "gi-drafts-v1", DRAFTS_KEEP = 7 * DAY_MS;
+let drafts = {};
+// What each kind keeps; nothing when it holds no words. Cards are kept without their keys.
+const DRAFT_OF = {
+  scope: c => (c.text.trim() || c.cards.length ? {text: c.text, cards: c.cards.map(({key, ...rest}) => rest), removed: c.removed, day: c.day || null} : null),
+  epa: s => (s && s.mode === "new" && (s.a.trim() || s.n.trim()) ? {pid: s.pid, d: s.d, a: s.a, n: s.n, status: s.status, tick: s.tick || []} : null),
+  pearl: s => (s && s.mode === "new" && (s.t.trim() || s.who.trim()) ? {t: s.t, who: s.who, topic: s.topic, d: s.d} : null),
+};
+const draftHolder = k => (k === "scope" ? scopeCap : k === "epa" ? sheet : pearlSheet);
+function draftsWrite() { try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)); } catch (e) {} }
+// After each change, what a sheet holds replaces what was kept. A sheet that
+// closed keeps its words (a tapped reminder may have closed it); the case box
+// is always there, so emptying it lets its words go.
+function draftsKeep() {
+  if (FELLOWS) return;
+  let changed = false;
+  for (const k in DRAFT_OF) {
+    const v = DRAFT_OF[k](draftHolder(k)), was = drafts[k];
+    if (!v) { if (k === "scope" && was) { delete drafts.scope; changed = true; } continue; }
+    if (was && JSON.stringify(was.v) === JSON.stringify(v)) continue;
+    drafts[k] = {at: callNow(), v}; changed = true;
+  }
+  if (changed) draftsWrite();
+}
+function draftsBoot(quiet) {
+  if (FELLOWS) return;
+  try { drafts = JSON.parse(localStorage.getItem(DRAFTS_KEY) || "{}") || {}; } catch (e) { drafts = {}; }
+  const old = callNow() - DRAFTS_KEEP;
+  for (const k of Object.keys(drafts)) if (!DRAFT_OF[k] || !drafts[k] || !drafts[k].v || !(drafts[k].at > old)) delete drafts[k];
+  // A case read on another day keeps that day for its cards.
+  const sc = drafts.scope;
+  if (sc) {
+    sc.v.day = sc.v.day || fmtDate(new Date(sc.at));
+    scopeCap = {text: String(sc.v.text || ""), cards: (sc.v.cards || []).map(c => ({...c, key: scopeNewKey()})), removed: sc.v.removed || 0, day: sc.v.day, restored: sc.at};
+  }
+  const k = quiet ? null : Object.keys(drafts).filter(x => !drafts[x].shown).sort((a, b) => drafts[b].at - drafts[a].at)[0];
+  if (k) drafts[k].shown = true;
+  draftsWrite();
+  if (k === "scope") scopeOpenCapture();
+  else if (k === "epa") openSheet(drafts.epa.v.pid || undefined);
+  else if (k === "pearl") pearlOpen(null);
+}
+// A new sheet takes the words kept for its kind: an observation's only for the
+// same EPA, or when either has none picked.
+function draftsInto(k, s) {
+  const dr = !FELLOWS && drafts[k];
+  if (!dr || (k === "epa" && s.pid && dr.v.pid && s.pid !== dr.v.pid)) return;
+  Object.assign(s, dr.v, k === "epa" && s.pid ? {pid: s.pid} : {}, {restored: dr.at});
+}
+// Saved, or closed on purpose: the kept words go when they were this sheet's.
+function draftsLetGo(k, s) {
+  if (!drafts[k] || !s || !(s.restored || DRAFT_OF[k](s))) return;
+  delete drafts[k]; draftsWrite();
+}
+function draftsClear(k) {
+  delete drafts[k]; draftsWrite();
+  if (k === "scope") { scopeCap = {text: "", cards: [], removed: 0}; scopeErr = null; }
+  else if (k === "epa" && sheet) Object.assign(sheet, {d: fmtDate(getToday()), a: "", n: "", status: "pending", tick: [], restored: null});
+  else if (k === "pearl" && pearlSheet) Object.assign(pearlSheet, {t: "", who: "", topic: "", d: fmtDate(getToday()), restored: null});
+}
+// "Restored from 14:12, not saved yet", with the day when it's another one.
+function draftStripHTML(k, at) {
+  const day = fmtDate(new Date(at));
+  return `<div class="draftstrip" role="status">${ic("undo", "sm")}<span>Restored from ${day === fmtDate(getToday()) ? "" : dayLabel(day) + ", "}${callHM(at)}, not saved yet</span>` +
+    `<button class="textbtn" data-action="draftclear" data-k="${k}">Clear</button></div>`;
 }
 
 // ---- Backup --------------------------------------------------------------------
@@ -1055,6 +1130,7 @@ function render() {
   setAfterRender();
   reviewAfterRender();
   liveAfterRender(p);
+  draftsKeep();
 }
 // A sheet up holds the page still behind it. On iPhone a drag that runs past
 // the end of a sheet, or starts on one too short to scroll, would otherwise
@@ -1127,7 +1203,7 @@ function dispatch(act, d) {
     if (d.chase) chaseOpen = true;
     if (d.a && sheet.mode === "edit" && !sheet.a) sheet.a = d.a;
     route.keepScroll = true; render(); }
-  else if (act === "closesheet") { sheet = null; sheetError = null; route.keepScroll = true; render(); }
+  else if (act === "closesheet") { draftsLetGo("epa", sheet); sheet = null; sheetError = null; route.keepScroll = true; render(); }
   else if (act === "pickpart") { sheet.pid = d.part; sheet.all = false; sheet.tick = askPreTick(d.part, sheet.ask); sheetError = null; route.keepScroll = true; render(); }
   else if (act === "another") {
     const nx = toast && toast.next;
@@ -1147,7 +1223,8 @@ function dispatch(act, d) {
   else if (act === "pickassessor") { sheet.a = d.name; route.keepScroll = true; render(); }
   else if (act === "sheetdate") { sheet.d = d.date; route.keepScroll = true; render(); }
   else if (act === "sheetstatus") { sheet.status = d.status; route.keepScroll = true; render(); }
-  else if (act === "sheetsave") { saveSheet(); route.keepScroll = true; render(); }
+  else if (act === "sheetsave") { const s = sheet; saveSheet(); if (!sheet) draftsLetGo("epa", s); route.keepScroll = true; render(); }
+  else if (act === "draftclear") { draftsClear(d.k); route.keepScroll = true; render(); }
   else if (act === "sheetdelete" && sheet.missed) {
     const {pid, i} = sheet, removed = Store.state.missed[pid][i];
     Store.removeMissed(pid, i); sheet = null;
@@ -1201,7 +1278,7 @@ document.getElementById("app").addEventListener("click", ev => {
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
 document.getElementById("app").addEventListener("input", ev => {
-  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) return;
+  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -1212,7 +1289,7 @@ document.getElementById("app").addEventListener("input", ev => {
 });
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
-  if (agField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) return;
+  if (agField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) { draftsKeep(); return; }
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (t.id === "agfile") { agReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
@@ -1317,8 +1394,9 @@ function appOpenFromLink(name) {
   sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null;
   go({...APP_LINKS[name]});
 }
+let openedFromLink = false;
 if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)] && !FELLOWS) {
-  route = {...APP_LINKS[location.hash.slice(1)]};
+  route = {...APP_LINKS[location.hash.slice(1)]}; openedFromLink = true;
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
 // From the service worker: a tapped reminder ({go}), or a new copy of the
@@ -1333,6 +1411,7 @@ if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
   navigator.serviceWorker.addEventListener("message", ev => appMessage(ev.data));
 Store.load();
 CallStore.load();
+draftsBoot(openedFromLink);
 render();
 // iOS may clear a web app's storage when the phone runs short of space: ask
 // once for it to be kept (granted to apps on the home screen).

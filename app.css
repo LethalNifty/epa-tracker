@@ -1030,6 +1030,10 @@ a.src:active { background: var(--wall-3); }
 .prl-sentnote { display: flex; align-items: center; gap: 8px; margin: 14px 2px 0; color: var(--dim); font-size: 13.5px; }
 .prl-sentnote .ic { flex: 0 0 auto; color: var(--flu); }
 .prl-sentnote .textbtn { margin-left: auto; }
+/* Words kept from before iOS closed the app: when they're from, and Clear. */
+.draftstrip { display: flex; align-items: center; gap: 8px; margin: 2px 2px 12px; color: var(--dim); font-size: 13.5px; }
+.draftstrip .ic { flex: 0 0 auto; color: var(--flu); }
+.draftstrip .textbtn { margin-left: auto; }
 .prl-how { margin: 10px 2px 12px; color: var(--dim); font-size: 13px; line-height: 1.45; }
 .prl-send > .prl-how:first-child { margin-top: 0; }
 #pearlsq { width: 100%; height: 50px; padding: 0 14px 0 44px; border-radius: var(--r-md); border: 1px solid var(--fold-2);
