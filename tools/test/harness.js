@@ -55,7 +55,7 @@ function load(opts = {}) {
       setItem: (k, v) => { store.set(k, String(v)); },
       removeItem: k => { store.delete(k); },
     },
-    navigator: {},
+    navigator: opts.navigator || {},
     document: {
       getElementById: id => els[id] || null,
       createElement: tag => ({tag, style: {}, click() { downloads.push(this.download); }, remove() {}}),

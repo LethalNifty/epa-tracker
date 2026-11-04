@@ -1334,6 +1334,10 @@ if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
 Store.load();
 CallStore.load();
 render();
+// iOS may clear a web app's storage when the phone runs short of space: ask
+// once for it to be kept (granted to apps on the home screen).
+if (navigator.storage && navigator.storage.persist)
+  navigator.storage.persisted().then(kept => kept || navigator.storage.persist()).catch(() => {});
 // The fellows' edition has no reminders or study questions; it checks its invite code instead.
 if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); }
 else felCheckAccess();
