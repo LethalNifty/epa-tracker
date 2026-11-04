@@ -187,16 +187,17 @@ function scopeCardHTML(card, i, o = {}) {
 }
 
 // ---- The capture box ----------------------------------------------------------------------------
-function scopeCtxLine() {
-  const t = fmtDate(getToday()), today = scopeData().cases.filter(c => c.d === t).sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0];
+function scopeCtxLine(day) {
+  const t = fmtDate(day), today = scopeData().cases.filter(c => c.d === t).sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0];
   if (!today) return "New day";
   return [scopeWho(today.staff), scopeSiteShort(today.site), scopeLocShort(today.loc)].filter(Boolean).join(" · ") || "New day";
 }
 function scopeBoxHTML(where) {
-  const today = getToday(), n = scopeCap.cards.length;
+  // Words kept from another day are headed with that day, the one they'll be read as.
+  const today = scopeCap.day ? scopeIsoDate(scopeCap.day) : getToday(), n = scopeCap.cards.length;
   return (scopeCap.restored ? draftStripHTML("scope", scopeCap.restored) : "") +
     `<section class="monitor capmon" aria-label="Say the case"><div class="monitor-in">` +
-    `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="capctx">${esc(scopeCtxLine())}</span></div>` +
+    `<div class="ov mono"><span>${DAYS[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}</span><span class="capctx">${esc(scopeCtxLine(today))}</span></div>` +
     `<textarea id="scopebox-${where}" class="capbox" rows="3" data-scopefield="text" placeholder="EGD with Surname, biopsies for dysphagia, EoE" ` +
     `autocapitalize="sentences" enterkeyhint="done" aria-label="Say or type the case">${esc(scopeCap.text)}</textarea>` +
     `<div class="cap-f"><span class="cap-hint">${ic("mic", "sm")}<span>Tap the mic on your keyboard and say the case. A whole day works too.</span></span>` +

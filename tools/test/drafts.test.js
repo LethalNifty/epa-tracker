@@ -71,6 +71,7 @@ test("a case said yesterday keeps its day when it's read today", () => {
   typeIn(h, {scopefield: "text"}, "EGD with Brook for dysphagia");
   const h2 = reopen(h, "2026-11-03");
   assert.match(h2.html(), /Restored from Mon 2 Nov, 14:12, not saved yet/);
+  assert.match(h2.html(), /class="ov mono"><span>Mon 2 Nov<\/span>/, "the box is headed with its day");
   h2.click("scoperead");
   assert.equal(h2.val("scopeCap.cards[0].d"), "2026-11-02");
 });
