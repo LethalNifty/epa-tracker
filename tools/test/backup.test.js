@@ -45,6 +45,13 @@ function phone(cf, today = "2026-11-03", extra = {}) {
   return h;
 }
 const type = (h, k, v) => h.fire("input", {dataset: {bk: k}, value: v});
+// A form sent (a tap on its button, or Return) with its boxes as the iPhone's
+// Passwords left them: filled in, maybe without a single keystroke.
+function submit(h, form, values = {}) {
+  const boxes = Object.entries(values).map(([k, value]) => ({dataset: {bk: k}, value}));
+  return h.fire("submit", {dataset: {bkform: form}, querySelectorAll: sel => (sel === "[data-bk]" ? boxes : [])});
+}
+const formIn = (html, act) => new RegExp(`<form class="cbk-form" data-bkform="${act}">([\\s\\S]*?)</form>`).exec(html);
 // Waits for the backup work in flight, if any.
 const settle = h => h.run("bkWork");
 const settings = h => { h.click("setopen"); return h.html(); };
@@ -74,6 +81,39 @@ test("setting up: today's backup is locked with the passphrase before it leaves 
   assert.match(html, /Today 18:00 · automatic/);
   assert.match(html, /data-action="bkrestore"/);
   assert.doesNotMatch(html, /data-bk="p1"/);
+});
+
+test("setting up is a form the iPhone's Passwords can fill and save, as GI Hub backup", async () => {
+  const cf = await cloudflare(), h = phone(cf, "2026-11-03", {state: DATA()});
+  settings(h); h.click("bkset");
+  const form = formIn(h.html(), "bkon");
+  assert.ok(form, "the boxes are in a form");
+  // The name Passwords files it under, then the two boxes for a new one.
+  assert.match(form[1], /<input class="cbk-name" type="text" name="username" autocomplete="username" value="GI Hub backup"[^>]*>[\s\S]*data-bk="p1" autocomplete="new-password"[\s\S]*data-bk="p2" autocomplete="new-password"/);
+  assert.match(form[1], /Use Strong Password/);
+  // A tap sends the form, so the iPhone sees the passphrase go and offers to keep it.
+  assert.match(form[1], /<button type="submit" class="btn primary">/);
+  assert.doesNotMatch(form[1], /data-action=/);
+});
+
+test("sending the setup form turns backup on, and nothing goes to an address", async () => {
+  const cf = await cloudflare(), h = phone(cf, "2026-11-03", {state: DATA()});
+  settings(h); h.click("bkset");
+  const ev = submit(h, "bkon", {p1: PASS, p2: PASS});
+  assert.equal(ev.defaultPrevented, true, "the form stays on the page");
+  await settle(h);
+  assert.ok(await cf.env.BACKUPS.get("b:2026-11-03"));
+  assert.match(h.html(), /Today 18:00 · automatic/);
+});
+
+test("no other form is ever sent either, and a stray one does nothing", async () => {
+  const cf = await cloudflare(), h = phone(cf, "2026-11-03", {state: DATA()});
+  settings(h);
+  const before = h.html();
+  const ev = h.fire("submit", {dataset: {}, querySelectorAll: () => []});
+  assert.equal(ev.defaultPrevented, true);
+  assert.equal(h.html(), before);
+  assert.deepEqual(cf.calls, []);
 });
 
 test("the passphrase needs 10 characters, typed the same twice", async () => {
@@ -120,8 +160,12 @@ test("on another phone, the passphrase lists the backups and puts one back", asy
   await setUp(h);
   const p = phone(cf, "2026-11-03");
   settings(p); p.click("bkrestore");
-  assert.match(p.html(), /<input type="password" data-bk="p1" autocomplete="current-password"/);
-  type(p, "p1", PASS); p.click("bkunlock"); await settle(p);
+  // Passwords fills in the passphrase it kept for GI Hub backup.
+  const form = formIn(p.html(), "bkunlock");
+  assert.ok(form, "the box is in a form");
+  assert.match(form[1], /autocomplete="username" value="GI Hub backup"[\s\S]*<input type="password" data-bk="p1" autocomplete="current-password"/);
+  assert.match(form[1], /<button type="submit" class="btn primary">/);
+  submit(p, "bkunlock", {p1: PASS}); await settle(p);
   assert.match(p.html(), /<button class="btn" data-action="bkpick" data-day="2026-11-03">Tue 3 Nov · \d+ KB<\/button>/);
   p.click("bkpick", {day: "2026-11-03"}); await settle(p);
   assert.deepEqual(p.val("Store.state.obs.f3a.map(o => o.n)"), ["Varices bleed at night"]);
@@ -179,6 +223,8 @@ test("the fellows' edition never backs up to Cloudflare", async () => {
   f.store.set("gi-backup-v1", JSON.stringify({key: "x", tok: "y"}));
   f.run("backupDaily()"); await settle(f);
   f.click("setopen");
-  assert.doesNotMatch(f.html(), /data-action="bk|Cloudflare/);
+  assert.doesNotMatch(f.html(), /data-action="bk|Cloudflare|<form/);
+  assert.equal(submit(f, "bkon", {p1: PASS, p2: PASS}).defaultPrevented, true);
+  await settle(f);
   assert.deepEqual(cf.calls, []);
 });

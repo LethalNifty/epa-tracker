@@ -89,8 +89,14 @@ function load(opts = {}) {
       run(`window.__now = new Date(${y}, ${m - 1}, ${dd}, ${hh}, ${mm});`); },
     saved: () => JSON.parse(store.get(KEY)),
     click: (action, data = {}) => run(`dispatch(${JSON.stringify(action)}, ${JSON.stringify(data)})`),
-    // Fires the app's listener for an event (input, change) on a field.
-    fire: (type, target) => { for (const fn of els.app.on[type] || []) fn({target}); },
+    // Fires the app's listener for an event (input, change, submit) on a field
+    // or form. Returns the event, to see whether the app stopped what a browser
+    // would do next (a form sent to its address).
+    fire: (type, target) => {
+      const ev = {target, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }};
+      for (const fn of els.app.on[type] || []) fn(ev);
+      return ev;
+    },
   };
 }
 

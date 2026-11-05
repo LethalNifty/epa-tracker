@@ -1278,6 +1278,14 @@ document.getElementById("app").addEventListener("click", ev => {
   const t = ev.target.closest("[data-action]");
   if (t) { liveTap(t.dataset.action, t); dispatch(t.dataset.action, t.dataset); }
 });
+// No form is ever sent anywhere: what's in it would go into the address. The
+// backup's forms (there so the iPhone's Passwords can offer and keep the
+// passphrase) act like a tap on their button.
+document.getElementById("app").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const act = !FELLOWS && bkSubmit(ev.target);
+  if (act) { liveTap(act, ev.submitter || null); dispatch(act, {}); }
+});
 document.getElementById("app").addEventListener("input", ev => {
   // The backup passphrase stays in memory, out of every draft.
   if (!FELLOWS && bkField(ev.target)) return;

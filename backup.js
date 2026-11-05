@@ -167,19 +167,28 @@ function bkErrText(e) {
   return `Couldn't back up ${dayLabel(e.day)}: ${why}`;
 }
 const bkFieldHTML = (k, label, ac) => `<label class="lbl mono">${label}<input type="password" data-bk="${k}" autocomplete="${ac}" ` +
-  `value="${esc(bkTyped[k])}" autocapitalize="off" spellcheck="false"></label>`;
+  `name="${k === "p2" ? "confirm-password" : "password"}" value="${esc(bkTyped[k])}" autocapitalize="off" spellcheck="false"></label>`;
+// The name the iPhone's Passwords keeps the passphrase under: out of sight, but
+// in the form ahead of the passphrase, where Passwords looks for it.
+const BK_NAME = "GI Hub backup";
+const bkNameHTML = `<input class="cbk-name" type="text" name="username" autocomplete="username" value="${BK_NAME}" tabindex="-1" aria-hidden="true">`;
 const bkCancel = `<button class="textbtn sm cbk-cancel" data-action="bkcancel">Cancel</button>`;
+// A pane with boxes is a form, sent by its button or Return (bkSubmit), so the
+// iPhone sees a passphrase go and can offer a strong one or keep it.
 function bkPaneHTML(dis) {
-  if (bkPane === "set") return `<p class="rnote">Pick a passphrase of at least ${BK_MIN} characters, such as four words that don't go together. ` +
-    `Each backup is locked with it before it leaves this phone, and none opens without it, so keep it in Passwords.</p>` +
-    bkFieldHTML("p1", "Passphrase", "new-password") + bkFieldHTML("p2", "Same again", "new-password") +
-    `<button class="btn primary" data-action="bkon"${dis}>${ic("lock")}${bkBusy ? "Locking today's backup" : "Turn on"}</button>` + bkCancel;
+  if (bkPane === "set") return `<form class="cbk-form" data-bkform="bkon">` +
+    `<p class="rnote">Your iPhone can make the passphrase and keep it in Passwords: tap the box, then Use Strong Password. ` +
+    `Or type your own, at least ${BK_MIN} characters, and keep it there. Each backup is locked with it before it leaves this phone, and none opens without it.</p>` +
+    bkNameHTML + bkFieldHTML("p1", "Passphrase", "new-password") + bkFieldHTML("p2", "Same again", "new-password") +
+    `<button type="submit" class="btn primary"${dis}>${ic("lock")}${bkBusy ? "Locking today's backup" : "Turn on"}</button></form>` + bkCancel;
   if (bkFound) return (bkFound.days.length ? `<p class="rnote">Pick a day. It replaces everything on this phone.</p>` +
     bkFound.days.map(x => `<button class="btn" data-action="bkpick" data-day="${esc(x.day)}"${dis}>${esc(dayLabel(x.day))} · ${Math.max(1, Math.round(x.size / 1024))} KB</button>`).join("")
     : `<p class="rnote">No backups on Cloudflare yet.</p>`) + bkCancel;
   if (bkOn()) return (bkMsg ? "" : `<p class="rnote">Asking Cloudflare.</p>`) + bkCancel;
-  return `<p class="rnote">Type the passphrase the backups were locked with.</p>` + bkFieldHTML("p1", "Passphrase", "current-password") +
-    `<button class="btn primary" data-action="bkunlock"${dis}>${ic("lock")}${bkBusy ? "Opening" : "Open the backups"}</button>` + bkCancel;
+  return `<form class="cbk-form" data-bkform="bkunlock">` +
+    `<p class="rnote">Tap the box and Passwords fills in the passphrase the backups were locked with, or type it.</p>` +
+    bkNameHTML + bkFieldHTML("p1", "Passphrase", "current-password") +
+    `<button type="submit" class="btn primary"${dis}>${ic("lock")}${bkBusy ? "Opening" : "Open the backups"}</button></form>` + bkCancel;
 }
 function bkSetHTML() {
   const on = bkOn(), lb = Store.state.lastBackup, dis = bkBusy ? " disabled" : "";
@@ -234,4 +243,13 @@ function bkField(t) {
   if (FELLOWS || !t.dataset || !t.dataset.bk || !(t.dataset.bk in bkTyped)) return false;
   bkTyped[t.dataset.bk] = t.value;
   return true;
+}
+// The setup and restore forms, sent by a tap on their button or by Return. The
+// boxes are read from the form itself, since Passwords can fill them in without
+// a keystroke. Returns the action, or null for any other form.
+function bkSubmit(f) {
+  const act = !FELLOWS && f && f.dataset ? f.dataset.bkform : null;
+  if (act !== "bkon" && act !== "bkunlock") return null;
+  for (const el of f.querySelectorAll("[data-bk]")) bkField(el);
+  return act;
 }

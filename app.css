@@ -1187,10 +1187,11 @@ a.src:active { background: var(--wall-3); }
 .watchalert b { font-weight: 600; }
 
 /* Cloud backup (backup.js, the full app only) */
-.cbk > .rnote:first-child { margin-top: 0; }
-.cbk > .rnote + .btn, .cbk > .err + .btn, .cbk > .lbl + .btn { margin-top: 14px; }
-.cbk > .lbl:first-of-type { margin-top: 12px; }
+.cbk > .rnote:first-child, .cbk-form > .rnote:first-child { margin-top: 0; }
+.cbk > .rnote + .btn, .cbk > .err + .btn, .cbk-form > .lbl + .btn { margin-top: 14px; }
+.cbk-form > .lbl:first-of-type { margin-top: 12px; }
 .cbk > .cbk-cancel { display: block; margin: 8px auto 0; color: var(--dim); }
+.cbk-name { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); opacity: 0; pointer-events: none; }
 .cbk-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-top: 10px; }
 .cbk-acts .textbtn { padding: 0; color: var(--dim); }
 .cbk-acts .textbtn.danger { color: var(--mucosa); }
