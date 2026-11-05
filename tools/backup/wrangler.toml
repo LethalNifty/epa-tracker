@@ -1,5 +1,6 @@
 # GI Hub's backup (worker.mjs): its own Worker, with the public address the
-# phone backs up to. Deploy from this folder: npx wrangler deploy
+# phone backs up to, https://gi-hub-backup.lethalnifty.workers.dev (the account's
+# workers.dev name is lethalnifty). Deploy from this folder: npx wrangler deploy
 # Storage is the KV namespace BACKUPS, made once with
 # npx wrangler kv namespace create BACKUPS, its id below.
 name = "gi-hub-backup"

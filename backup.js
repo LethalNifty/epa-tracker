@@ -11,8 +11,8 @@
 // new one), turns it off, or deletes the copies on Cloudflare.
 // Loaded after settings.js and before app.js; uses app.js helpers when it runs.
 
-// The Worker's address (tools/backup), once it's deployed.
-const BACKUP_URL = "https://gi-hub-backup.REPLACE_WITH_SUBDOMAIN.workers.dev", BACKUP_STORE = "gi-backup-v1";
+// The Worker's address (tools/backup).
+const BACKUP_URL = "https://gi-hub-backup.lethalnifty.workers.dev", BACKUP_STORE = "gi-backup-v1";
 // Turning a passphrase into keys is slow on purpose (well under a second on a
 // phone), so guessing one is slow too. The tests turn it down.
 const BACKUP_KDF = {rounds: 600000};

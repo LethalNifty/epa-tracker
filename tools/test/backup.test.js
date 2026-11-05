@@ -61,6 +61,12 @@ async function setUp(h, pass = PASS) {
   h.click("bkon"); await settle(h);
 }
 
+test("the app backs up to its own Worker, at a real address", () => {
+  const url = load({today: "2026-11-05"}).val("BACKUP_URL");
+  assert.match(url, /^https:\/\/gi-hub-backup\.[a-z0-9-]+\.workers\.dev$/);
+  assert.doesNotMatch(url, /REPLACE/);
+});
+
 test("setting up: today's backup is locked with the passphrase before it leaves the phone", async () => {
   const cf = await cloudflare(), h = phone(cf, "2026-11-03", {state: DATA()});
   assert.match(settings(h), /data-action="bkset"/);
