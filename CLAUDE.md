@@ -25,10 +25,11 @@ Plain HTML, CSS and JavaScript: no framework, no build step, no dependencies. Cl
 | `app.js` | the Store (localStorage `epa-state-v1`), routing, render, dispatch by action prefix, sheets, backup. A new state field joins `importJSON`'s whitelist or a restore drops it |
 | `app.css` | every style; feature blocks sit just before `/* Backup */` |
 | `sw.js` | service worker: `CACHE`, the `ASSETS` it caches, the network-first `LIVE` files |
-| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `agenda`/`agenda-view` (the Agenda tab), `remind`/`notify`, `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
+| feature files | `search` (every search box), `settings` (the gear on Week), `coach`, `call`, `study`/`study-view`, `studyq`, `scope*`, `guides*` + `guides.json`, `ibd*`, `trials*`, `pearls*`, `agenda`/`agenda-view` (the Agenda tab), `remind`/`notify`, `alerts` (the reminder plan the phone gives the sender, and joining it; full app only), `live`, `fellows` (the fellows' edition, below), `watch` (the owner's view of the fellows' codes, full app only); the brief has the full file map |
 | `tools/test/` | tests; `harness.js` boots the real page scripts in a Node vm (`load`, `click`, `html`, `saved`) |
-| `tools/push/` | Web Push sender, run by `.github/workflows/reminders.yml` |
-| `tools/timer/` | a Cloudflare Worker that starts that workflow every 15 minutes (GitHub's own schedule runs it hours apart); its own Worker, never in `functions/` |
+| `tools/agenda/` | the reminder sender: a Cloudflare Worker (`gi-hub-agenda`, KV `AGENDA`, cron every minute) that sends every reminder on the minute from the five-week plan the phone uploads. It makes and keeps its own VAPID keys, so no secrets. Deploy from that folder with `npx wrangler deploy`. A phone is held by the first token to connect; to free it for a new phone, `npx wrangler kv key delete auth --binding AGENDA --remote` there. Its own Worker, never in `functions/` |
+| `tools/push/` | the old Web Push sender, run by `.github/workflows/reminders.yml`; retires once the phone has moved to `tools/agenda/` |
+| `tools/timer/` | a Cloudflare Worker that starts that workflow every 15 minutes (GitHub's own schedule runs it hours apart); retires with `tools/push/`; its own Worker, never in `functions/` |
 | `tools/ship.py` | shipping, below |
 | `tools/preview/` | phone screenshots and the one-file phone preview, below |
 

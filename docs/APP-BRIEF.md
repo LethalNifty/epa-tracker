@@ -37,7 +37,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note; add, edit and delete with Undo
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view
-- no reminders for your events yet (coming with the reminder server)
+- alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before; either can be turned off per event, and an all-day event gets the evening one only
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording
@@ -73,6 +73,8 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - an hour before call: who's on
 - 8 PM on reading nights: tonight's pages
 - Sunday 5 PM: pearls still to send (or a nudge to catch this week's)
+- events: 7 PM the evening before, and 30 minutes before
+- Settings turns them on in one tap (permission, then a test reminder), sends a test, and says when they've stopped reaching the phone
 - each reminder also puts a badge on the app icon for forms that passed 14 days pending since the app was last open; opening it clears the badge
 
 ## How it's built
@@ -88,8 +90,9 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
   - the cache name changes with every release, and the app reloads itself when an update lands
 - **Hosting:** GitHub Pages from `main`.
 - **Reminders:**
-  - a GitHub Actions workflow (`.github/workflows/reminders.yml`) runs `tools/push/send.js`
-  - a free Cloudflare Worker (`tools/timer/`) starts it every 15 minutes; GitHub's own schedule, kept as a backup, runs it hours apart
+  - a free Cloudflare Worker (`tools/agenda/`) sends every reminder on the minute, from the list of the next five weeks that the phone works out (`alerts.js`) and uploads when it changes
+  - it makes and keeps its own key pair, and holds one phone, the first to connect with its token
+  - the old path (a GitHub Actions workflow running `tools/push/send.js`, started by `tools/timer/`) retires once the phone has moved
   - each push carries only the kind of reminder and the time
   - the phone writes the words from what it has saved
 - **Tests:** about 360, using Node's built-in runner with a small vm harness and no DOM (`node --test tools/test/*.test.js`).
@@ -108,7 +111,8 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 | `scope*.js` | Endo: dictation reader, charts, PDF and CSV |
 | `guides*.js` | Guides tab and the biopsy protocol |
 | `pearls.js`, `pearls-view.js` | Pearls: catching, the Pearls page, the file sent on |
-| `remind.js`, `notify.js` | push reminders on the phone |
+| `remind.js`, `notify.js` | push reminders on the phone: the brief, the words, Settings |
+| `alerts.js` | the reminder plan the phone gives the sender, and joining it (full app only) |
 | `live.js` | page transitions, sheet stacking, per-tab lighting |
 
 ## Privacy, by design

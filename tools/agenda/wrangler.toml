@@ -17,4 +17,4 @@ crons = ["* * * * *"]
 
 [[kv_namespaces]]
 binding = "AGENDA"
-id = "AGENDA_NAMESPACE_ID"
+id = "1617987c74a74688baf3169e5b0c9c53"
