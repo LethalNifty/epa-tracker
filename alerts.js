@@ -123,7 +123,8 @@ async function alertsSend() {
   if (r.status === 401) alertsGone = true;
 }
 // After each redraw: a changed plan goes to the sender. One upload at a time,
-// and after a failure nothing for a minute (and again whenever GI Hub opens).
+// a change saved while one is on its way goes straight after it, and after a
+// failure nothing for a minute (and again whenever GI Hub opens).
 // The plan only changes with what's saved or at midnight, so redraws cost nothing.
 function alertsSync() {
   if (alertsSyncing || alertsBusy || alertsGone || !alertsOn() || callNow() < alertsWait) return;
@@ -132,6 +133,7 @@ function alertsSync() {
   alertsRun(async () => {
     try { await alertsSend(); } finally { alertsSyncing = false; }
     if (alertsGone && ((route.page === "week" && !anySheet()) || setSheet)) { route.keepScroll = true; render(); }
+    else alertsSync();
   });
 }
 // GI Hub opened on a connected phone: does the sender still reach it, with the

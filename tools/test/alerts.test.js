@@ -216,15 +216,17 @@ function kv() {
 }
 // Cloudflare as the phone sees it: the sender's own code and storage, Apple's
 // push service behind it (answering c.push), and every request the phone made.
+// c.hold keeps requests waiting, as a slow connection does.
 async function sender(now) {
   const w = await import(pathToFileURL(path.join(ROOT, "tools", "agenda", "worker.mjs")).href);
-  const c = {w, env: {AGENDA: kv()}, calls: [], now, down: false, push: 201, pushed: []};
+  const c = {w, env: {AGENDA: kv()}, calls: [], now, down: false, hold: null, push: 201, pushed: []};
   c.pushFetch = async url => { c.pushed.push(url); return {status: c.push}; };
   c.fetch = async (url, init = {}) => {
     const u = new URL(url, "https://gi-hub.invalid/");
     if (!u.hostname.startsWith("gi-hub-agenda.")) throw new TypeError("Load failed");
     c.calls.push((init.method || "GET") + " " + u.pathname);
     if (c.down) throw new TypeError("Load failed");
+    if (c.hold) await c.hold;
     return w.handle(new Request(url, init), c.env, c.now, c.pushFetch);
   };
   c.get = async k => JSON.parse(await c.env.AGENDA.get(k));
@@ -337,6 +339,23 @@ test("a change to the plan goes to the sender once; a redraw that changes nothin
   await settle(h);
   assert.deepEqual(c.calls, ["PUT /alerts"]);
   assert.ok((await c.get("alerts")).list.some(a => a.kind === "ev" && a.id.endsWith("@2026-10-29")));
+});
+
+test("a change saved while an upload is still on its way goes straight after it, with no redraw", async () => {
+  const {c, h} = await connected();
+  c.calls.length = 0;
+  let release;
+  c.hold = new Promise(ok => { release = ok; });
+  h.click("setclose"); h.click("tab", {page: "agenda"});
+  h.click("agnew"); h.run(`agSheet.t = "Dentist"; agSheet.d = "2026-10-29"`); h.click("agsave");
+  await new Promise(ok => setImmediate(ok));
+  assert.deepEqual(c.calls, ["PUT /alerts"], "the first upload is on its way");
+  h.click("agnew"); h.run(`agSheet.t = "Clinic"; agSheet.d = "2026-10-30"`); h.click("agsave");
+  c.hold = null; release();
+  await settle(h); await settle(h);
+  assert.deepEqual(c.calls, ["PUT /alerts", "PUT /alerts"]);
+  const days = (await c.get("alerts")).list.filter(a => a.kind === "ev").map(a => a.id.slice(-10));
+  assert.ok(days.includes("2026-10-29") && days.includes("2026-10-30"), "the sender has both events");
 });
 
 test("offline, a new plan waits a minute between tries, and goes when GI Hub next opens", async () => {
