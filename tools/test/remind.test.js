@@ -20,7 +20,6 @@ function withBlock(now, opts = {}) {
 }
 // A browser that supports push, in a given state.
 function pushPhone(h, {perm = "default", sub = null, last = null} = {}) {
-  h.run(`window.__vapid = "BKey"`);
   h.ctx.PushManager = function PushManager() {};
   h.ctx.Notification = {permission: perm, requestPermission: async () => "granted"};
   h.ctx.navigator.serviceWorker = {ready: Promise.resolve({pushManager: {getSubscription: async () => sub}})};
@@ -152,43 +151,17 @@ test("Week offers reminders in one row that opens Settings; Not now hides it for
   assert.deepEqual(JSON.parse(h.store.get("gi-remind-v1")), {dismissed: true});
 });
 
-test("turning on asks permission, subscribes with the sender's key, then shows the code to send", async () => {
-  const h = withBlock("2026-10-27T12:00");
-  pushPhone(h);
-  let opts = null;
-  h.ctx.navigator.serviceWorker = {ready: Promise.resolve({pushManager: {getSubscription: async () => null,
-    subscribe: async o => { opts = o; return fakeSub; }}})};
-  h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
-  h.click("setopen");
-  h.click("remindon");
-  await new Promise(r => setTimeout(r, 20));
-  assert.equal(opts.userVisibleOnly, true);
-  assert.equal(opts.applicationServerKey.constructor.name, "Uint8Array");
-  const html = h.html();
-  assert.match(html, /One step left[\s\S]*?Send this code to Claude[\s\S]*?web\.push\.apple\.com\/QAbc123…[\s\S]*?data-action="remindshare"/);
-  assert.equal(h.val(`remindCode()`), '{"endpoint":"https://web.push.apple.com/QAbc123","keys":{"p256dh":"BPub","auth":"Auth"}}');
-});
-
-test("Share code hands the code to the share sheet", async () => {
-  const h = withBlock("2026-10-27T12:00");
-  pushPhone(h, {perm: "granted", sub: fakeSub});
-  const shared = [];
-  h.ctx.navigator.share = async d => { shared.push(d.text); };
-  h.click("remindshare");
-  await new Promise(r => setTimeout(r, 5));
-  assert.deepEqual(shared, ['GI Hub reminders code:\n{"endpoint":"https://web.push.apple.com/QAbc123","keys":{"p256dh":"BPub","auth":"Auth"}}']);
-});
-
-test("Settings: once a reminder has arrived, status On, the next reminder and the last one", () => {
+test("Settings: once connected, status On, the next reminder and the last one", () => {
   const h = withBlock("2026-10-27T12:00");
   pushPhone(h, {perm: "granted", sub: fakeSub, last: {at: at(2026, 10, 22, 8), kind: "week"}});
+  h.run(`alertsKept = {tok: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", key: "BKey", sent: null}`);
   h.click("setopen");
   const html = h.html();
   assert.match(html, /<span>Reminders<\/span><span class="ok">On<\/span>/);
   // Tuesday evening: tonight's reading comes first.
   assert.match(html, /<span class="mono">Next<\/span><span><b>Tue 27 Oct, 20:00<\/b> · Tonight: pp\. 35–44<\/span>/);
   assert.match(html, /<span class="mono">Last<\/span><span>Thu 22 Oct, 08:00<\/span>/);
-  assert.match(html, /data-action="remindoff">Turn off/);
+  assert.match(html, /data-action="remindtest">Send a test<\/button><button class="btn danger" data-action="remindoff">Turn off/);
   // Wednesday noon: the call reminder at 16:00 beats tonight's reading.
   h.setNow("2026-10-28T12:00"); h.run(`render()`);
   assert.match(h.html(), /<b>Wed 28 Oct, 16:00<\/b> · On call from 17:00/);
@@ -205,7 +178,6 @@ test("blocked notifications, and Safari outside the home-screen app, each say wh
   h.click("setopen");
   assert.match(h.html(), /Blocked[\s\S]*?Turn them on in iPhone Settings, Notifications, GI Hub/);
   const s = withBlock("2026-10-27T12:00");
-  s.run(`window.__vapid = "BKey"`);
   s.ctx.navigator.standalone = false;
   s.click("setopen");
   assert.match(s.html(), /Home screen only[\s\S]*?Open GI Hub from your home screen/);
@@ -288,10 +260,3 @@ test("the service worker keeps the brief when it updates, and caches the reminde
   for (const f of ["notify.js", "remind.js"]) assert.ok(sw.includes(`"${f}"`), f);
 });
 
-test("the app carries the sender's public key: a P-256 point, 65 bytes", () => {
-  const src = fs.readFileSync(path.join(ROOT, "remind.js"), "utf8");
-  const key = /^const REMIND_VAPID = "([A-Za-z0-9_-]+)";$/m.exec(src)[1];
-  const raw = Buffer.from(key, "base64url");
-  assert.equal(raw.length, 65);
-  assert.equal(raw[0], 4);
-});

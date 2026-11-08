@@ -1265,10 +1265,9 @@ function dispatch(act, d) {
     CallStore.clear(); callError = null;
     showToast("Call data cleared", () => CallStore.restore(before));
     route.keepScroll = true; render(); }
-  else if (act === "remindon") { remindEnable(); }
-  else if (act === "remindshare") { remindShare(); }
-  else if (act === "remindcopy") { remindCopy(); }
-  else if (act === "remindoff") { remindOff(); }
+  else if (act === "remindon" && !FELLOWS) { alertsConnect(); }
+  else if (act === "remindtest" && !FELLOWS) { alertsTest(); }
+  else if (act === "remindoff" && !FELLOWS) { alertsDisconnect(); }
   else if (act === "reminddismiss") { RemindStore.state.dismissed = true; RemindStore.save(); route.keepScroll = true; render(); }
   else if (act === "bcat") { biopsyCat = d.cat; route.keepScroll = true; render(); }
   else if (act === "bclear") { biopsyTerm = ""; route.keepScroll = true; render();

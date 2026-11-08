@@ -74,7 +74,7 @@ function notePearls(brief, now) {
   if (n) return {title: `${n} pearl${n === 1 ? "" : "s"} to send`, body: "Send them from GI Hub so they're in Drive for tonight's cards.", tag, url};
   return {title: "Any pearls this week?", body: "Catch them in GI Hub while you still remember.", tag, url};
 }
-// Events, from the brief's agenda (alerts.js). 30 minutes before: the title,
+// Events, from the brief's agenda (alertOccurrences). 30 minutes before: the title,
 // the start and the note. A start that moved after the sender last heard keeps
 // the time the phone has now and drops the countdown. One that's gone, or a
 // phone with no brief, still says when.

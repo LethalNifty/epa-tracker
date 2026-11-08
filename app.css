@@ -424,8 +424,6 @@ a.btn.callbtn .ic { color: inherit; }
 .rlist li:first-child { border-top: 0; }
 .rlist .mono { color: var(--nbi-ink); font-size: 10px; }
 .remind .rlist { margin-top: 0; }
-.rcode { margin: 12px 0 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--field); border: 1px dashed var(--fold-2);
-  color: var(--dim); font-size: 10.5px; letter-spacing: .02em; text-transform: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .rbtns { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
 .rbtns .btn + .btn { margin-top: 0; }
 .rbtns .btn:last-child:not(.danger) { padding: 0 18px; }
@@ -1100,6 +1098,7 @@ a.src:active { background: var(--wall-3); }
 .setnudge { display: flex; align-items: center; margin-top: 22px; }
 .sn-main { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 13px 4px 13px 16px; }
 .sn-main > .ic { color: var(--nbi-ink); }
+.sn-main:only-child { padding-right: 16px; }
 .sn-tx b { display: block; font-weight: 520; }
 .sn-tx span { display: block; font-size: 13px; color: var(--dim); }
 .sn-go { color: var(--nbi-ink); font-weight: 500; font-size: 14px; }
