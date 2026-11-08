@@ -985,6 +985,11 @@ a.src:active { background: var(--wall-3); }
 .lt-chips .chip .ic { color: var(--wli); }
 .lt-chips .dr-chip .ic { color: var(--nbi); }
 .lt-src { margin-top: 8px; }
+.lt-ours { color: var(--faint); font-weight: 500; letter-spacing: .03em; text-transform: none; }
+.lt-ours::before { content: "\00b7"; margin-right: 6px; }
+.lt-sec > p.none { color: var(--dim); font-style: italic; }
+.lt-noabs { margin: 14px 0 0; color: var(--dim); font-size: 13px; line-height: 1.45; font-style: italic; }
+.glink .tt .rid { display: block; margin-top: 2px; color: var(--dim); font-size: 10.5px; letter-spacing: .05em; }
 .lt mark { background: rgba(217, 232, 255, .2); color: inherit; border-radius: 3px; padding: 0 1px; }
 
 /* A trial as one line, inside a guideline topic and in the guideline search. */

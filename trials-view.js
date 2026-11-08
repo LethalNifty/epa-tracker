@@ -77,9 +77,11 @@ function trialsCardHTML(t, opts = {}) {
   h += `<p class="lt-design mono">${esc(t.au)} · ${esc(t.design)}</p>`;
   h += trialsWhyHTML(t);
   h += `<dl class="lt-pico"><dt class="mono">Who</dt><dd>${esc(t.who)}</dd><dt class="mono">Arms</dt><dd>${esc(t.arms)}</dd>` +
+    (!FELLOWS && t.end ? `<dt class="mono">Outcome</dt><dd>${esc(t.end)}</dd>` : "") +
     `<dt class="mono">Use for</dt><dd>${esc(t.use)}</dd></dl>`;
   h += `<div class="lt-key${t.key.v.length > 14 ? " long" : ""}"><span class="v">${esc(t.key.v)}</span><span class="l">${esc(t.key.l)}</span></div>`;
   h += `<p class="lt-res">${esc(t.res)}</p>`;
+  if (!FELLOWS) h += trialsMoreHTML(t);
   h += `<section class="ds lt-sec"><h4 class="mono">What it changed</h4><p>${esc(t.now)}</p></section>`;
   h += trialsLimHTML(t.lim);
   if (t.since) h += `<section class="ds lt-sec"><h4 class="mono">Since</h4><p>${esc(t.since)}</p></section>`;
@@ -87,8 +89,22 @@ function trialsCardHTML(t, opts = {}) {
   h += trialsChipsHTML(t);
   h += `<div class="lt-src">` +
     `<a class="glink alt" href="https://pubmed.ncbi.nlm.nih.gov/${esc(t.pmid)}/" target="_blank" rel="noopener"><span class="who mono">PubMed<span class="yr">${esc(t.pmid)}</span></span><span class="tt">The abstract</span>${ic("external", "sm")}</a>` +
-    `<a class="glink alt" href="https://doi.org/${esc(t.doi)}" target="_blank" rel="noopener"><span class="who mono">${esc(trialsJournal(t.j))}<span class="yr">${t.y}</span></span><span class="tt">The paper</span>${ic("external", "sm")}</a></div>`;
+    `<a class="glink alt" href="https://doi.org/${esc(t.doi)}" target="_blank" rel="noopener"><span class="who mono">${esc(trialsJournal(t.j))}<span class="yr">${t.y}</span></span><span class="tt">The paper</span>${ic("external", "sm")}</a>` +
+    (!FELLOWS ? trialsRegHTML(t.reg) : "") + `</div>`;
   return h + `</div></article>`;
+}
+// The result in plain numbers (our arithmetic on the abstract's figures), then
+// side effects; a paper with no abstract in PubMed says so instead. Full app only.
+function trialsMoreHTML(t) {
+  if (t.noabs) return `<p class="lt-noabs">PubMed has no abstract for this paper, so the main outcome, plain numbers and side effects are left out.</p>`;
+  return `<section class="ds lt-sec"><h4 class="mono">In plain numbers<span class="lt-ours">our arithmetic</span></h4><p>${esc(t.nnt)}</p></section>` +
+    `<section class="ds lt-sec"><h4 class="mono">Side effects</h4><p${t.harm === TRIALS_NO_HARM ? ' class="none"' : ""}>${esc(t.harm)}</p></section>`;
+}
+// The trial's registry entry, beside PubMed and the paper, where it has one.
+function trialsRegHTML(id) {
+  const url = trialsRegUrl(id);
+  return url ? `<a class="glink alt" href="${esc(url)}" target="_blank" rel="noopener"><span class="who mono">Registry</span>` +
+    `<span class="tt">The registered plan<span class="rid mono">${esc(id)}</span></span>${ic("external", "sm")}</a>` : "";
 }
 // Why they did it, then the question they asked.
 function trialsWhyHTML(t, hi = s => s) {

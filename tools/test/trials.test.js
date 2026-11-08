@@ -70,6 +70,38 @@ test("cards read the Canadian way: SI units, Canadian drug names, no em-dashes",
     assert.doesNotMatch(text, bad);
 });
 
+test("each card adds the main outcome, plain numbers and side effects from its abstract, and its registry id", () => {
+  const h = load({today: "2026-10-12"});
+  const trials = h.val("TRIALS"), none = h.val("TRIALS_NO_HARM");
+  // Truelove and Witts (1955) has no abstract in PubMed, so it says so instead.
+  assert.deepEqual(trials.filter(t => t.noabs).map(t => t.id), ["truelove-witts"]);
+  for (const t of trials) {
+    const parts = ["end", "nnt", "harm"];
+    if (t.noabs) { for (const f of parts) assert.equal(t[f], undefined, t.id + " has " + f); continue; }
+    for (const f of parts) {
+      const s = t[f];
+      assert.ok(typeof s === "string" && s.length >= 20 && s.length <= 190, t.id + " " + f + ": " + s);
+      // Terms of art come with plain words beside them.
+      if (/intention to (treat|screen)/.test(s)) assert.match(s, /randomized|invited/, t.id + " " + f);
+      if (/noninferiority/.test(s)) assert.match(s, /\(noninferiority\)/, t.id + " " + f);
+      if (/per protocol/.test(s)) assert.match(s, /\(per protocol\)|per protocol \(/, t.id + " " + f);
+    }
+    if (t.reg !== undefined) assert.match(t.reg, /^(NCT\d{8}|ISRCTN\d{8}|NTR\d{3,5})$/, t.id + " registry " + t.reg);
+  }
+  assert.equal(trials.filter(t => t.reg).length, 42);
+  assert.ok(trials.some(t => t.harm === none), "an abstract that gives no side effects says so");
+});
+
+test("a registry id links to its registry", () => {
+  const h = load({today: "2026-10-12"});
+  assert.equal(h.val(`trialsRegUrl("NCT02770716")`), "https://clinicaltrials.gov/study/NCT02770716");
+  assert.equal(h.val(`trialsRegUrl("ISRCTN14174793")`), "https://www.isrctn.com/ISRCTN14174793");
+  // The Dutch register closed; its trials moved to the Dutch overview of medical research.
+  assert.equal(h.val(`trialsRegUrl("NTR1177")`), "https://onderzoekmetmensen.nl/en/search?trial_id=NTR1177");
+  assert.equal(h.val(`trialsRegUrl("2006-005299-42")`), null);
+  assert.equal(h.val(`trialsRegUrl(undefined)`), null);
+});
+
 test("Canadian-led trials are marked, and Canadian notes say where Canada differs", () => {
   const h = load({today: "2026-10-12"});
   assert.deepEqual(h.val("TRIALS.filter(t => t.ca).map(t => t.id)"), ["compass-ppi", "confirm"]);
@@ -184,6 +216,52 @@ test("the fellows' edition opens trials the same way: why, use for, limitations,
   h.click("guidestrwtoggle", {id: "42815507"});
   const body = h.html().slice(h.html().indexOf('class="ltw-body"'));
   assert.match(body.slice(0, body.indexOf("</article>")), /Why they did it[^]*Use for[^]*What they found[^]*Limitations/);
+});
+
+test("an open card adds the main outcome, plain numbers marked as ours, side effects and the registry", () => {
+  const h = trialsTab();
+  h.click("guidestrtoggle", {id: "confirm"});
+  const c = card(h.html(), "confirm"), t = h.val("TRIALS_BY_ID.confirm");
+  // The main outcome sits with who and the arms, before who it's for.
+  const arms = c.indexOf(">Arms<"), out = c.indexOf('<dt class="mono">Outcome</dt><dd>' + esc(t.end)), use = c.indexOf(">Use for<");
+  assert.ok(arms > 0 && arms < out && out < use, "arms, then the outcome, then use for");
+  // After the result: the plain numbers, labelled as our arithmetic, then side effects.
+  const res = c.indexOf('class="lt-res"'), nnt = c.indexOf("In plain numbers"), harm = c.indexOf(">Side effects<"), now = c.indexOf("What it changed");
+  assert.ok(res > 0 && res < nnt && nnt < harm && harm < now, "result, plain numbers, side effects, then what it changed");
+  assert.match(c, /In plain numbers<span class="lt-ours">our arithmetic<\/span>/);
+  assert.ok(c.includes(esc(t.nnt)), "the plain numbers");
+  assert.ok(c.includes(esc(t.harm)), "the side effects");
+  // The registry sits beside PubMed and the paper.
+  assert.match(c, /href="https:\/\/clinicaltrials\.gov\/study\/NCT02770716" target="_blank" rel="noopener"/);
+  assert.match(c, /The registered plan<span class="rid mono">NCT02770716<\/span>/);
+});
+
+test("a card without a registry id has no registry link, and side effects the abstract leaves out read as missing", () => {
+  const h = trialsTab();
+  h.click("guidestrtoggle", {id: "lau-2000"});
+  const c = card(h.html(), "lau-2000");
+  assert.doesNotMatch(c, /The registered plan/);
+  assert.match(c, /<p class="none">Not given in the abstract\.<\/p>/);
+  assert.match(c, /pubmed\.ncbi\.nlm\.nih\.gov\//);
+});
+
+test("Truelove and Witts says PubMed has no abstract, in place of the new parts", () => {
+  const h = trialsTab();
+  h.click("guidestrtoggle", {id: "truelove-witts"});
+  const c = card(h.html(), "truelove-witts");
+  assert.match(c, /PubMed has no abstract for this paper/);
+  assert.doesNotMatch(c, /<dt class="mono">Outcome<\/dt>|In plain numbers|>Side effects<|The registered plan/);
+});
+
+test("the fellows' edition leaves the new parts out", () => {
+  const h = load({today: "2026-10-12", edition: "fellows", state: state({}, {setup: {d: "2026-10-01"}})});
+  h.run(`guidesAccept(${JSON.stringify(LIB)}); guidesRedraw();`);
+  h.click("tab", {page: "guides"});
+  h.click("guidestab", {tab: "t"});
+  h.click("guidestrtoggle", {id: "confirm"});
+  const c = card(h.html(), "confirm");
+  assert.doesNotMatch(c, /<dt class="mono">Outcome<\/dt>|In plain numbers|>Side effects<|The registered plan|clinicaltrials\.gov/);
+  assert.match(c, /pubmed\.ncbi\.nlm\.nih\.gov\/33657294/);
 });
 
 test("an IBD trial card links to its drugs", () => {
