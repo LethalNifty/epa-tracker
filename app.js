@@ -1399,7 +1399,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
 });
 // A tapped reminder opens its screen (Call, Study or Pearls): by link when
 // the app was closed, by message from the service worker when it was open.
-const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, pearls: {page: "pearls", from: "study"}};
+const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, pearls: {page: "pearls", from: "study"}, agenda: {page: "agenda"}};
 function appOpenFromLink(name) {
   if (!APP_LINKS[name]) return;
   if (name === "study") studyTab = "t";

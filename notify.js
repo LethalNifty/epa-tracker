@@ -74,12 +74,36 @@ function notePearls(brief, now) {
   if (n) return {title: `${n} pearl${n === 1 ? "" : "s"} to send`, body: "Send them from GI Hub so they're in Drive for tonight's cards.", tag, url};
   return {title: "Any pearls this week?", body: "Catch them in GI Hub while you still remember.", tag, url};
 }
-// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "test", t, s?}; brief: what the app saved, or null.
+// Events, from the brief's agenda (alerts.js). 30 minutes before: the title,
+// the start and the note. A start that moved after the sender last heard keeps
+// the time the phone has now and drops the countdown. One that's gone, or a
+// phone with no brief, still says when.
+const noteWhat = o => o.s ? `${o.t} at ${o.s}` : `${o.t} (all day)`;
+function noteEv(msg, brief) {
+  const o = brief && (brief.agenda || []).find(x => x.id === msg.id);
+  if (!o || !o.s) return {title: msg.s ? `Coming up at ${noteHM(msg.s)}` : "Coming up soon", body: "Open GI Hub's Agenda for what's on.",
+    tag: "gi-ev", url: "./#agenda"};
+  const soon = !msg.s || noteHM(msg.s) === o.s ? "In 30 minutes." : "";
+  return {title: noteWhat(o), body: [soon, o.n].filter(Boolean).join(" "), tag: "gi-ev-" + msg.id, url: "./#agenda"};
+}
+// 19:00 the evening before: tomorrow's events with that alert on, all day first.
+function noteEve(msg, brief) {
+  const list = brief && msg.d ? (brief.agenda || []).filter(x => x.d === msg.d && x.eve) : [];
+  if (!list.length) return {title: "Tomorrow's agenda", body: "Open GI Hub's Agenda for what's on tomorrow.", tag: "gi-eve", url: "./#agenda"};
+  list.sort((a, b) => ((a.s || "") > (b.s || "") ? 1 : (a.s || "") < (b.s || "") ? -1 : 0));
+  const tag = "gi-eve-" + msg.d, url = "./#agenda";
+  if (list.length === 1) return {title: "Tomorrow: " + noteWhat(list[0]), body: list[0].n || "", tag, url};
+  return {title: `Tomorrow: ${list.length} things`, body: list.map(noteWhat).join(", ") + ".", tag, url};
+}
+// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "test", t, s?, d?, id?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
     return {title: "GI Hub reminders are on", body: "Mondays at 08:00: the week's EPAs. Wednesdays at 08:00: what's still due, to ask for. " +
-      "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages. Sundays at 17:00: pearls to send.", tag: "gi-test", url: "./"};
+      "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages. Sundays at 17:00: pearls to send. " +
+      "Events: 19:00 the evening before, and 30 minutes before.", tag: "gi-test", url: "./"};
+  if (kind === "ev") return noteEv(msg, b);
+  if (kind === "eve") return noteEve(msg, b);
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "pearls") return b ? notePearls(b, now) : NOTE_PEARLS_GENERIC;
   if (kind === "call") {

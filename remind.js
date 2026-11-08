@@ -118,7 +118,9 @@ function remindBrief(now) {
   // How many pearls wait to be sent: never their words or who said them.
   const pearls = {unsent: Store.state.pearls.filter(p => !p.sent).length};
   // When each form worth chasing passes 14 days, for the icon badge: dates only.
-  return {v: 1, at: now, weeks, call, study, pearls, chase: chaseDue(Store.state.obs), seen: remindSeenAt};
+  // Events with an alert, for their notifications (alerts.js, full app only).
+  const agenda = typeof alertOccurrences === "function" ? alertOccurrences(now) : [];
+  return {v: 1, at: now, weeks, call, study, pearls, agenda, chase: chaseDue(Store.state.obs), seen: remindSeenAt};
 }
 // GI Hub opened or put away: clear the icon badge, and count everything up to
 // now as seen so a later reminder badges only what's new.
@@ -137,26 +139,10 @@ function remindAfterRender() {
   caches.open(REMIND_CACHE).then(c => c.put("__gi-brief.json",
     new Response(JSON.stringify(brief), {headers: {"content-type": "application/json"}}))).catch(() => { remindBriefKey = ""; });
 }
-// The next reminder this phone expects: Monday or Wednesday 08:00, Sunday
-// 17:00 (pearls), an hour before a call, or 20:00 on a reading night,
-// whichever comes first. Matches tools/push/schedule.js.
+// The next reminder this phone expects: the first still to come in the plan
+// it gives the sender (alerts.js).
 function remindNext(now) {
-  const d = new Date(now);
-  let msg = null;
-  for (let k = 0; k < 8 && !msg; k++) {
-    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), slot = {0: ["pearls", 17], 1: ["week", 8], 3: ["ask", 8]}[day.getDay()];
-    const t = slot ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), slot[1]).getTime() : 0;
-    if (slot && t > now) msg = {kind: slot[0], t};
-  }
-  const st = callStretches(CallStore.list()).find(x => x.s - HOUR_MS > now);
-  if (st && st.s - HOUR_MS < msg.t) msg = {kind: "call", t: st.s - HOUR_MS, s: st.s};
-  // The next 20:00 on a reading night, if it comes first.
-  const str = callStretches(CallStore.list());
-  for (let k = 0; k < 8; k++) {
-    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), ts = studyEveningMs(day);
-    if (ts <= now || fmtDate(day) > fmtDate(STUDY_END)) continue;
-    if (studyNightKind(day, str, []) === "read") { if (ts < msg.t) msg = {kind: "study", t: ts}; break; }
-  }
+  const msg = alertPlan(now).find(a => a.t > now);
   return {msg, notice: noticeFor(msg, remindBrief(msg.t), msg.t)};
 }
 
@@ -165,7 +151,8 @@ const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Mon 08:00</span><s
   `<li><span class="mono">Wed 08:00</span><span>What's still due, so you can ask today</span></li>` +
   `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li>` +
   `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li>` +
-  `<li><span class="mono">Sun 17:00</span><span>Pearls to send, before Sunday's cards</span></li></ul>`;
+  `<li><span class="mono">Sun 17:00</span><span>Pearls to send, before Sunday's cards</span></li>` +
+  `<li><span class="mono">Events</span><span>19:00 the evening before, and 30 minutes before</span></li></ul>`;
 function remindCodeHTML() {
   return `<div class="rcode mono" aria-label="Connection code">${esc(remindSub.endpoint.replace(/^https:\/\//, "").slice(0, 38))}…</div>` +
     `<div class="rbtns"><button class="btn primary" data-action="remindshare">${ic("share")}Share code</button>` +
