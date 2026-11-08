@@ -65,4 +65,157 @@ test("the VAPID header verifies with the sender's public key", async () => {
   assert.deepEqual(JSON.parse(Buffer.from(m[2], "base64url")), {aud: "https://web.push.apple.com", exp: now + 12 * 3600, sub: APP});
 });
 
-module.exports = {phone, open, mod, APP};
+// ---- The Worker ------------------------------------------------------------------------
+
+const ORIGIN = "https://lethalnifty.github.io";
+const TOK = "A".repeat(43), OTHER = "B".repeat(43);
+const NOW = Date.UTC(2026, 10, 9, 14);        // Mon 9 Nov 2026, 09:00 in Winnipeg
+const MIN = 60000;
+// Workers KV, as far as the Worker uses it; broken throws on every call.
+function kv(broken) {
+  const m = new Map(), no = async () => { if (broken) throw new Error("KV down"); };
+  return {m,
+    async get(k) { await no(); return m.has(k) ? m.get(k) : null; },
+    async put(k, v) { await no(); m.set(k, String(v)); },
+    async delete(k) { await no(); m.delete(k); }};
+}
+const env = broken => ({AGENDA: kv(broken)});
+// A push service that keeps every message it was handed.
+function pushService(status = 201) {
+  const got = [];
+  const f = async (url, init) => { got.push({url, ...init}); return {status: typeof status === "function" ? status(got.length) : status}; };
+  f.got = got;
+  return f;
+}
+function call(w, e, method, p, {tok = TOK, body, now = NOW, fetchImpl} = {}) {
+  const headers = {Origin: ORIGIN};
+  if (tok) headers.Authorization = "Bearer " + tok;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  return w.handle(new Request("https://gi-hub-agenda.example.workers.dev" + p,
+    {method, headers, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body)}), e, now, fetchImpl);
+}
+async function connected(w, e, p = phone(), tok = TOK) {
+  const key = (await (await call(w, e, "GET", "/vapid", {tok: null})).json()).key;
+  const res = await call(w, e, "PUT", "/sub", {tok, body: {sub: p.sub, key}});
+  assert.equal(res.status, 200);
+  return {p, key};
+}
+
+test("the app may call it from its own address, and only that one", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const res = await call(w, e, "OPTIONS", "/alerts", {tok: null});
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), ORIGIN);
+  assert.match(res.headers.get("Access-Control-Allow-Headers"), /Authorization/);
+  assert.equal((await call(w, e, "GET", "/vapid", {tok: null})).headers.get("Access-Control-Allow-Origin"), ORIGIN);
+});
+
+test("it makes its own sender key the first time it's asked, and keeps it", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const a = await (await call(w, e, "GET", "/vapid", {tok: null})).json();
+  const b = await (await call(w, e, "GET", "/vapid", {tok: null})).json();
+  assert.equal(a.key, b.key);
+  assert.equal(Buffer.from(a.key, "base64url").length, 65);
+  assert.ok(JSON.parse(e.AGENDA.m.get("vapid")).jwk.d, "the private half stays in the Worker's store");
+});
+
+test("the first phone to connect claims it; another token can't, and nothing that isn't a push service is taken", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const {key} = await connected(w, e);
+  assert.ok(e.AGENDA.m.get("auth"));
+  const p = phone();
+  assert.equal((await call(w, e, "PUT", "/sub", {tok: OTHER, body: {sub: p.sub, key}})).status, 401);
+  assert.equal((await call(w, e, "PUT", "/sub", {body: {sub: {...p.sub, endpoint: "http://web.push.apple.com/x"}, key}})).status, 400);
+  assert.equal((await call(w, e, "PUT", "/sub", {body: {sub: {...p.sub, endpoint: "https://example.com/x"}, key}})).status, 400);
+  assert.equal((await call(w, e, "PUT", "/sub", {body: "{not json"})).status, 400);
+  // Subscribed with a key that isn't this sender's: the phone has to subscribe again.
+  assert.equal((await call(w, e, "PUT", "/sub", {body: {sub: p.sub, key: "BOld"}})).status, 409);
+  assert.equal(JSON.parse(e.AGENDA.m.get("sub")).endpoint, "https://web.push.apple.com/QTest");
+});
+
+test("the reminder list keeps only real reminders, soonest first, and says what's next", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await connected(w, e);
+  const list = [
+    {t: NOW + 3 * MIN, kind: "ev", s: NOW + 33 * MIN, id: "a1x2@2026-11-09", words: "never kept"},
+    {t: NOW + MIN, kind: "call", s: NOW + 61 * MIN},
+    {t: NOW + 2 * MIN, kind: "eve", d: "2026-11-10"},
+    {t: NOW + 4 * MIN, kind: "dinner"},
+    {t: String(NOW + 5 * MIN), kind: "week"},
+    {t: NOW + 41 * 864e5, kind: "week"},
+    {t: NOW - 2 * 864e5, kind: "ask"},
+    {t: NOW + 6 * MIN, kind: "ev", id: "Dentist at noon"},
+  ];
+  const res = await call(w, e, "PUT", "/alerts", {body: {list}});
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), {kept: 4, next: NOW + MIN});
+  assert.deepEqual(JSON.parse(e.AGENDA.m.get("alerts")).list, [
+    {t: NOW + MIN, kind: "call", s: NOW + 61 * MIN},
+    {t: NOW + 2 * MIN, kind: "eve", d: "2026-11-10"},
+    {t: NOW + 3 * MIN, kind: "ev", s: NOW + 33 * MIN, id: "a1x2@2026-11-09"},
+    {t: NOW + 6 * MIN, kind: "ev"}]);
+  const many = Array.from({length: 900}, (_, k) => ({t: NOW + (900 - k) * MIN, kind: "study"}));
+  assert.equal((await (await call(w, e, "PUT", "/alerts", {body: {list: many}})).json()).kept, 800);
+  assert.equal(JSON.parse(e.AGENDA.m.get("alerts")).list[0].t, NOW + MIN, "the soonest are the ones kept");
+  assert.equal((await call(w, e, "PUT", "/alerts", {body: {nope: 1}})).status, 400);
+});
+
+test("each minute sends what fell due in that minute, once, sealed for the phone", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const {p} = await connected(w, e);
+  const at = NOW + 30 * MIN;
+  await call(w, e, "PUT", "/alerts", {body: {list: [
+    {t: at - 90000, kind: "week"}, {t: at - 30000, kind: "call", s: at + 59 * MIN},
+    {t: at, kind: "ev", s: at + 30 * MIN, id: "a1x2@2026-11-09"}, {t: at + 30000, kind: "study"}]}});
+  const push = pushService();
+  assert.equal(await w.sendDue(e, at, push), 2);
+  assert.deepEqual(push.got.map(x => JSON.parse(open(p, x.body).text)), [
+    {t: at - 30000, kind: "call", s: at + 59 * MIN}, {t: at, kind: "ev", s: at + 30 * MIN, id: "a1x2@2026-11-09"}]);
+  assert.equal(push.got[0].url, "https://web.push.apple.com/QTest");
+  assert.equal(push.got[0].headers["Content-Encoding"], "aes128gcm");
+  assert.match(push.got[0].headers.Authorization, /^vapid t=[\w-]+\.[\w-]+\.[\w-]+, k=[\w-]+$/);
+  assert.deepEqual(push.got.map(x => x.headers.TTL), ["3600", "1800"]);
+  // The next minute: only what came due since.
+  assert.equal(await w.sendDue(e, at + MIN, push), 1);
+  assert.equal(JSON.parse(open(p, push.got[2].body).text).kind, "study");
+  assert.equal(await w.sendDue(e, at + 2 * MIN, push), 0);
+});
+
+test("a phone the push service no longer knows is forgotten, and status says so", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const {key} = await connected(w, e);
+  await call(w, e, "PUT", "/alerts", {body: {list: [{t: NOW + MIN, kind: "week"}, {t: NOW + MIN, kind: "pearls"}]}});
+  const gone = pushService(410);
+  assert.equal(await w.sendDue(e, NOW + MIN, gone), 0);
+  assert.equal(gone.got.length, 1, "it stops at the first refusal");
+  assert.equal(e.AGENDA.m.has("sub"), false);
+  assert.deepEqual(await (await call(w, e, "GET", "/status")).json(), {sub: false, key, kept: 2, next: NOW + MIN});
+});
+
+test("Send a test pushes one now", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const {p} = await connected(w, e);
+  const push = pushService();
+  const res = await call(w, e, "POST", "/test", {fetchImpl: push});
+  assert.deepEqual(await res.json(), {status: 201});
+  assert.deepEqual(JSON.parse(open(p, push.got[0].body).text), {kind: "test", t: NOW});
+});
+
+test("without its token nothing else answers, and turning off frees it for a new phone", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await connected(w, e);
+  for (const [m, p] of [["GET", "/status"], ["PUT", "/alerts"], ["POST", "/test"], ["DELETE", "/sub"]])
+    assert.equal((await call(w, e, m, p, {tok: OTHER, body: m === "PUT" ? {list: []} : undefined})).status, 401, m + " " + p);
+  assert.equal((await call(w, e, "GET", "/nowhere")).status, 404);
+  assert.equal((await call(w, e, "DELETE", "/sub")).status, 204);
+  for (const k of ["sub", "alerts", "auth"]) assert.equal(e.AGENDA.m.has(k), false, k);
+  assert.ok(e.AGENDA.m.has("vapid"), "the sender keeps its key");
+  await connected(w, e, phone(), OTHER);
+});
+
+test("a storage failure still answers, with the app's origin", async () => {
+  const w = await mod("worker.mjs");
+  const res = await call(w, env(true), "GET", "/status");
+  assert.equal(res.status, 500);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), ORIGIN);
+});

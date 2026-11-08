@@ -1,0 +1,20 @@
+# GI Hub's reminder sender (worker.mjs): its own Worker, with the public
+# address the phone connects to, https://gi-hub-agenda.lethalnifty.workers.dev
+# (the account's workers.dev name is lethalnifty). Deploy from this folder:
+# npx wrangler deploy
+# Storage is the KV namespace AGENDA, made once with
+# npx wrangler kv namespace create AGENDA, its id below. It holds the sender's
+# own key pair, so no secrets are set by hand.
+name = "gi-hub-agenda"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+# Every minute: whatever reminders fell due in it.
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "AGENDA"
+id = "AGENDA_NAMESPACE_ID"
