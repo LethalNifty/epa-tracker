@@ -95,8 +95,8 @@ function viewAgenda() {
 // ---- The event sheet -----------------------------------------------------------------------------
 function agOpen(id) {
   const it = id ? agState().items.find(x => x.id === id) : null;
-  agSheet = it ? {mode: "edit", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, err: null}
-    : {mode: "new", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, err: null};
+  agSheet = it ? {mode: "edit", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null}
+    : {mode: "new", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null};
   agSheetFresh = true;
 }
 function agSheetHTML() {
@@ -113,6 +113,9 @@ function agSheetHTML() {
       `<label class="lbl mono">Ends<input type="time" value="${esc(s.e)}" data-ag="e"></label></div>`) +
     `<div class="lbl mono">Repeats</div><div class="pickrow">` + [["", "Never"], ["w", "Weekly"], ["m", "Monthly"], ["y", "Yearly"]]
       .map(([r, label]) => chip("agrep", (s.rep || "") === r, label, ` data-rep="${r}"`)).join("") + `</div>` +
+    `<div class="lbl mono">Alerts</div><div class="pickrow">` + [["eve", "Evening before"], ["30", "30 min before"]]
+      .filter(([k]) => k !== "30" || !s.allDay)
+      .map(([k, label]) => chip("agalert", agAlerts({s: s.allDay ? null : s.s, al: s.al}).includes(k), label, ` data-al="${k}"`)).join("") + `</div>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" data-ag="n" placeholder="Where, who, what to bring"></label>` +
     (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
     `<div class="sactions">${edit ? `<button class="btn danger" data-action="agdelete">Delete</button>` : ""}` +
@@ -124,7 +127,7 @@ function agSave() {
   const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : s.multi && !(agValidIso(s.d2) && s.d2 > s.d) ? "The last day is before the first." :
     timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." : null;
   if (err) { s.err = err; return; }
-  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n};
+  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al};
   const before = agSnapshot();
   if (s.mode === "new") { agAdd(f); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
@@ -269,6 +272,11 @@ function agDispatch(act, d) {
   else if (act === "agallday" && agSheet) agSheet.allDay = !agSheet.allDay;
   else if (act === "agmulti" && agSheet) { agSheet.multi = !agSheet.multi; if (agSheet.multi && !(agSheet.d2 > agSheet.d)) agSheet.d2 = agAddDays(agSheet.d, 1); }
   else if (act === "agrep" && agSheet) agSheet.rep = d.rep || null;
+  // One alert on or off; the other stays as it was (both, when none was chosen).
+  else if (act === "agalert" && agSheet && AG_ALERTS.includes(d.al)) {
+    const cur = Array.isArray(agSheet.al) ? agSheet.al : AG_ALERTS;
+    agSheet.al = AG_ALERTS.filter(k => k === d.al ? !cur.includes(k) : cur.includes(k));
+  }
   else if (act === "agusual") { agUsual = JSON.parse(JSON.stringify(agState().usual)); agSheetFresh = true; }
   else if (act === "agusualclose") agUsual = null;
   else if (act === "agusualsave" && agUsual) agUsualSave();

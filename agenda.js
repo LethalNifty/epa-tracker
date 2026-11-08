@@ -9,6 +9,8 @@
 const AG_ISO = /^\d{4}-\d{2}-\d{2}$/, AG_HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const AG_T_MAX = 120, AG_N_MAX = 500;
 const AG_REPS = ["w", "m", "y"];
+// An event's alerts: at 19:00 the evening before, and 30 minutes before it starts.
+const AG_ALERTS = ["eve", "30"];
 
 // ---- Days ---------------------------------------------------------------------------
 const agDate = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
@@ -52,8 +54,12 @@ function agItemClean(x) {
   if (s && e && !d2 && e <= s) { if (e === s) e = null; else d2 = agAddDays(x.d, 1); }
   return {id: typeof x.id === "string" && /^a[a-z0-9]{1,24}$/.test(x.id) ? x.id : "", t: x.t.trim().slice(0, AG_T_MAX), d: x.d, d2, s, e,
     rep: AG_REPS.includes(x.rep) ? x.rep : null, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
-    uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : ""};
+    uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : "",
+    al: Array.isArray(x.al) ? AG_ALERTS.filter(k => x.al.includes(k)) : null};
 }
+// The alerts an event gets: its own choice, or both when none was made; never
+// 30 minutes before an all-day event.
+const agAlerts = it => AG_ALERTS.filter(k => (Array.isArray(it.al) ? it.al : AG_ALERTS).includes(k) && (k !== "30" || !!it.s));
 function agNewId(taken) {
   let id;
   do id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));
