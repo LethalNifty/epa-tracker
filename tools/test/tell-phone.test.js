@@ -256,3 +256,148 @@ test("the test set runs from Settings and shows how Claude did", async () => {
   h.click("telscore"); await settle(h);
   assert.match(h.html(), /0 of 20 right<\/b>, 0 filed so far/);
 });
+
+// ---- The Claude added card ------------------------------------------------------------------------
+const week = h => { h.click("setclose"); h.click("tab", {page: "week"}); return h.html(); };
+const cardOf = html => { const i = html.indexOf('<div class="card tellcard">'); return i < 0 ? "" : html.slice(i, html.indexOf("</section>", i)); };
+
+test("the card lists what was added today with Undo, and folds away after a day", async () => {
+  const {c, h} = await tellPhone();
+  const r = await files(c, [{kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"},
+    {kind: "todo", t: "Send the slides to Casey", d: "2026-11-10", s: "08:00", chk: true},
+    {kind: "idea", for: "heidi", t: "Put the medication list above the plan"}], "Flight Wednesday at 9:35, remind me about the slides, and a Heidi idea");
+  await pick(h, "2026-11-09T14:05");
+  const html = week(h), i = html.indexOf('<div class="card tellcard">'), card = cardOf(html);
+  assert.ok(i > html.indexOf("</header>") && i < html.indexOf('class="card agnext"'), "under the header, before the rest of Week");
+  assert.match(card, /Claude added/);
+  const lines = ["Flight, Wed 11 Nov, 09:35", "To-do: Send the slides to Casey, Tue 10 Nov, 08:00", "Heidi idea, waits for the desktop"];
+  assert.deepEqual(lines.map(l => card.indexOf(l)).every((x, k, a) => x > 0 && (k === 0 || x > a[k - 1])), true, "in the order Claude filed them");
+  for (const x of r) assert.match(card, new RegExp(`data-action="telundo" data-id="${x.id}">Undo<`));
+  assert.match(card, /Tue 10 Nov, 08:00<\/b><\/button><span class="tellchk mono">Check this<\/span>/);
+  assert.doesNotMatch(card, /\(check this\)/);
+  // An event or to-do opens from its row.
+  assert.match(card, new RegExp(`data-action="agopen" data-id="${r[0].id}"`));
+  // A day later it has folded away.
+  h.setNow("2026-11-10T14:06");
+  assert.equal(cardOf(week(h)), "");
+});
+
+test("Undo takes back each kind", async () => {
+  const {c, h} = await tellPhone([ev("a1", "Dentist", "2026-11-13", "09:00", "10:00"), ev("a2", "Physio", "2026-11-16", "16:00", "17:00")]);
+  const r = await files(c, [
+    {kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"},
+    {kind: "todo", t: "Send the slides to Casey"},
+    {kind: "change", m: "dentist", to: {d: "2026-11-17", s: "14:00"}},
+    {kind: "change", m: "physio", cancel: true},
+    {kind: "note", t: "The clinic parking moved to level 3"},
+    {kind: "pearl", t: "Lactulose until two or three soft stools a day"},
+    {kind: "pearl", t: "Rifaximin on top of lactulose for recurrent encephalopathy"},
+    {kind: "idea", for: "gihub", t: "Show next week's calls on the Week tab"}], "A bit of everything");
+  await pick(h, "2026-11-09T14:05");
+  assert.equal(h.saved().agenda.items.length, 3, "the dentist moved, physio gone, the flight and the to-do in");
+  assert.ok(await c.env.AGENDA.get("idea:" + r[7].id));
+  // A pearl already sent to Drive stays; its row goes.
+  h.run(`Store.state.pearls.find(p => p.t.startsWith("Rifaximin")).sent = "2026-11-09"`);
+  for (const x of r) h.click("telundo", {id: x.id});
+  await settle(h);
+  const s = h.saved();
+  assert.deepEqual(s.agenda.items.map(x => [x.id, x.d, x.s, x.e]), [["a1", "2026-11-13", "09:00", "10:00"], ["a2", "2026-11-16", "16:00", "17:00"]]);
+  assert.deepEqual(s.agenda.notes, []);
+  assert.deepEqual(s.pearls.map(p => p.t), ["Rifaximin on top of lactulose for recurrent encephalopathy"]);
+  assert.ok(c.calls.includes("DELETE /idea/" + r[7].id));
+  assert.equal(await c.env.AGENDA.get("idea:" + r[7].id), null);
+  assert.match(h.html(), /Undone/);
+  assert.deepEqual(kept(h).added, [], "every row went");
+});
+
+test("picking which dentist applies the change to that one", async () => {
+  const {c, h} = await tellPhone([ev("a1", "Dentist", "2026-11-13", "09:00", "10:00"), ev("a2", "Dentist cleaning", "2026-11-20", "09:00", "10:00")]);
+  const r = await files(c, [{kind: "change", m: "dentist", to: {s: "11:00"}}, {kind: "change", m: "dentist", cancel: true}], "Move the dentist to 11, or cancel it");
+  await pick(h, "2026-11-09T14:05");
+  let card = cardOf(week(h));
+  assert.match(card, /Which dentist\? Move to 11:00/);
+  for (const item of ["a1", "a2"]) assert.match(card, new RegExp(`data-action="telpick" data-id="${r[0].id}" data-item="${item}">Dentist`));
+  assert.match(card, new RegExp(`data-action="telpick" data-id="${r[0].id}" data-item="">Neither<`));
+  h.click("telpick", {id: r[0].id, item: "a2"});
+  const by = id => h.saved().agenda.items.find(x => x.id === id);
+  assert.deepEqual([by("a1").s, by("a2").s, by("a2").e], ["09:00", "11:00", "12:00"]);
+  card = cardOf(h.html());
+  assert.doesNotMatch(card, new RegExp(`data-id="${r[0].id}" data-item`));
+  assert.match(card, /Moved: Dentist cleaning to Fri 20 Nov, 11:00/);
+  // Neither: nothing changes and the question goes.
+  h.click("telpick", {id: r[1].id, item: ""});
+  assert.deepEqual(h.saved().agenda.items.map(x => x.id), ["a1", "a2"]);
+  assert.doesNotMatch(cardOf(h.html()), /data-action="telpick"/);
+  h.click("telundo", {id: r[0].id});
+  assert.deepEqual([by("a2").s, by("a2").e], ["09:00", "10:00"]);
+});
+
+test("a scope case opens the Endo check with its words", async () => {
+  const {c, h} = await tellPhone();
+  const r = await files(c, [{kind: "scope", text: "Colonoscopy, two polyps, cold snare"}], "Scope case: colonoscopy, two polyps, cold snare");
+  await pick(h, "2026-11-09T14:05");
+  assert.match(cardOf(week(h)), new RegExp(`Scope case, check it in Endo[\\s\\S]*?data-action="telscope" data-id="${r[0].id}">Check in Endo<`));
+  h.click("telscope", {id: r[0].id});
+  assert.equal(h.val("scopeSheet.kind"), "capture");
+  assert.deepEqual([h.val("scopeCap.text"), h.val("scopeCap.day")], ["Colonoscopy, two polyps, cold snare", "2026-11-09"]);
+  assert.ok(h.val("scopeCap.cards.length") >= 1);
+});
+
+test("Week says Waiting for Claude when the sender says so, and not before", async () => {
+  const {c, h} = await tellPhone();
+  assert.equal((await c.as(c.keys.shortcut, "POST", "/inbox", {text: "Dentist Friday at 9", at: SAID})).status, 200);
+  c.now = at(2026, 11, 9, 14, 10);
+  await pick(h, "2026-11-09T14:10");
+  assert.doesNotMatch(week(h), /Waiting for Claude/);
+  c.now = at(2026, 11, 9, 14, 16);
+  await pick(h, "2026-11-09T14:16");
+  assert.match(week(h), /Waiting for Claude/);
+});
+
+// ---- Notifications ----------------------------------------------------------------------------------
+test("the added notification names one thing in its title, and counts several", () => {
+  const h = load({today: "2026-11-09"});
+  const say = m => h.val(`noticeFor(${JSON.stringify(m)}, null, 0)`);
+  assert.deepEqual(say({kind: "added", t: 5, lines: ["Flight, Wed 11 Nov, 09:35"], more: 0, fin: false}),
+    {title: "Added: Flight, Wed 11 Nov, 09:35", body: "", tag: "gi-added-5", url: "./"});
+  assert.deepEqual(say({kind: "added", t: 5, lines: ["Flight, Wed 11 Nov, 09:35", "To-do: Send the slides, Tue 10 Nov, 08:00"], more: 2, fin: true}),
+    {title: "Added 4 things", body: "Flight, Wed 11 Nov, 09:35. To-do: Send the slides, Tue 10 Nov, 08:00, and 2 more. Open GI Hub to finish.", tag: "gi-added-5", url: "./"});
+  assert.equal(say({kind: "added", t: 5, lines: ["Cancel: dentist"], more: 0, fin: true}).body, "Open GI Hub to finish.");
+});
+
+test("an event Claude added alerts with its own words before GI Hub has it", () => {
+  const h = load({today: "2026-11-10", state: state({}, {agenda: {items: [ev("a1", "Dentist", "2026-11-11", "15:30", "16:30")]}})});
+  h.setNow("2026-11-10T19:00");
+  const s = at(2026, 11, 11, 9, 35), now = at(2026, 11, 11, 9, 5), soon = {kind: "ev", t: now, s, id: "a9b8c7d6e5f@2026-11-11", w: "Flight"};
+  const said = {title: "Flight at 09:35", body: "In 30 minutes.", tag: "gi-ev-a9b8c7d6e5f@2026-11-11", url: "./#agenda"};
+  assert.deepEqual(h.val(`noticeFor(${JSON.stringify(soon)}, null, ${now})`), said);
+  assert.deepEqual(h.val(`noticeFor(${JSON.stringify(soon)}, remindBrief(${now}), ${now})`), said);
+  const eve = at(2026, 11, 10, 19), msg = {kind: "eve", t: eve, d: "2026-11-11", w: [{id: "a9b8c7d6e5f", t: "Flight", s: "09:35"}]};
+  const both = {title: "Tomorrow: 2 things", body: "Flight at 09:35, Dentist at 15:30.", tag: "gi-eve-2026-11-11", url: "./#agenda"};
+  assert.deepEqual(h.val(`noticeFor(${JSON.stringify(msg)}, remindBrief(${eve}), ${eve})`), both);
+  // Once GI Hub has it, it's named once.
+  h.run(`agState().items.push(agItemClean({id: "a9b8c7d6e5f", t: "Flight", d: "2026-11-11", s: "09:35"})); Store.save()`);
+  assert.deepEqual(h.val(`noticeFor(${JSON.stringify(msg)}, remindBrief(${eve}), ${eve})`), both);
+});
+
+test("an added push tells the open app to pick up", async () => {
+  const fs = require("node:fs"), vm = require("node:vm"), handlers = {}, posted = [];
+  const ctx = {URL, console, Date, Response: class {},
+    caches: {open: async () => ({match: async () => undefined, put: async () => {}}), keys: async () => [], match: async () => undefined},
+    importScripts: f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx),
+    self: {addEventListener: (t, fn) => { handlers[t] = fn; }, skipWaiting() {},
+      registration: {scope: "https://lethalnifty.github.io/epa-tracker/", showNotification: async () => {}},
+      clients: {claim() {}, matchAll: async () => [{postMessage: m => posted.push(m)}], openWindow: async () => {}}}};
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, "sw.js"), "utf8"), ctx);
+  const push = async msg => { let p; handlers.push({data: {json: () => msg}, waitUntil: x => { p = x; }}); await p; };
+  await push({kind: "ev", t: 1, s: 2, id: "a1@2026-11-11"});
+  assert.deepEqual(posted, [], "a reminder doesn't");
+  await push({kind: "added", t: 1, lines: ["Flight, Wed 11 Nov, 09:35"], more: 0, fin: false});
+  // The message is made inside the worker's sandbox, so compare it as plain data.
+  assert.deepEqual(posted.map(m => ({...m})), [{tell: 1}]);
+  const h = load({today: "2026-11-09"});
+  h.run("window.__picks = 0; tellPick = () => { __picks++; return Promise.resolve(); }");
+  h.run("appMessage({tell: 1})");
+  assert.equal(h.val("__picks"), 1);
+});

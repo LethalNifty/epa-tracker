@@ -181,8 +181,11 @@ function tellChange(r, e, now) {
     agAddNote(`Couldn't find "${r.m}" to ${tellWhat(r)}`, id);
     return {...e, line: `Not found: ${r.m}, added to Notes`, undo: {note: id}};
   }
-  if (found.length > 1)
-    return {...e, ask: {...(r.cancel ? {cancel: true} : {to: r.to || {}}), choices: found.slice(0, TELL_CHOICES).map(x => ({id: x.id, t: x.t, d: x.d, s: x.s}))}};
+  if (found.length > 1) {
+    const what = tellWhat(r);
+    return {...e, line: `Which ${r.m}? ${what[0].toUpperCase() + what.slice(1)}`,
+      ask: {...(r.cancel ? {cancel: true} : {to: r.to || {}}), choices: found.slice(0, TELL_CHOICES).map(x => ({id: x.id, t: x.t, d: x.d, s: x.s}))}};
+  }
   return {...e, ...tellDo(found[0], r)};
 }
 // Applies a change to one item: the line it says, and what it was before for Undo.
@@ -207,6 +210,74 @@ function tellMove(it, to) {
   if (to.s) f.s = to.s;
   if (to.e && (to.s || it.s)) f.e = to.e;
   return f;
+}
+
+// ---- The Claude added card ----------------------------------------------------------------------------
+// At the top of Week: what Claude added in the last day, newest first (in the
+// order it filed them within one pickup), each with Undo; a scope case with
+// Check in Endo, a change that matched several with its choices. Under it,
+// when Claude is slow or its last start failed: Waiting for Claude.
+const TELL_SHOW = 24 * 3600000;
+function tellRowHTML(e) {
+  const id = esc(e.id), line = esc(e.line.replace(/ \(check this\)$/, ""));
+  const open = (e.kind === "event" || e.kind === "todo") && agState().items.some(x => x.id === e.id);
+  const what = open ? `<button class="tellopen" data-action="agopen" data-id="${id}"><b>${line}</b></button>` : `<b>${line}</b>`;
+  const undo = `<button class="textbtn" data-action="telundo" data-id="${id}">Undo</button>`;
+  const acts = e.ask ? "" : e.scope ? `<button class="pick ghost" data-action="telscope" data-id="${id}">Check in Endo</button>${undo}` : undo;
+  const picks = e.ask ? `<div class="tellpicks">` + e.ask.choices.map(c =>
+    `<button class="pick ghost" data-action="telpick" data-id="${id}" data-item="${esc(c.id)}">${esc(c.t)}, ${esc(tellWhen(c.d, c.s))}</button>`).join("") +
+    `<button class="pick ghost" data-action="telpick" data-id="${id}" data-item="">Neither</button></div>` : "";
+  return `<div class="tellrow"><div class="tellwhat">${what}${e.chk ? `<span class="tellchk mono">Check this</span>` : ""}</div>` +
+    (acts ? `<div class="tella">${acts}</div>` : "") + picks + `</div>`;
+}
+function tellCardHTML() {
+  const k = tellLoad(), now = callNow();
+  const rows = k.added.map((e, i) => [e, i]).filter(([e]) => e.at > now - TELL_SHOW).sort((x, y) => y[0].at - x[0].at || x[1] - y[1]).map(([e]) => e);
+  const w = tellOn() && k.wait;
+  if (!rows.length && !w) return "";
+  const why = w && w.err === "setup" ? ": the task isn't set up yet" : w && w.err ? `: it couldn't start (error ${esc(String(w.err))})` : "";
+  return `<section class="sec tellsec">` + (rows.length ? `<div class="card tellcard"><p class="tellhead mono">Claude added</p>${rows.map(tellRowHTML).join("")}</div>` : "") +
+    (w ? `<p class="tellwait mono">Waiting for Claude${why}</p>` : "") + `</section>`;
+}
+// Undo: an event or to-do goes; a change puts back what it was (a cancelled
+// event comes back); a note goes; a pearl goes unless it was sent; an idea
+// leaves the desktop's list. The row goes either way.
+function tellUndo(id) {
+  const k = tellLoad(), e = k.added.find(x => x.id === id);
+  if (!e) return;
+  const u = e.undo || {};
+  let msg = "Undone";
+  if (u.del) agRemove(u.del);
+  else if (u.put) {
+    const a = agState(), it = agItemClean(u.put), i = a.items.findIndex(x => x.id === u.put.id);
+    if (it) { if (i >= 0) a.items[i] = it; else a.items.push(it); Store.save(); }
+  } else if (u.note) agRemoveNote(u.note);
+  else if (u.pearl) {
+    const p = Store.state.pearls.find(x => x.id === u.pearl);
+    if (p && p.sent) msg = "Already sent, so it stays in Pearls";
+    else if (p) { Store.state.pearls = Store.state.pearls.filter(x => x !== p); Store.save(); }
+  }
+  if (e.kind === "idea") alertsRun(() => alertsAsk("DELETE", "/idea/" + e.id));
+  k.added = k.added.filter(x => x !== e); tellSave();
+  showToast(msg);
+}
+// Which one a change meant: it applies to that one, and the row says what it
+// did, with Undo. Neither: nothing changes and the question goes.
+function tellChoose(id, item) {
+  const k = tellLoad(), e = k.added.find(x => x.id === id && x.ask);
+  if (!e) return;
+  const it = item && agState().items.find(x => x.id === item);
+  if (it) { Object.assign(e, tellDo(it, {cancel: e.ask.cancel, to: e.ask.to, chk: e.chk})); delete e.ask; }
+  else { k.added = k.added.filter(x => x !== e); if (item) showToast("That one's gone"); }
+  tellSave();
+}
+// A scope case: the + sheet's Case box with its words, read as the day it was said.
+function tellScope(id) {
+  const e = tellLoad().added.find(x => x.id === id && x.scope);
+  if (!e) return;
+  scopeCap = {text: e.scope.text, cards: [], removed: 0, day: e.scope.d};
+  scopeOpenCapture();
+  scopeRead();
 }
 
 // ---- Settings -------------------------------------------------------------------------------------
@@ -270,5 +341,8 @@ function tellDispatch(act, d) {
   else if (act === "telcopy") tellCopy(d.which);
   else if (act === "teltest") tellTestRun();
   else if (act === "telscore") tellTestScore();
+  else if (act === "telundo") tellUndo(d.id);
+  else if (act === "telpick") tellChoose(d.id, d.item);
+  else if (act === "telscope") tellScope(d.id);
   return true;
 }

@@ -79,9 +79,11 @@ function notePearls(brief, now) {
 // the start and the note; one that arrives late says the minutes truly left. A
 // start that moved after the sender last heard keeps the time the phone has now
 // and drops the countdown. One that's gone, or a phone with no brief, still says when.
+// One Claude added that GI Hub hasn't picked up yet: the sender's copy carries its title (w).
 const noteWhat = o => o.s ? `${o.t} at ${o.s}` : `${o.t} (all day)`;
 function noteEv(msg, brief, now) {
-  const o = brief && (brief.agenda || []).find(x => x.id === msg.id);
+  const o = (brief && (brief.agenda || []).find(x => x.id === msg.id)) ||
+    (typeof msg.w === "string" && msg.w && msg.s ? {t: msg.w, s: noteHM(msg.s), n: ""} : null);
   if (!o || !o.s) return {title: msg.s ? `Coming up at ${noteHM(msg.s)}` : "Coming up soon", body: "Open GI Hub's Agenda for what's on.",
     tag: "gi-ev", url: "./#agenda"};
   const left = msg.s && Number.isFinite(now) ? Math.round((msg.s - now) / 60000) : 30;
@@ -90,9 +92,12 @@ function noteEv(msg, brief, now) {
 }
 // 19:00 the evening before: tomorrow's events with that alert on, all day first.
 // One that arrives after midnight (the phone was off at 19:00) says Today.
+// Ones Claude added that GI Hub hasn't picked up yet come in the sender's copy (w).
 function noteEve(msg, brief, now) {
   const day = msg.d && Number.isFinite(now) && noteDay(now) >= msg.d ? "Today" : "Tomorrow";
   const list = brief && msg.d ? (brief.agenda || []).filter(x => x.d === msg.d && x.eve) : [];
+  for (const x of Array.isArray(msg.w) ? msg.w : [])
+    if (x && typeof x.t === "string" && x.t && !list.some(y => String(y.id).split("@")[0] === x.id)) list.push({id: x.id, t: x.t, s: x.s || null, n: ""});
   if (!list.length) return {title: day + "'s agenda", body: "Open GI Hub's Agenda for what's on " + day.toLowerCase() + ".", tag: "gi-eve", url: "./#agenda"};
   list.sort((a, b) => ((a.s || "") > (b.s || "") ? 1 : (a.s || "") < (b.s || "") ? -1 : 0));
   const tag = "gi-eve-" + msg.d, url = "./#agenda";
@@ -107,7 +112,18 @@ function noteTodo(msg, brief) {
   const q = o ? o.q || "" : msg.q || "", t = o ? o.t : msg.w || "";
   return {title: q || t || "A to-do", body: (q ? "" : "Did you do it? ") + "Tap for Done, Tomorrow or Drop it.", tag: "gi-todo-" + (msg.id || ""), url: "./"};
 }
-// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "todo" | "test", t, s?, d?, id?, w?, q?}; brief: what the app saved, or null.
+// Claude filed what you said (Tell GI Hub): one thing names itself; several
+// are counted, then listed. fin: something waits in GI Hub for you to finish.
+function noteAdded(msg) {
+  const lines = (Array.isArray(msg.lines) ? msg.lines : []).filter(x => typeof x === "string" && x);
+  const more = Number.isInteger(msg.more) && msg.more > 0 ? msg.more : 0, fin = msg.fin ? "Open GI Hub to finish." : "";
+  const tag = "gi-added-" + (msg.t || 0), url = "./";
+  if (!lines.length) return {title: "Claude filed what you said", body: fin || "Open GI Hub to see it.", tag, url};
+  if (lines.length === 1 && !more) return {title: "Added: " + lines[0], body: fin, tag, url};
+  return {title: `Added ${lines.length + more} things`, body: lines.join(". ") + (more ? `, and ${more} more` : "") + "." + (fin ? " " + fin : ""), tag, url};
+}
+// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "todo" | "added" | "test", t, s?, d?, id?, w?, q?, lines?, more?, fin?};
+// brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
@@ -117,6 +133,7 @@ function noticeFor(msg, brief, now) {
   if (kind === "ev") return noteEv(msg, b, now);
   if (kind === "eve") return noteEve(msg, b, now);
   if (kind === "todo") return noteTodo(msg, b);
+  if (kind === "added") return noteAdded(msg);
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "pearls") return b ? notePearls(b, now) : NOTE_PEARLS_GENERIC;
   if (kind === "call") {
