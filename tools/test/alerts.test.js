@@ -176,6 +176,24 @@ test("event notices come from what the phone saved; a deleted or unknown one sti
   assert.match(h.val("REMIND_WHAT"), /<span class="mono">Events<\/span><span>19:00 the evening before, and 30 minutes before<\/span>/);
 });
 
+test("a reminder that arrives late says so: after midnight the evening one says Today, and the 30-minute one the minutes left", () => {
+  const h = phone("2026-10-29T15:00", [ev("a1", "Dentist", "2026-10-29", "15:30", "16:30"),
+    ev("a2", "Conference", "2026-10-30", null, null), ev("a3", "Clinic", "2026-10-30", "09:00", "12:00")]);
+  const s = at(2026, 10, 29, 15, 30), brief = `remindBrief(${at(2026, 10, 29, 15)})`;
+  const say = (msg, t) => h.val(`noticeFor(${JSON.stringify(msg)}, ${brief}, ${t})`);
+  const soon = {kind: "ev", t: at(2026, 10, 29, 15), s, id: "a1@2026-10-29"};
+  assert.equal(say(soon, at(2026, 10, 29, 15)).body, "In 30 minutes.");
+  assert.equal(say(soon, at(2026, 10, 29, 15, 4)).body, "In 26 minutes.");
+  assert.equal(say(soon, at(2026, 10, 29, 15, 30)).body, "Starting now.");
+  const eve = {kind: "eve", t: at(2026, 10, 29, 19), d: "2026-10-30"};
+  assert.equal(say(eve, at(2026, 10, 29, 23, 59)).title, "Tomorrow: 2 things");
+  assert.equal(say(eve, at(2026, 10, 30, 0, 30)).title, "Today: 2 things");
+  h.run(`agRemove("a3")`);
+  assert.equal(say(eve, at(2026, 10, 30, 0, 30)).title, "Today: Conference (all day)");
+  assert.deepEqual(h.val(`noticeFor(${JSON.stringify(eve)}, null, ${at(2026, 10, 30, 0, 30)})`),
+    {title: "Today's agenda", body: "Open GI Hub's Agenda for what's on today.", tag: "gi-eve", url: "./#agenda"});
+});
+
 // Runs sw.js the way a browser does, with GI Hub open in a window or not.
 function worker({open = false} = {}) {
   const handlers = {}, opened = [], posted = [];

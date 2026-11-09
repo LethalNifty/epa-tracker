@@ -8,6 +8,7 @@ const NOTE_WEEK = 7 * 86400000;
 const notePad = n => String(n).padStart(2, "0");
 const noteHM = t => { const d = new Date(t); return notePad(d.getHours()) + ":" + notePad(d.getMinutes()); };
 const noteWd = t => NOTE_DAYS[new Date(t).getDay()];
+const noteDay = t => { const d = new Date(t); return d.getFullYear() + "-" + notePad(d.getMonth() + 1) + "-" + notePad(d.getDate()); };
 const noteLong = st => st.e - st.s > 24 * 3600000;
 
 function noteSite(name, x) {
@@ -75,25 +76,28 @@ function notePearls(brief, now) {
   return {title: "Any pearls this week?", body: "Catch them in GI Hub while you still remember.", tag, url};
 }
 // Events, from the brief's agenda (alertOccurrences). 30 minutes before: the title,
-// the start and the note. A start that moved after the sender last heard keeps
-// the time the phone has now and drops the countdown. One that's gone, or a
-// phone with no brief, still says when.
+// the start and the note; one that arrives late says the minutes truly left. A
+// start that moved after the sender last heard keeps the time the phone has now
+// and drops the countdown. One that's gone, or a phone with no brief, still says when.
 const noteWhat = o => o.s ? `${o.t} at ${o.s}` : `${o.t} (all day)`;
-function noteEv(msg, brief) {
+function noteEv(msg, brief, now) {
   const o = brief && (brief.agenda || []).find(x => x.id === msg.id);
   if (!o || !o.s) return {title: msg.s ? `Coming up at ${noteHM(msg.s)}` : "Coming up soon", body: "Open GI Hub's Agenda for what's on.",
     tag: "gi-ev", url: "./#agenda"};
-  const soon = !msg.s || noteHM(msg.s) === o.s ? "In 30 minutes." : "";
+  const left = msg.s && Number.isFinite(now) ? Math.round((msg.s - now) / 60000) : 30;
+  const soon = msg.s && noteHM(msg.s) !== o.s ? "" : left >= 2 ? `In ${left} minutes.` : "Starting now.";
   return {title: noteWhat(o), body: [soon, o.n].filter(Boolean).join(" "), tag: "gi-ev-" + msg.id, url: "./#agenda"};
 }
 // 19:00 the evening before: tomorrow's events with that alert on, all day first.
-function noteEve(msg, brief) {
+// One that arrives after midnight (the phone was off at 19:00) says Today.
+function noteEve(msg, brief, now) {
+  const day = msg.d && Number.isFinite(now) && noteDay(now) >= msg.d ? "Today" : "Tomorrow";
   const list = brief && msg.d ? (brief.agenda || []).filter(x => x.d === msg.d && x.eve) : [];
-  if (!list.length) return {title: "Tomorrow's agenda", body: "Open GI Hub's Agenda for what's on tomorrow.", tag: "gi-eve", url: "./#agenda"};
+  if (!list.length) return {title: day + "'s agenda", body: "Open GI Hub's Agenda for what's on " + day.toLowerCase() + ".", tag: "gi-eve", url: "./#agenda"};
   list.sort((a, b) => ((a.s || "") > (b.s || "") ? 1 : (a.s || "") < (b.s || "") ? -1 : 0));
   const tag = "gi-eve-" + msg.d, url = "./#agenda";
-  if (list.length === 1) return {title: "Tomorrow: " + noteWhat(list[0]), body: list[0].n || "", tag, url};
-  return {title: `Tomorrow: ${list.length} things`, body: list.map(noteWhat).join(", ") + ".", tag, url};
+  if (list.length === 1) return {title: day + ": " + noteWhat(list[0]), body: list[0].n || "", tag, url};
+  return {title: `${day}: ${list.length} things`, body: list.map(noteWhat).join(", ") + ".", tag, url};
 }
 // msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "test", t, s?, d?, id?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
@@ -102,8 +106,8 @@ function noticeFor(msg, brief, now) {
     return {title: "GI Hub reminders are on", body: "Mondays at 08:00: the week's EPAs. Wednesdays at 08:00: what's still due, to ask for. " +
       "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages. Sundays at 17:00: pearls to send. " +
       "Events: 19:00 the evening before, and 30 minutes before.", tag: "gi-test", url: "./"};
-  if (kind === "ev") return noteEv(msg, b);
-  if (kind === "eve") return noteEve(msg, b);
+  if (kind === "ev") return noteEv(msg, b, now);
+  if (kind === "eve") return noteEve(msg, b, now);
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "pearls") return b ? notePearls(b, now) : NOTE_PEARLS_GENERIC;
   if (kind === "call") {
