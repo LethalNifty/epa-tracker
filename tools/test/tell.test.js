@@ -372,3 +372,38 @@ test("tests never alert", async () => {
   assert.equal((await b.storage.get("tests")).itest000001.length, 1);
   assert.deepEqual((await tick(b, NOW + 2 * MIN)).data.pending, []);
 });
+
+// ---- The test set ------------------------------------------------------------------------------------
+
+test("the test set is 20 sentences with no real names", async () => {
+  const {TELL_TESTS} = await mod("tell-tests.mjs");
+  assert.equal(TELL_TESTS.length, 20);
+  // Every capitalized word after the first is a placeholder name, a day or a known word.
+  const ok = new Set(["Brook", "Casey", "Quill", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "GI", "Hub", "Heidi", "Week", "Orlando"]);
+  const KINDS = ["event", "todo", "change", "scope", "pearl", "idea", "note"];
+  for (const x of TELL_TESTS) {
+    assert.match(x.at, /^2026-11-\d{2}T\d{2}:\d{2}:00-05:00$/, x.say);
+    for (const n of (x.say.match(/\b[A-Z][A-Za-z]*/g) || []).slice(1)) assert.ok(ok.has(n), `${n} in "${x.say}"`);
+    assert.ok(x.want.length >= 1 && x.want.every(w => KINDS.includes(w.kind)), x.say);
+  }
+});
+
+test("a test result counts as right only when every field matches", async () => {
+  const {tellScore} = await mod("tell-tests.mjs");
+  const at = "2026-11-09T11:00:00-05:00", tests = [
+    {say: "Dentist Friday at 9", at, want: [{kind: "event", d: "2026-11-13", s: "09:00", words: ["dentist"]}]},
+    {say: "Move the dentist to next Tuesday at 2", at, want: [{kind: "change", d: ["2026-11-10", "2026-11-17"], s: "14:00", chk: true, words: ["dentist"]}]},
+    {say: "Follow up on Quill's biopsy next Monday", at, want: [{kind: "todo", d: "2026-11-16", s: "08:00", words: ["biopsy"], not: ["quill"]}]},
+  ];
+  const ev = {kind: "event", t: "Dentist", d: "2026-11-13", s: "09:00"};
+  assert.deepEqual(tellScore(tests, {0: [{id: "a0000000001", ...ev}]}), {n: 3, done: 1, right: 1, misses: []});
+  const late = {...ev, s: "21:00"}, s = tellScore(tests, {0: [late]});
+  assert.deepEqual([s.right, s.misses], [0, [{say: "Dentist Friday at 9", want: tests[0].want, got: [late]}]]);
+  assert.equal(tellScore(tests, {0: [ev, ev]}).right, 0, "one thing said, one thing filed");
+  const move = {kind: "change", m: "dentist", to: {d: "2026-11-17", s: "14:00"}, chk: true};
+  assert.equal(tellScore(tests, {1: [move]}).right, 1, "either Tuesday");
+  assert.equal(tellScore(tests, {1: [{...move, chk: undefined}]}).right, 0, "Check this was wanted");
+  assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on Quill's biopsy", d: "2026-11-16", s: "08:00"}]}).right, 0);
+  assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on the biopsy", d: "2026-11-16", s: "08:00"}]}).right, 1);
+});

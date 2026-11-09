@@ -32,6 +32,7 @@
 //   DELETE /tell     Tell GI Hub off: neither key opens anything
 //   GET    /results  what Claude filed that the phone hasn't confirmed, and whether anything waits
 //   DELETE /idea/<id>  an idea taken back with Undo
+//   POST   /tell/test  the test set (tell-tests.mjs) into the inbox; GET: how Claude did
 // With the shortcut's key (or the phone's token, from the + box):
 //   POST   /inbox    {text, at}: something said, and the phone's clock then
 // With Claude's key:
@@ -208,6 +209,8 @@ async function tellRoute(req, env, now, fetchImpl, path, m) {
     return out(await ask("keys", {shortcut: b.shortcut, claude: b.claude}));
   }
   if (path === "/tell" && m === "DELETE") return out(await ask("off"));
+  if (path === "/tell/test" && m === "POST") return out(await ask("test"));
+  if (path === "/tell/test" && m === "GET") return out(await ask("score"));
   if (path.startsWith("/idea/") && m === "DELETE") {
     const id = path.slice(6);
     if (!RESULT_ID.test(id)) return reply(400, {error: "not an idea"});
@@ -268,7 +271,7 @@ async function route(req, env, now, fetchImpl) {
     await env.AGENDA.put("sub", JSON.stringify({endpoint: body.sub.endpoint, keys: {p256dh: body.sub.keys.p256dh, auth: body.sub.keys.auth}}));
     return reply(200, {ok: true});
   }
-  if (["/inbox", "/results", "/tell"].includes(path) || path.startsWith("/idea/")) return tellRoute(req, env, now, fetchImpl, path, m);
+  if (["/inbox", "/results", "/tell", "/tell/test"].includes(path) || path.startsWith("/idea/")) return tellRoute(req, env, now, fetchImpl, path, m);
   if (!["/alerts", "/test", "/status", "/sub"].includes(path)) return reply(404, {error: "not found"});
   if (!(await allowed(req, env, false))) return reply(401, {error: "locked"});
   if (path === "/alerts" && m === "PUT") {

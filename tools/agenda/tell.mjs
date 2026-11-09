@@ -10,11 +10,16 @@
 //   inbox    [{id, text, said, off, got, test?}]: what waits for Claude. said is
 //            the phone's clock with its offset, off that offset in minutes
 //   seen     {hash: got}: what was said lately, so a resend from Reminders is one item
-//   run      {at, took, tries, next, err, firing}: Claude's run
+//   run      {at, took, tries, next, err, fails, firing}: Claude's run
+//   results  [{id, item, kind, ..., said, off, line, at, ack?}]: what Claude filed,
+//            until the phone confirms it (and ten minutes more), 200 at most
+//   tests    {item id: results}, testIds [item id by place in the set]: the test run
+//   last     when Claude last filed anything
 //
 // A request is a POST of {op, who, fp, now, body}: who is "phone" when the
 // Worker matched the phone's token, "worker" for the Worker's own calls; fp is
 // the SHA-256 of any other bearer key. The answer is {status, data}.
+import {TELL_TESTS, tellScore} from "./tell-tests.mjs";
 
 const TEXT_MAX = 4000, INBOX_MAX = 50, MINUTE = 60000, DAY = 864e5;
 const SEEN_KEEP = 3 * DAY;
@@ -269,6 +274,26 @@ const OPS = {
     for (const r of results) if (ids.has(r.id) && !r.ack) { r.ack = at; n++; }
     if (n) await this.storage.put("results", results);
     return [200, {ok: true, n}];
+  }},
+  // The test set (tell-tests.mjs): the 20 go in the inbox as if said at their
+  // fixed times, in place of any earlier run's, and Claude files them like
+  // anything said; their results stay here and never reach the phone.
+  test: {who: ["phone"], async run(b, now) {
+    const inbox = ((await this.storage.get("inbox")) || []).filter(x => !x.test), ids = [];
+    for (const x of TELL_TESTS) {
+      const z = x.at.slice(-6), off = (z[0] === "-" ? -1 : 1) * (+z.slice(1, 3) * 60 + +z.slice(4));
+      ids.push(tellId("i"));
+      inbox.push({id: ids.at(-1), text: x.say, said: x.at, off, got: now, test: true});
+    }
+    await this.storage.put("inbox", inbox);
+    await this.storage.put("tests", {});
+    await this.storage.put("testIds", ids);
+    return [200, {ok: true, n: ids.length}];
+  }},
+  score: {who: ["phone"], async run() {
+    const tests = (await this.storage.get("tests")) || {}, ids = (await this.storage.get("testIds")) || [], got = {};
+    ids.forEach((id, i) => { if (tests[id]) got[i] = tests[id]; });
+    return [200, tellScore(TELL_TESTS, got)];
   }},
   // The minute check: whether to start Claude now, and the alerts Claude's
   // results need until the phone has them. It tidies the results as it goes.
