@@ -10,6 +10,7 @@
 //   auth    the SHA-256 of the phone's token, set when the phone first connects
 //   sub     the phone's push subscription
 //   alerts  {at, list: [{t, kind, s?, d?, id?}]}, the next five weeks
+//   sent    the reminders sent in the last quarter hour, so a late one goes only once
 //
 //   GET    /vapid    the sender's public key, for the phone to subscribe with
 //   PUT    /sub      {sub, key}: this phone, subscribed with that key
@@ -88,23 +89,35 @@ async function push(env, sub, msg, fetchImpl) {
   return r.status;
 }
 
-// The cron, every minute: the reminders due after the minute before and up to
-// this one (`at`, the run's scheduled time), so a late run never repeats one.
-// Reads one key a minute and writes only when a phone has gone.
+// The cron, every minute (`at`, the run's scheduled time): the reminders due in
+// the minute up to it, and any that a run Cloudflare skipped, or a push service
+// too busy to answer, left behind: those go once they're three minutes late, up
+// to a quarter hour. What went out is kept a quarter hour so nothing goes twice
+// (three minutes gives storage time to agree). Reads a key or two a minute and
+// writes only after it sends.
+const LATE = 3 * MINUTE, CATCH_UP = 15 * MINUTE;
+const alertKey = a => `${a.t}:${a.kind}:${a.id || a.d || a.s || ""}`;
 export async function sendDue(env, at, fetchImpl = fetch) {
   const raw = await env.AGENDA.get("alerts");
-  const due = raw ? (JSON.parse(raw).list || []).filter(a => a.t > at - MINUTE && a.t <= at) : [];
+  const due = raw ? (JSON.parse(raw).list || [])
+    .filter(a => a.t <= at && a.t > at - CATCH_UP && (a.t > at - MINUTE || a.t <= at - LATE)) : [];
   if (!due.length) return 0;
+  const sentRaw = await env.AGENDA.get("sent"), done = new Set(sentRaw ? JSON.parse(sentRaw) : []);
+  const todo = due.filter(a => !done.has(alertKey(a)));
+  if (!todo.length) return 0;
   const subRaw = await env.AGENDA.get("sub");
   if (!subRaw) return 0;
   const sub = JSON.parse(subRaw);
-  let sent = 0;
-  for (const a of due) {
+  let sent = 0, more = false;
+  for (const a of todo) {
     const status = await push(env, sub, a, fetchImpl);
     if (status === 404 || status === 410) { console.log("The phone isn't connected to reminders any more."); break; }
+    // Answered, either way: done. No answer, too busy, or failing: tried again later.
+    if (status && status < 500 && status !== 429) { done.add(alertKey(a)); more = true; }
     if (status >= 200 && status < 300) sent++;
     else console.log("The push service turned a reminder away (" + status + ").");
   }
+  if (more) await env.AGENDA.put("sent", JSON.stringify([...done].filter(k => parseInt(k, 10) > at - CATCH_UP - MINUTE)));
   return sent;
 }
 

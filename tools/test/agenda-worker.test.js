@@ -178,7 +178,42 @@ test("each minute sends what fell due in that minute, once, sealed for the phone
   // The next minute: only what came due since.
   assert.equal(await w.sendDue(e, at + MIN, push), 1);
   assert.equal(JSON.parse(open(p, push.got[2].body).text).kind, "study");
-  assert.equal(await w.sendDue(e, at + 2 * MIN, push), 0);
+  // The minute before `at` never ran here: its reminder goes once it's three minutes late.
+  assert.equal(await w.sendDue(e, at + 2 * MIN, push), 1);
+  assert.equal(JSON.parse(open(p, push.got[3].body).text).kind, "week");
+});
+
+test("a minute Cloudflare skips still goes, three minutes late and once; none older than 15 minutes", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  const {p} = await connected(w, e);
+  const at = NOW + 30 * MIN, kinds = f => f.got.map(x => JSON.parse(open(p, x.body).text).kind);
+  await call(w, e, "PUT", "/alerts", {body: {list: [
+    {t: at - 20 * MIN, kind: "pearls"}, {t: at, kind: "week"}, {t: at + MIN, kind: "study"}, {t: at + 2 * MIN, kind: "ask"}]}});
+  let writes = 0;
+  const put = e.AGENDA.put.bind(e.AGENDA);
+  e.AGENDA.put = async (k, v) => { writes++; return put(k, v); };
+  const push = pushService();
+  assert.equal(await w.sendDue(e, at, push), 1);
+  // The runs at +1 and +2 minutes never happen.
+  assert.equal(await w.sendDue(e, at + 3 * MIN, push), 0, "not three minutes late yet");
+  assert.equal(await w.sendDue(e, at + 4 * MIN, push), 1);
+  assert.equal(await w.sendDue(e, at + 5 * MIN, push), 1);
+  for (let k = 6; k < 20; k++) assert.equal(await w.sendDue(e, at + k * MIN, push), 0);
+  assert.deepEqual(kinds(push), ["week", "study", "ask"]);
+  assert.equal(writes, 3, "one write for each run that sent, none for the quiet ones");
+});
+
+test("a push the push service turns away for now is tried again three minutes on", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await connected(w, e);
+  const at = NOW + 30 * MIN;
+  await call(w, e, "PUT", "/alerts", {body: {list: [{t: at, kind: "call", s: at + 60 * MIN}]}});
+  const flaky = pushService(n => (n <= 2 ? 503 : 201));
+  assert.equal(await w.sendDue(e, at, flaky), 0);
+  assert.equal(flaky.got.length, 2, "tried twice at once");
+  assert.equal(await w.sendDue(e, at + 3 * MIN, flaky), 1);
+  assert.equal(await w.sendDue(e, at + 4 * MIN, flaky), 0);
+  assert.equal(flaky.got.length, 3);
 });
 
 test("a phone the push service no longer knows is forgotten, and status says so", async () => {
