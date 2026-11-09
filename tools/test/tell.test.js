@@ -118,3 +118,138 @@ test("unknown ops answer 404", async () => {
   const b = await ready();
   assert.equal((await op(b, "nope", {who: "phone"})).status, 404);
 });
+
+// ---- Filing, picking up, confirming ---------------------------------------------------------------
+const items = async b => (await op(b, "items", {key: CK})).data.items;
+const file = (b, results, now = NOW) => op(b, "file", {key: CK, body: {results}, now});
+const pick = (b, now = NOW) => op(b, "results", {who: "phone", now});
+const at = k => `2026-11-09T14:${String(k).padStart(2, "0")}:00-05:00`;
+
+test("Claude's results replace the item they came from", async () => {
+  const b = await ready();
+  await say(b, "Flight on the 11th at 9:35");
+  await say(b, "Pearl: octreotide for variceal bleeding, and remind me to book the car service", at(6));
+  const [one, two] = await items(b);
+  const r = await file(b, [
+    {item: one.id, kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"},
+    {item: two.id, kind: "pearl", t: "Octreotide for variceal bleeding"},
+    {item: two.id, kind: "todo", t: "Book the car service", q: "Did you book the car service?"},
+  ]);
+  assert.equal(r.status, 200);
+  assert.equal(r.data.kept, 3);
+  assert.equal(r.data.skipped, 0);
+  assert.deepEqual(r.data.left, []);
+  const got = (await pick(b)).data.results;
+  assert.deepEqual(got.map(x => x.kind), ["event", "pearl", "todo"]);
+  for (const x of got) { assert.match(x.id, /^a[a-z0-9]{10}$/); assert.ok(x.item && x.said && x.line); }
+  assert.equal(got[0].item, one.id);
+  assert.equal(got[2].q, "Did you book the car service?");
+  assert.equal((await items(b)).length, 0);
+});
+
+test("a late second run changes nothing", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  const [x] = await items(b), res = [{item: x.id, kind: "event", t: "Dentist", d: "2026-11-13", s: "09:00"}];
+  await file(b, res);
+  const again = await file(b, res);
+  assert.equal(again.data.kept, 0);
+  assert.equal(again.data.skipped, 1);
+  assert.equal(again.data.added, null);
+  assert.equal((await pick(b)).data.results.length, 1);
+});
+
+test("what Claude couldn't file becomes a note in your words", async () => {
+  const b = await ready();
+  await say(b, "Something odd on the 31st");
+  await say(b, "Another thing", at(7));
+  const [one, two] = await items(b);
+  await file(b, [{item: one.id, kind: "event", t: "Odd", d: "2026-11-31"}, {item: two.id, kind: "spell"}, "not a result"]);
+  assert.deepEqual((await pick(b)).data.results.map(x => [x.kind, x.t]), [["note", "Something odd on the 31st"], ["note", "Another thing"]]);
+  assert.equal((await op(b, "file", {key: CK, body: {results: "nope"}})).status, 400);
+});
+
+test("a to-do without a time asks at the next 08:00", async () => {
+  const {resultClean} = await mod("tell.mjs");
+  const item = said => ({id: "iaaaaaaaaaa", text: "x", said, off: -300});
+  const at14 = item("2026-11-09T14:00:00-05:00"), at0630 = item("2026-11-09T06:30:00-05:00");
+  const when = (r, it = at14) => { const x = resultClean(r, it); return x && [x.d, x.s]; };
+  assert.deepEqual(when({kind: "todo", t: "Reply to the email"}), ["2026-11-10", "08:00"]);
+  assert.deepEqual(when({kind: "todo", t: "Reply to the email"}, at0630), ["2026-11-09", "08:00"]);
+  assert.deepEqual(when({kind: "todo", t: "Reply", d: "2026-11-09"}), ["2026-11-09", "15:00"]);
+  assert.deepEqual(when({kind: "todo", t: "Reply", d: "2026-11-12"}), ["2026-11-12", "08:00"]);
+  assert.deepEqual(when({kind: "todo", t: "Reply", s: "16:00"}), ["2026-11-09", "16:00"]);
+  assert.deepEqual(when({kind: "todo", t: "Reply", s: "09:00"}), ["2026-11-10", "09:00"]);
+  assert.equal(when({kind: "todo", t: "Reply", d: "2026-02-30"}), null);
+  assert.equal(when({kind: "todo", t: "  "}), null);
+});
+
+test("each line says what was added and when", async () => {
+  const {resultClean} = await mod("tell.mjs");
+  const it = {id: "iaaaaaaaaaa", text: "x", said: "2026-11-09T14:00:00-05:00", off: -300};
+  const line = r => resultClean(r, it).line;
+  assert.equal(line({kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}), "Flight, Wed 11 Nov, 09:35");
+  assert.equal(line({kind: "event", t: "Remembrance Day service", d: "2026-11-11"}), "Remembrance Day service, Wed 11 Nov");
+  assert.equal(line({kind: "event", t: "Vacation", d: "2026-12-23", d2: "2026-12-27"}), "Vacation, Wed 23 Dec to Sun 27 Dec");
+  assert.equal(line({kind: "todo", t: "Reply to the email", d: "2026-11-10", s: "08:00"}), "To-do: Reply to the email, Tue 10 Nov, 08:00");
+  assert.equal(line({kind: "change", m: "dentist", to: {d: "2026-11-13", s: "09:00"}}), "Move dentist to Fri 13 Nov, 09:00");
+  assert.equal(line({kind: "change", m: "flight", cancel: true}), "Cancel: flight");
+  assert.equal(line({kind: "scope", text: "Colonoscopy, two polyps, cold snare"}), "Scope case, check it in Endo");
+  assert.equal(line({kind: "pearl", t: "A SAAG of 11 g/L or more points to portal hypertension"}), "Pearl: A SAAG of 11 g/L or more points to portal hypertension");
+  assert.equal(line({kind: "idea", for: "heidi", t: "Meds above the plan"}), "Heidi idea, waits for the desktop");
+  assert.equal(line({kind: "idea", for: "gihub", t: "Call on the month view"}), "GI Hub idea, waits for the desktop");
+  assert.equal(line({kind: "note", t: "Look into a new stethoscope"}), "Note: Look into a new stethoscope");
+  assert.equal(line({kind: "event", t: "Dentist", d: "2026-11-13", s: "09:00", chk: true}), "Dentist, Fri 13 Nov, 09:00 (check this)");
+  assert.equal(line({kind: "note", t: "x".repeat(80)}).length, "Note: ".length + 60);
+  // A change needs a new day or time, or cancel; a scope case needs its words.
+  assert.equal(resultClean({kind: "change", m: "dentist"}, it), null);
+  assert.equal(resultClean({kind: "scope", text: ""}, it), null);
+});
+
+test("the added notice lists six and counts the rest, and says Open GI Hub for a change", async () => {
+  const b = await ready();
+  for (let k = 0; k < 8; k++) await say(b, "Note " + k, at(k));
+  const r = await file(b, (await items(b)).map(x => ({item: x.id, kind: "note", t: x.text})));
+  assert.equal(r.data.added.kind, "added");
+  assert.equal(r.data.added.t, NOW);
+  assert.deepEqual(r.data.added.lines, ["Note: Note 0", "Note: Note 1", "Note: Note 2", "Note: Note 3", "Note: Note 4", "Note: Note 5"]);
+  assert.equal(r.data.added.more, 2);
+  assert.equal(r.data.added.fin, false);
+  await say(b, "Move the dentist to Friday", at(9));
+  const [c] = await items(b);
+  const r2 = await file(b, [{item: c.id, kind: "change", m: "dentist", to: {d: "2026-11-13"}}]);
+  assert.equal(r2.data.added.fin, true);
+  assert.equal(r2.data.added.more, 0);
+});
+
+test("confirmed results stop coming back, and go after ten minutes", async () => {
+  const b = await ready();
+  for (let k = 0; k < 3; k++) await say(b, "Note " + k, at(k));
+  await file(b, (await items(b)).map(x => ({item: x.id, kind: "note", t: x.text})));
+  const got = (await pick(b)).data.results;
+  assert.equal((await op(b, "ack", {who: "phone", body: {ids: [got[0].id], at: NOW}})).status, 401);
+  assert.equal((await op(b, "ack", {who: "worker", body: {ids: [got[0].id], at: NOW}})).status, 200);
+  assert.deepEqual((await pick(b, NOW + MIN)).data.results.map(x => x.id), [got[1].id, got[2].id]);
+  assert.equal((await b.storage.get("results")).length, 3);
+  await pick(b, NOW + 11 * MIN);
+  assert.deepEqual((await b.storage.get("results")).map(x => x.id), [got[1].id, got[2].id]);
+});
+
+test("waiting shows after a quarter hour", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  assert.equal((await pick(b, NOW + 14 * MIN)).data.wait, null);
+  assert.deepEqual((await pick(b, NOW + 15 * MIN)).data.wait, {n: 1, since: NOW, err: null});
+});
+
+test("ideas come back for the desktop", async () => {
+  const b = await ready();
+  await say(b, "Heidi idea: put the meds list above the plan");
+  const [x] = await items(b);
+  const r = await file(b, [{item: x.id, kind: "idea", for: "heidi", t: "Put the meds list above the plan"}]);
+  assert.equal(r.data.ideas.length, 1);
+  const idea = r.data.ideas[0];
+  assert.match(idea.id, /^a[a-z0-9]{10}$/);
+  assert.deepEqual([idea.for, idea.t, idea.said], ["heidi", "Put the meds list above the plan", AT]);
+  assert.equal((await pick(b)).data.results[0].kind, "idea");
+});

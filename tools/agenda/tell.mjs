@@ -54,6 +54,99 @@ export function saidParse(at, now) {
   return {said: saidAt(now, -300), off: -300, t: now};
 }
 
+// ---- Days, from the date alone --------------------------------------------------------------------
+const ISO = /^\d{4}-\d{2}-\d{2}$/, HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const dayMs = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+const isoOf = ms => new Date(ms).toISOString().slice(0, 10);
+const realDay = v => typeof v === "string" && ISO.test(v) && isoOf(dayMs(v)) === v;
+const addDays = (iso, k) => isoOf(dayMs(iso) + k * DAY);
+const hm = v => typeof v === "string" && HM.test(v) ? v : null;
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "Wed 11 Nov", as the app writes a day.
+const dayWords = iso => { const d = new Date(dayMs(iso)); return `${WD[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+
+// ---- What Claude files --------------------------------------------------------------------------
+const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
+const cut = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
+const IDEA_FOR = ["gihub", "heidi"];
+// One result from Claude made whole, for the item it came from, or null:
+// only the fields GI Hub reads, cut to size, real days near when it was said.
+export function resultClean(raw, item) {
+  if (!raw || typeof raw !== "object") return null;
+  const sd = item.said.slice(0, 10), shm = item.said.slice(11, 16);
+  const day = v => realDay(v) && v >= addDays(sd, -1) && v <= addDays(sd, 400) ? v : null;
+  let r;
+  if (raw.kind === "event") {
+    const t = str(raw.t, 120), d = day(raw.d), s = hm(raw.s), e = s ? hm(raw.e) : null, d2 = day(raw.d2), n = str(raw.n, 500);
+    if (!t || !d) return null;
+    r = {kind: "event", t, d};
+    if (d2 && d2 > d && d2 <= addDays(d, 60)) r.d2 = d2;
+    if (s) r.s = s;
+    if (e) r.e = e;
+    if (n) r.n = n;
+  } else if (raw.kind === "todo") {
+    const t = str(raw.t, 120), q = str(raw.q, 140);
+    let d = raw.d == null ? null : day(raw.d), s = hm(raw.s);
+    if (!t || (raw.d != null && !d)) return null;
+    // No day: the next time it comes round (08:00 when no time was said either).
+    if (!d) { s = s || "08:00"; d = s > shm ? sd : addDays(sd, 1); }
+    // A day but no time: 08:00, or on the day it was said and after 08:00, the next whole hour.
+    else if (!s) {
+      s = "08:00";
+      if (d === sd && s <= shm) { const h = +shm.slice(0, 2) + 1; if (h <= 23) s = pad(h) + ":00"; else d = addDays(sd, 1); }
+    }
+    r = {kind: "todo", t, d, s};
+    if (q) r.q = q;
+  } else if (raw.kind === "change") {
+    const m = str(raw.m, 80), to = {}, x = raw.to && typeof raw.to === "object" ? raw.to : {};
+    if (day(x.d)) to.d = x.d;
+    if (hm(x.s)) to.s = x.s;
+    if (hm(x.e)) to.e = x.e;
+    if (!m || (raw.cancel !== true && !Object.keys(to).length)) return null;
+    r = raw.cancel === true ? {kind: "change", m, cancel: true} : {kind: "change", m, to};
+  } else if (raw.kind === "scope") {
+    const text = str(raw.text, 2000);
+    if (!text) return null;
+    r = {kind: "scope", text, d: day(raw.d) || sd};
+  } else if (raw.kind === "pearl") {
+    const t = str(raw.t, 2000), topic = str(raw.topic, 60), who = str(raw.who, 60);
+    if (!t) return null;
+    r = {kind: "pearl", t, d: sd};
+    if (topic) r.topic = topic;
+    if (who) r.who = who;
+  } else if (raw.kind === "idea") {
+    const t = str(raw.t, 500);
+    if (!t) return null;
+    r = {kind: "idea", for: IDEA_FOR.includes(raw.for) ? raw.for : "gihub", t};
+  } else if (raw.kind === "note") {
+    const t = str(raw.t, TEXT_MAX);
+    if (!t) return null;
+    r = {kind: "note", t};
+  } else return null;
+  if (raw.chk === true && ["event", "todo", "change"].includes(r.kind)) r.chk = true;
+  r = {id: tellId("a"), item: item.id, ...r, said: item.said, off: item.off};
+  r.line = resultLine(r);
+  return r;
+}
+// What a result says in the "added" notification and on the Claude added card.
+// A scope case never says more than that it's there.
+export function resultLine(r) {
+  const when = (d, s) => dayWords(d) + (s ? ", " + s : "");
+  let line;
+  if (r.kind === "event") line = `${r.t}, ${when(r.d, r.s)}` + (r.d2 ? ` to ${dayWords(r.d2)}` : "");
+  else if (r.kind === "todo") line = `To-do: ${r.t}, ${when(r.d, r.s)}`;
+  else if (r.kind === "change") line = r.cancel ? `Cancel: ${r.m}` : r.to.d || r.to.s ? `Move ${r.m} to ${r.to.d ? when(r.to.d, r.to.s) : r.to.s}` : `Change ${r.m}: ends at ${r.to.e}`;
+  else if (r.kind === "scope") line = "Scope case, check it in Endo";
+  else if (r.kind === "pearl") line = "Pearl: " + cut(r.t, 60);
+  else if (r.kind === "idea") line = `${r.for === "heidi" ? "Heidi" : "GI Hub"} idea, waits for the desktop`;
+  else line = "Note: " + cut(r.t, 60);
+  return r.chk ? line + " (check this)" : line;
+}
+const LINES = 6, RESULTS_MAX = 200, ACK_KEEP = 10 * MINUTE, RESULTS_KEEP = 30 * DAY, WAIT_SHOW = 15 * MINUTE;
+// Confirmed results go ten minutes after the phone confirmed them (by then
+// every copy of its new plan has the alerts); any result after 30 days.
+const fresh = (results, now) => results.filter(r => !(r.ack && r.ack <= now - ACK_KEEP) && r.at > now - RESULTS_KEEP);
+
 // ---- The object --------------------------------------------------------------------------------
 const answer = (status, data) => new Response(JSON.stringify({status, data}), {status, headers: {"Content-Type": "application/json"}});
 
@@ -92,6 +185,61 @@ const OPS = {
     run.took = [...new Set([...(run.took || []), ...inbox.map(x => x.id)])];
     await this.storage.put("run", run);
     return [200, {items: inbox.map(x => ({id: x.id, text: x.text, said: x.said}))}];
+  }},
+  // Claude's results, by the item each came from. An item that's no longer
+  // waiting was filed already (a late second run): skipped. An item whose
+  // results are all unusable becomes a note in its own words.
+  file: {who: ["claude"], async run(b, now) {
+    if (!Array.isArray(b.results)) return [400, {error: "results, a list"}];
+    if (b.results.length > RESULTS_MAX) return [413, {error: "too many results"}];
+    const inbox = (await this.storage.get("inbox")) || [], byItem = new Map();
+    for (const raw of b.results) if (raw && typeof raw.item === "string") byItem.set(raw.item, [...(byItem.get(raw.item) || []), raw]);
+    const results = fresh((await this.storage.get("results")) || [], now), tests = (await this.storage.get("tests")) || {};
+    const added = [], ideas = [];
+    let kept = 0, skipped = 0;
+    for (const [id, raws] of byItem) {
+      const i = inbox.findIndex(x => x.id === id);
+      if (i < 0) { skipped += raws.length; continue; }
+      const item = inbox[i];
+      let rs = raws.map(r => resultClean(r, item)).filter(Boolean);
+      if (!rs.length) rs = [resultClean({kind: "note", t: item.text}, item)];
+      for (const r of rs) r.at = now;
+      kept += rs.length;
+      inbox.splice(i, 1);
+      if (item.test) { tests[id] = rs; continue; }
+      results.push(...rs); added.push(...rs);
+      for (const r of rs) if (r.kind === "idea") ideas.push({id: r.id, for: r.for, t: r.t, said: r.said});
+    }
+    results.splice(0, Math.max(0, results.length - RESULTS_MAX));
+    // The run is over once nothing it took still waits.
+    const run = (await this.storage.get("run")) || {}, left = (run.took || []).filter(id => inbox.some(x => x.id === id));
+    await this.storage.put("inbox", inbox);
+    await this.storage.put("results", results);
+    if (Object.keys(tests).length) await this.storage.put("tests", tests);
+    await this.storage.put("run", left.length ? run : {});
+    if (kept) await this.storage.put("last", now);
+    return [200, {ok: true, kept, skipped, left, ideas, added: added.length ? {kind: "added", t: now, lines: added.slice(0, LINES).map(r => r.line),
+      more: Math.max(0, added.length - LINES), fin: added.some(r => r.kind === "change")} : null}];
+  }},
+  // The phone picks up what it hasn't confirmed, and whether anything waits
+  // too long for Claude (a quarter hour, or the last start failed).
+  results: {who: ["phone"], async run(b, now) {
+    const all = (await this.storage.get("results")) || [], results = fresh(all, now);
+    if (results.length !== all.length) await this.storage.put("results", results);
+    const inbox = (await this.storage.get("inbox")) || [], run = (await this.storage.get("run")) || {};
+    const since = inbox.length ? Math.min(...inbox.map(x => x.got)) : null;
+    const wait = inbox.length && (now - since >= WAIT_SHOW || run.err) ? {n: inbox.length, since, err: run.err || null} : null;
+    return [200, {results: results.filter(r => !r.ack), wait}];
+  }},
+  // The phone's plan upload confirmed these (the Worker passes them on, with
+  // the time that upload was kept).
+  ack: {who: ["worker"], async run(b, now) {
+    const ids = new Set(Array.isArray(b.ids) ? b.ids : []), at = Number.isFinite(b.at) ? b.at : now;
+    const results = (await this.storage.get("results")) || [];
+    let n = 0;
+    for (const r of results) if (ids.has(r.id) && !r.ack) { r.ack = at; n++; }
+    if (n) await this.storage.put("results", results);
+    return [200, {ok: true, n}];
   }},
 };
 
