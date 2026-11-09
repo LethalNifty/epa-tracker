@@ -94,8 +94,10 @@ function agClean(raw) {
 // ---- Notes ---------------------------------------------------------------------------------
 // Things in your own words (from Tell GI Hub, or the + box) that wait on the
 // Agenda page to become an event or a to-do: [{id, t, ts}], oldest first, the
-// newest 100. A second note with an id already there is the same note again.
-const AG_NOTES_MAX = 100, AG_NOTE_T = 500, AG_NOTE_ID = /^n[a-z0-9]{1,24}$/;
+// newest 100. As long as anything said can be (4000), since Claude files what
+// it can't place as a note in your words. A second note with an id already
+// there is the same note again.
+const AG_NOTES_MAX = 100, AG_NOTE_T = 4000, AG_NOTE_ID = /^n[a-z0-9]{1,24}$/;
 function agNoteNewId(taken) {
   let id;
   do id = "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));

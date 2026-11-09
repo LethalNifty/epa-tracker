@@ -1200,6 +1200,15 @@ a.src:active { background: var(--wall-3); }
 .cbk-acts .textbtn { padding: 0; color: var(--dim); }
 .cbk-acts .textbtn.danger { color: var(--mucosa); }
 
+/* Tell GI Hub (tell.js, the full app only): the two keys to copy, a key shown whole, the test set's misses. */
+.tellkey { grid-template-columns: 82px minmax(0, 1fr) auto; align-items: center; }
+.tellkey .textbtn { padding: 0 2px; }
+.tellshow { width: 100%; margin: 2px 0 8px; height: 40px; padding: 0 10px; border-radius: 10px; font-size: 13px; color: var(--light);
+  background: var(--field); border: 1px solid var(--fold-2); user-select: all; -webkit-user-select: all; }
+.tellmiss { margin: 8px 0 0; padding: 0; list-style: none; }
+.tellmiss li { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--fold); font-size: 13.5px; }
+.tellmiss .mono { font-size: 10px; color: var(--faint); }
+
 /* Next pass: the log sheet's named chips and the picked EPA in full, Log
    another on the save toast, spare forms in the chase list, the weekday note on
    What to ask for, the EPAs list in short names, and the pace under the dial. */

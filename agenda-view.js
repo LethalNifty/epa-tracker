@@ -102,14 +102,19 @@ function agNotesHTML() {
     `<div class="agnote"><p>${esc(n.t)}</p><div class="agtodo-a">${b("agnoteev", n.id, "Event")}${b("agnotetodo", n.id, "To-do")}${b("agnotedel", n.id, "Delete")}</div></div>`).join("") +
     `</div></section>`;
 }
-// A note opens a new event or to-do sheet with its words as What (and all of
-// them in Note when they run past a title); saving it takes the note off the list.
+// A note opens a new event or to-do sheet with its words as What (and in Note
+// when they run past a title); saving it takes the note off the list, unless
+// it's too long for Note, so no word is lost.
 function agOpenNote(id, kind) {
   const note = agState().notes.find(x => x.id === id);
   if (!note) return;
   agOpen(null);
   const long = note.t.length > AG_T_MAX;
-  Object.assign(agSheet, {kind, t: long ? note.t.slice(0, AG_T_MAX).trim() : note.t, n: long ? note.t : "", from: id});
+  Object.assign(agSheet, {kind, t: long ? note.t.slice(0, AG_T_MAX).trim() : note.t, n: long ? note.t.slice(0, AG_N_MAX) : "", from: id});
+}
+function agNoteUsed(id) {
+  const note = id && agState().notes.find(x => x.id === id);
+  if (note && note.t.length <= AG_N_MAX) agRemoveNote(id);
 }
 
 // ---- The event sheet -----------------------------------------------------------------------------
@@ -175,7 +180,7 @@ function agSave() {
   if (err) { s.err = err; return; }
   const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al};
   const before = agSnapshot();
-  if (s.mode === "new") { if (agAdd(f) && s.from) agRemoveNote(s.from); showToast(`${t} added`, () => agRestore(before)); }
+  if (s.mode === "new") { if (agAdd(f)) agNoteUsed(s.from); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
   agSheet = null;
 }
@@ -186,7 +191,7 @@ function agTodoSave() {
   if (err) { s.err = err; return; }
   const before = agSnapshot();
   if (s.mode === "new") {
-    if (agAdd({t, d: s.d, s: s.s, n: s.n || "", todo: {q: "", tom: 0, done: null}}) && s.from) agRemoveNote(s.from);
+    if (agAdd({t, d: s.d, s: s.s, n: s.n || "", todo: {q: "", tom: 0, done: null}})) agNoteUsed(s.from);
     showToast(`${t} added`, () => agRestore(before));
   } else {
     const it = agState().items.find(x => x.id === s.id), moved = it && it.todo && (it.d !== s.d || it.s !== s.s);

@@ -29,7 +29,8 @@ test("notes survive a reload and a restore, blanks and doubles dropped", () => {
   assert.equal(h.val(`agAddNote("From Claude", "nabc123defg")`), "nabc123defg");
   assert.equal(h.val(`agAddNote("   ")`), null);
   assert.deepEqual(h.saved().agenda.notes.map(n => n.t), ["The clinic parking moved to level 3", "Bring the badge", "Ask about the parking pass", "From Claude"]);
-  assert.equal(h.val(`agAddNote("x".repeat(900))`) && h.val("agState().notes").at(-1).t.length, 500);
+  // As long as anything said can be (Claude files what it can't place as a note in your words).
+  assert.equal(h.val(`agAddNote("x".repeat(4100))`) && h.val("agState().notes").at(-1).t.length, 4000);
   // At most 100: the oldest go first.
   h.run(`for (let i = 0; i < 120; i++) agAddNote("Note " + i)`);
   assert.equal(h.val("agState().notes").length, 100);
@@ -75,6 +76,17 @@ test("a note becomes an event, and leaves Notes when it's saved", () => {
   assert.ok(h.val("agSheet.t").length <= 120);
   assert.ok(long.startsWith(h.val("agSheet.t")));
   assert.equal(h.val("agSheet.n"), long);
+});
+
+test("a note longer than an event's Note stays on the list after it becomes one", () => {
+  const long = "Ask the program office about the parking pass and the call room key. ".repeat(10).trim();
+  const h = notesPage("2026-11-09T14:00", [{id: "n1", t: long, ts: ""}]);
+  assert.ok(long.length > 500);
+  h.click("agnoteev", {id: "n1"});
+  h.click("agsave");
+  const a = h.saved().agenda;
+  assert.equal(a.items.length, 1);
+  assert.deepEqual(a.notes.map(n => [n.id, n.t]), [["n1", long]], "every word still there");
 });
 
 test("a note becomes a to-do the same way", () => {

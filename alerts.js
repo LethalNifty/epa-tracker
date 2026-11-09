@@ -121,13 +121,16 @@ function alertsRun(fn) {
   return alertsWork;
 }
 
-// The plan to the sender, unless it's what the sender already has. A failure
-// waits a minute; a refused token means the sender no longer knows this phone.
+// The plan to the sender, unless it's what the sender already has and nothing
+// Tell GI Hub picked up waits to be confirmed (ack: those go with it, so the
+// sender stops reminding from its own copy). A failure waits a minute; a
+// refused token means the sender no longer knows this phone.
+const alertsAcks = () => typeof tellAcks === "function" ? tellAcks() : [];
 async function alertsSend() {
-  const list = alertPlan(callNow()), text = JSON.stringify(list);
-  if (text === alertsKept.sent) return;
-  const r = await alertsAsk("PUT", "/alerts", {list});
-  if (r.status === 200) { alertsKept.sent = text; alertsSave(); alertsWait = 0; return; }
+  const list = alertPlan(callNow()), text = JSON.stringify(list), ack = alertsAcks();
+  if (text === alertsKept.sent && !ack.length) return;
+  const r = await alertsAsk("PUT", "/alerts", ack.length ? {list, ack} : {list});
+  if (r.status === 200) { alertsKept.sent = text; alertsSave(); alertsWait = 0; if (ack.length) tellAcked(ack); return; }
   alertsWait = callNow() + ALERTS_RETRY;
   if (r.status === 401) alertsGone = true;
 }
@@ -137,7 +140,7 @@ async function alertsSend() {
 // The plan only changes with what's saved or at midnight, so redraws cost nothing.
 function alertsSync() {
   if (alertsSyncing || alertsBusy || alertsGone || !alertsOn() || callNow() < alertsWait) return;
-  if (JSON.stringify(alertPlan(callNow())) === alertsKept.sent) return;
+  if (JSON.stringify(alertPlan(callNow())) === alertsKept.sent && !alertsAcks().length) return;
   alertsSyncing = true;
   alertsRun(async () => {
     try { await alertsSend(); } finally { alertsSyncing = false; }

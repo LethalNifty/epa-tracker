@@ -1181,6 +1181,7 @@ function dispatch(act, d) {
   if (act.startsWith("pearl")) { if (pearlDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("tel")) { if (!FELLOWS && tellDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("bk")) { if (!FELLOWS && bkDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("watch")) { if (watchDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("review")) { if (reviewDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
@@ -1389,7 +1390,7 @@ if (document.addEventListener) document.addEventListener("visibilitychange", () 
   if (!FELLOWS) remindOpened();
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
   const a = document.activeElement;
-  if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) { watchCheck(); backupDaily(); } }
+  if (document.visibilityState === "visible") { updateCheck(); if (!FELLOWS) { watchCheck(); backupDaily(); tellPick(); } }
   if (document.visibilityState === "visible" && !anySheet() &&
       !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
     if (updateNow()) return;
@@ -1410,11 +1411,13 @@ if (typeof location !== "undefined" && APP_LINKS[location.hash.slice(1)] && !FEL
   route = {...APP_LINKS[location.hash.slice(1)]}; openedFromLink = true;
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
-// From the service worker: a tapped reminder ({go}), or a new copy of the
-// guideline library or the questions that landed after the phone's own was shown.
+// From the service worker: a tapped reminder ({go}), word that Claude filed
+// something ({tell}), or a new copy of the guideline library or the questions
+// that landed after the phone's own was shown.
 function appMessage(m) {
   if (!m) return;
   if (m.go) appOpenFromLink(m.go);
+  if (m.tell && !FELLOWS) tellPick(true);
   if (m.fresh === "guides.json") guidesInit();
   else if (m.fresh === "studyq.json" && !FELLOWS) studyqInit();
 }
@@ -1429,7 +1432,7 @@ render();
 if (navigator.storage && navigator.storage.persist)
   navigator.storage.persisted().then(kept => kept || navigator.storage.persist()).catch(() => {});
 // The fellows' edition has no reminders, study questions or daily backup; it checks its invite code instead.
-if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); backupDaily(); }
+if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); backupDaily(); tellPick(); }
 else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------
