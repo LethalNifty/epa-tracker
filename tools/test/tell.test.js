@@ -253,3 +253,122 @@ test("ideas come back for the desktop", async () => {
   assert.deepEqual([idea.for, idea.t, idea.said], ["heidi", "Put the meds list above the plan", AT]);
   assert.equal((await pick(b)).data.results[0].kind, "idea");
 });
+
+// ---- Starting Claude, and alerts before GI Hub opens -------------------------------------------------
+const SEC = 1000;
+const tick = (b, at, ready = true) => op(b, "tick", {who: "worker", body: {at, ready}, now: at});
+const fired = (b, at, status, retry) => op(b, "fired", {who: "worker", body: {at, status, retry}, now: at});
+const fires = async (b, at, ready = true) => (await tick(b, at, ready)).data.fire;
+
+test("Claude starts once the newest thing said is a minute old", async () => {
+  const b = await ready();
+  assert.equal((await op(b, "tick", {key: CK, body: {at: NOW, ready: true}})).status, 401);
+  await say(b, "Dentist Friday at 9");
+  assert.equal(await fires(b, NOW + 30 * SEC), false);
+  await say(b, "Call the bank", at(10), NOW + 40 * SEC);
+  assert.equal(await fires(b, NOW + 61 * SEC), false);
+  assert.equal(await fires(b, NOW + 100 * SEC), true);
+  assert.equal(await fires(b, NOW + 160 * SEC), false);
+});
+
+test("a run under way isn't started again until it's a quarter hour late", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  const T = NOW + 61 * SEC;
+  assert.equal(await fires(b, T), true);
+  await fired(b, T, 200);
+  assert.equal(await fires(b, T + 14 * MIN), false);
+  assert.equal(await fires(b, T + 15 * MIN), true);
+  await fired(b, T + 15 * MIN, 200);
+  assert.equal(await fires(b, T + 44 * MIN), false);
+  assert.equal(await fires(b, T + 45 * MIN), true);
+});
+
+test("a refused start waits as the task says", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  let T = NOW + 61 * SEC;
+  const after = async (status, retry, wait) => {
+    assert.equal(await fires(b, T), true);
+    await fired(b, T, status, retry);
+    assert.equal(await fires(b, T + wait - SEC), false);
+    T += wait;
+  };
+  await after(429, 120, 2 * MIN);
+  await after(429, undefined, 10 * MIN);
+  await after(429, 7200, 60 * MIN);
+  await after(503, undefined, 2 * MIN);
+  await after(0, undefined, 5 * MIN);
+  await after(401, undefined, 60 * MIN);
+  assert.equal((await pick(b, T)).data.wait.err, 401);
+  assert.equal(await fires(b, T), true);
+});
+
+test("nothing starts before the task is set up", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  assert.equal(await fires(b, NOW + 61 * SEC, false), false);
+  assert.equal(await fires(b, NOW + 5 * MIN, false), false);
+  assert.equal((await pick(b, NOW + 15 * MIN)).data.wait.err, "setup");
+  assert.equal(await fires(b, NOW + 16 * MIN), true);
+});
+
+test("filed results end the run", async () => {
+  const b = await ready();
+  await say(b, "Dentist Friday at 9");
+  const T = NOW + 61 * SEC;
+  assert.equal(await fires(b, T), true);
+  await fired(b, T, 200);
+  await file(b, (await items(b)).map(x => ({item: x.id, kind: "note", t: x.text})), T + MIN);
+  assert.deepEqual(await b.storage.get("run"), {});
+  assert.equal(await fires(b, T + 2 * MIN), false);
+  await say(b, "Call the bank", at(10), T + 3 * MIN);
+  assert.equal(await fires(b, T + 3 * MIN + 59 * SEC), false);
+  assert.equal(await fires(b, T + 4 * MIN), true);
+});
+
+test("an event and a to-do alert before the phone picks them up", async () => {
+  const b = await ready();
+  for (const [k, text] of ["Flight on the 11th at 9:35", "Dinner on the 11th at 6", "Reply to the email tomorrow at 8",
+    "Vacation on the 12th", "Conference on December 21st at 10"].entries()) await say(b, text, at(k));
+  const [x, y, z, v, c] = await items(b);
+  await file(b, [
+    {item: x.id, kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"},
+    {item: y.id, kind: "event", t: "Dinner", d: "2026-11-11", s: "18:00"},
+    {item: z.id, kind: "todo", t: "Reply to the email", d: "2026-11-10", s: "08:00", q: "Did you reply?"},
+    {item: v.id, kind: "event", t: "Vacation", d: "2026-11-12"},
+    {item: c.id, kind: "event", t: "Conference", d: "2026-12-21", s: "10:00"},
+  ]);
+  const [f, dn, r, vac] = (await pick(b)).data.results;
+  assert.deepEqual((await tick(b, NOW + 2 * MIN)).data.pending, [
+    {t: Date.UTC(2026, 10, 10, 13), kind: "todo", id: r.id + "@2026-11-10", w: "Reply to the email", q: "Did you reply?"},
+    {t: Date.UTC(2026, 10, 11, 0), kind: "eve", d: "2026-11-11", w: [{id: f.id, t: "Flight", s: "09:35"}]},
+    {t: Date.UTC(2026, 10, 11, 0), kind: "eve", d: "2026-11-11", w: [{id: dn.id, t: "Dinner", s: "18:00"}]},
+    {t: Date.UTC(2026, 10, 11, 14, 5), kind: "ev", s: Date.UTC(2026, 10, 11, 14, 35), id: f.id + "@2026-11-11", w: "Flight"},
+    {t: Date.UTC(2026, 10, 11, 22, 30), kind: "ev", s: Date.UTC(2026, 10, 11, 23), id: dn.id + "@2026-11-11", w: "Dinner"},
+    {t: Date.UTC(2026, 10, 12, 0), kind: "eve", d: "2026-11-12", w: [{id: vac.id, t: "Vacation", s: null}]},
+  ]);
+  // Fifteen minutes on, the to-do's alert is past and gone.
+  assert.equal((await tick(b, Date.UTC(2026, 10, 10, 13, 16))).data.pending[0].kind, "eve");
+});
+
+test("confirmed results still alert, carrying when they were confirmed", async () => {
+  const b = await ready();
+  await say(b, "Flight on the 11th at 9:35");
+  const [x] = await items(b);
+  await file(b, [{item: x.id, kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}]);
+  const [f] = (await pick(b)).data.results;
+  const A = NOW + MIN;
+  await op(b, "ack", {who: "worker", body: {ids: [f.id], at: A}, now: A});
+  const {pending} = (await tick(b, A + MIN)).data;
+  assert.deepEqual(pending.map(p => [p.kind, p.ack]), [["eve", A], ["ev", A]]);
+  assert.deepEqual((await tick(b, A + 10 * MIN)).data.pending, []);
+});
+
+test("tests never alert", async () => {
+  const b = await ready();
+  await b.storage.put("inbox", [{id: "itest000001", text: "Flight on the 11th at 9:35", said: AT, off: -300, got: NOW, test: true}]);
+  await file(b, [{item: "itest000001", kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}]);
+  assert.equal((await b.storage.get("tests")).itest000001.length, 1);
+  assert.deepEqual((await tick(b, NOW + 2 * MIN)).data.pending, []);
+});

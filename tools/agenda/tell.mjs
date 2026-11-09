@@ -147,6 +147,35 @@ const LINES = 6, RESULTS_MAX = 200, ACK_KEEP = 10 * MINUTE, RESULTS_KEEP = 30 * 
 // every copy of its new plan has the alerts); any result after 30 days.
 const fresh = (results, now) => results.filter(r => !(r.ack && r.ack <= now - ACK_KEEP) && r.at > now - RESULTS_KEEP);
 
+// ---- Alerts before GI Hub opens --------------------------------------------------------------------
+// What a result reminds you of if GI Hub doesn't open before it's due, in the
+// plan's own kinds: 30 minutes before a timed event, 19:00 the evening before
+// any event, a to-do at its time. Each carries what it's about (w), since the
+// phone's brief doesn't know it yet, and when the phone confirmed it (ack):
+// the minute check leaves it to the phone's own plan once that plan is at
+// least that new. Times are in the offset the thing was said in.
+const SOON = 30 * MINUTE, EVE = "19:00", BACK = 15 * MINUTE, AHEAD = 40 * DAY;
+const instant = (iso, s, off) => dayMs(iso) + (+s.slice(0, 2) * 60 + +s.slice(3) - off) * MINUTE;
+export function pendingAlerts(results, now) {
+  const out = [];
+  for (const r of results) {
+    const a = [];
+    if (r.kind === "event") {
+      if (r.s) { const s = instant(r.d, r.s, r.off); a.push({t: s - SOON, kind: "ev", s, id: r.id + "@" + r.d, w: r.t}); }
+      a.push({t: instant(addDays(r.d, -1), EVE, r.off), kind: "eve", d: r.d, w: [{id: r.id, t: r.t, s: r.s || null}]});
+    } else if (r.kind === "todo") a.push({t: instant(r.d, r.s, r.off), kind: "todo", id: r.id + "@" + r.d, w: r.t, q: r.q || ""});
+    for (const x of a) if (x.t >= now - BACK && x.t <= now + AHEAD) out.push(r.ack ? {...x, ack: r.ack} : x);
+  }
+  return out.sort((x, y) => x.t - y.t);
+}
+
+// ---- Starting Claude -----------------------------------------------------------------------------
+// A minute after the newest thing said (so a few things said in a row go in
+// one run), never while a start is under way, and again on the same items if
+// a run hasn't filed them in time. Minutes:
+const QUIET = MINUTE, FIRING = 2 * MINUTE;
+const RERUN = [15, 30, 60, 120], FAIL = [2, 5, 15, 30], BUSY = 10, BUSY_MAX = 60, REFUSED = 60;
+
 // ---- The object --------------------------------------------------------------------------------
 const answer = (status, data) => new Response(JSON.stringify({status, data}), {status, headers: {"Content-Type": "application/json"}});
 
@@ -240,6 +269,45 @@ const OPS = {
     for (const r of results) if (ids.has(r.id) && !r.ack) { r.ack = at; n++; }
     if (n) await this.storage.put("results", results);
     return [200, {ok: true, n}];
+  }},
+  // The minute check: whether to start Claude now, and the alerts Claude's
+  // results need until the phone has them. It tidies the results as it goes.
+  tick: {who: ["worker"], async run(b, now) {
+    const at = Number.isFinite(b.at) ? b.at : now;
+    const all = (await this.storage.get("results")) || [], results = fresh(all, at);
+    if (results.length !== all.length) await this.storage.put("results", results);
+    const inbox = (await this.storage.get("inbox")) || [], run = (await this.storage.get("run")) || {}, was = JSON.stringify(run);
+    let fire = false;
+    if (inbox.length) {
+      if (b.ready !== true) run.err = "setup";
+      else if (Math.max(...inbox.map(x => x.got)) <= at - QUIET && at >= (run.next || 0) && !((run.firing || 0) > at - FIRING)) {
+        fire = true;
+        run.firing = at;
+      }
+    }
+    if (JSON.stringify(run) !== was) await this.storage.put("run", run);
+    return [200, {fire, pending: pendingAlerts(results, at)}];
+  }},
+  // How the start went (the status Claude's side answered, 0 for no answer).
+  fired: {who: ["worker"], async run(b, now) {
+    const at = Number.isFinite(b.at) ? b.at : now, st = Number.isInteger(b.status) ? b.status : 0;
+    const run = (await this.storage.get("run")) || {};
+    delete run.firing;
+    if (st >= 200 && st < 300) {
+      // Under way. If it hasn't filed by then, start it again on the same items.
+      const tries = run.tries || 0;
+      Object.assign(run, {at, tries: tries + 1, next: at + RERUN[Math.min(tries, RERUN.length - 1)] * MINUTE, err: null, fails: 0});
+    } else if (st === 429) {
+      // Busy, or out of usage for now: as long as it says (10 minutes if it doesn't), an hour at most.
+      const wait = Number.isFinite(b.retry) && b.retry >= 0 ? b.retry * 1000 : BUSY * MINUTE;
+      Object.assign(run, {next: at + Math.min(wait, BUSY_MAX * MINUTE), fails: 0});
+    } else if (st === 0 || st >= 500) {
+      // No answer, or trouble on their side: soon, then less often.
+      const k = run.fails || 0;
+      Object.assign(run, {next: at + FAIL[Math.min(k, FAIL.length - 1)] * MINUTE, fails: k + 1});
+    } else Object.assign(run, {next: at + REFUSED * MINUTE, err: st, fails: 0});   // the address or key is wrong: say so, try hourly
+    await this.storage.put("run", run);
+    return [200, {ok: true}];
   }},
 };
 
