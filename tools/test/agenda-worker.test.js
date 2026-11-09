@@ -76,7 +76,22 @@ function kv(broken) {
     async put(k, v) { await no(); m.set(k, String(v)); },
     async delete(k) { await no(); m.delete(k); }};
 }
-const env = broken => ({AGENDA: kv(broken)});
+// Tell GI Hub's inbox: a Durable Object namespace holding one Tell (tell.mjs)
+// over storage as Cloudflare gives it (what's read is a copy).
+function tellNs() {
+  const m = new Map(), storage = {m,
+    async get(k) { return m.has(k) ? structuredClone(m.get(k)) : undefined; },
+    async put(k, v) { m.set(k, structuredClone(v)); },
+    async delete(k) { return m.delete(k); }};
+  let obj = null;
+  return {storage, idFromName: n => n, get: () => ({async fetch(req) {
+    if (!obj) obj = new (await mod("tell.mjs")).Tell({storage}, {});
+    return obj.fetch(req);
+  }})};
+}
+// The Claude task's start address and token: placeholders, never a real one.
+const TASK = "https://api.anthropic.com/v1/claude_code/routines/trig_PLACEHOLDER/fire", TASK_TOKEN = "placeholder-task-token";
+const env = broken => ({AGENDA: kv(broken), TELL: tellNs(), TASK_URL: TASK, TASK_TOKEN});
 // A push service that keeps every message it was handed.
 function pushService(status = 201) {
   const got = [];
@@ -250,4 +265,157 @@ test("a storage failure still answers, with the app's origin", async () => {
   const res = await call(w, env(true), "GET", "/status");
   assert.equal(res.status, 500);
   assert.equal(res.headers.get("Access-Control-Allow-Origin"), ORIGIN);
+});
+
+// ---- Tell GI Hub ------------------------------------------------------------------------------
+// The shortcut's key and Claude's key, as Settings makes them; the sender knows
+// only their fingerprints. Placeholder names only.
+const SK = "S".repeat(43), CK = "C".repeat(43), SAID = "2026-11-09T09:00:00-05:00";
+const sha = k => crypto.createHash("sha256").update(k).digest("hex");
+async function tellOn(w, e) {
+  const c = await connected(w, e);
+  assert.equal((await call(w, e, "PUT", "/tell", {body: {shortcut: sha(SK), claude: sha(CK)}})).status, 200);
+  return c;
+}
+// A phone with Tell GI Hub on, one thing said, and Claude's results for it filed.
+async function told(results, text = "Flight on the 11th at 9:35") {
+  const w = await mod("worker.mjs"), e = env(), {p} = await tellOn(w, e);
+  assert.equal((await call(w, e, "POST", "/inbox", {tok: SK, body: {text, at: SAID}})).status, 200);
+  const {items} = await (await call(w, e, "GET", "/inbox", {tok: CK})).json();
+  const res = await call(w, e, "POST", "/results", {tok: CK, fetchImpl: pushService(), body: {results: results.map(r => ({item: items[0].id, ...r}))}});
+  assert.equal(res.status, 200);
+  return {w, e, p, got: (await (await call(w, e, "GET", "/results")).json()).results};
+}
+
+test("the shortcut's words reach Claude and come back to the phone with a push that says what was added", async () => {
+  const w = await mod("worker.mjs"), e = env(), {p} = await tellOn(w, e);
+  assert.equal((await call(w, e, "POST", "/inbox", {tok: SK, body: {text: "Flight on the 11th at 9:35", at: SAID}})).status, 200);
+  const {items} = await (await call(w, e, "GET", "/inbox", {tok: CK})).json();
+  assert.deepEqual(items.map(x => [x.text, x.said]), [["Flight on the 11th at 9:35", SAID]]);
+  const push = pushService();
+  const res = await call(w, e, "POST", "/results", {tok: CK, fetchImpl: push,
+    body: {results: [{item: items[0].id, kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}]}});
+  assert.deepEqual([res.status, await res.json()], [200, {ok: true, kept: 1, skipped: 0, left: []}]);
+  assert.equal(push.got.length, 1);
+  const msg = JSON.parse(open(p, push.got[0].body).text);
+  assert.deepEqual([msg.kind, msg.lines, msg.more, msg.fin], ["added", ["Flight, Wed 11 Nov, 09:35"], 0, false]);
+  assert.equal(push.got[0].headers.TTL, "21600");
+  const got = await (await call(w, e, "GET", "/results")).json();
+  assert.deepEqual(got.results.map(r => [r.kind, r.t, r.d, r.s]), [["event", "Flight", "2026-11-11", "09:35"]]);
+  assert.equal(got.wait, null);
+});
+
+test("Claude's key can't read results and the shortcut key can't read the inbox", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await tellOn(w, e);
+  const said = {text: "Dentist Friday at 9", at: SAID};
+  assert.equal((await call(w, e, "GET", "/results", {tok: CK})).status, 401);
+  assert.equal((await call(w, e, "GET", "/inbox", {tok: SK})).status, 401);
+  assert.equal((await call(w, e, "POST", "/results", {tok: SK, body: {results: []}})).status, 401);
+  assert.equal((await call(w, e, "PUT", "/tell", {tok: CK, body: {shortcut: sha(CK), claude: sha(SK)}})).status, 401);
+  assert.equal((await call(w, e, "DELETE", "/tell", {tok: SK})).status, 401);
+  for (const tok of [OTHER, null]) assert.equal((await call(w, e, "POST", "/inbox", {tok, body: said})).status, 401);
+  // The phone's own token types into the inbox (the + box) but doesn't read it.
+  assert.equal((await call(w, e, "POST", "/inbox", {body: said})).status, 200);
+  assert.equal((await call(w, e, "GET", "/inbox")).status, 401);
+  // Turned off, the shortcut's key opens nothing.
+  assert.equal((await call(w, e, "DELETE", "/tell")).status, 200);
+  assert.equal((await call(w, e, "POST", "/inbox", {tok: SK, body: {...said, text: "Again"}})).status, 401);
+});
+
+test("the cron starts Claude once, with the task's token, a minute after the last thing said", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await tellOn(w, e);
+  await call(w, e, "POST", "/inbox", {tok: SK, body: {text: "Dentist Friday at 9", at: SAID}});
+  const starts = [], start = async (url, init) => { starts.push({url, ...init}); return {status: 200, headers: new Headers()}; };
+  assert.deepEqual(await w.tellTick(e, NOW + 30000, start), []);
+  assert.equal(starts.length, 0);
+  await w.tellTick(e, NOW + MIN, start);
+  assert.equal(starts.length, 1);
+  const [s] = starts;
+  assert.deepEqual([s.url, s.method, s.body], [TASK, "POST", undefined]);
+  assert.equal(s.headers.Authorization, "Bearer " + TASK_TOKEN);
+  assert.equal(s.headers["anthropic-version"], "2023-06-01");
+  assert.equal(s.headers["anthropic-beta"], "experimental-cc-routine-2026-04-01");
+  await w.tellTick(e, NOW + 2 * MIN, start);
+  assert.equal(starts.length, 1, "a run under way isn't started again");
+  // An address that isn't a Claude task's: nothing starts, and the phone hears why.
+  await w.tellTick({...e, TASK_URL: "https://example.com/fire"}, NOW + 20 * MIN, start);
+  assert.equal(starts.length, 1);
+  assert.equal((await (await call(w, e, "GET", "/results", {now: NOW + 20 * MIN})).json()).wait.err, "setup");
+});
+
+test("a busy answer waits as long as its Retry-After says", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await tellOn(w, e);
+  await call(w, e, "POST", "/inbox", {tok: SK, body: {text: "Dentist Friday at 9", at: SAID}});
+  let n = 0;
+  const busy = async () => { n++; return {status: n === 1 ? 429 : 200, headers: new Headers({"Retry-After": "120"})}; };
+  await w.tellTick(e, NOW + MIN, busy);
+  await w.tellTick(e, NOW + 2 * MIN, busy);
+  assert.equal(n, 1);
+  await w.tellTick(e, NOW + 3 * MIN, busy);
+  assert.equal(n, 2);
+});
+
+test("an event Claude added alerts 30 minutes before even if GI Hub never opens", async () => {
+  const {w, e, p, got: [r]} = await told([{kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}]);
+  const at = Date.UTC(2026, 10, 11, 14, 5), push = pushService();
+  assert.equal(await w.sendDue(e, at, push, await w.tellTick(e, at, push)), 1);
+  assert.deepEqual(JSON.parse(open(p, push.got[0].body).text),
+    {t: at, kind: "ev", s: Date.UTC(2026, 10, 11, 14, 35), id: r.id + "@2026-11-11", w: "Flight"});
+});
+
+test("a confirmed result alerts once whether the cron sees the old plan or the new one", async () => {
+  // A call at 09:40 today: its alert is due at 09:10, inside the ten minutes a confirmed result is kept.
+  const run = async stale => {
+    const {w, e, p, got: [r]} = await told([{kind: "event", t: "Call with Casey", d: "2026-11-09", s: "09:40"}], "Call with Casey at 9:40");
+    const ev = {t: NOW + 10 * MIN, kind: "ev", s: NOW + 40 * MIN, id: r.id + "@2026-11-09"};
+    assert.equal((await call(w, e, "PUT", "/alerts", {now: NOW + 2 * MIN, body: {list: [ev], ack: [r.id]}})).status, 200);
+    if (stale) e.AGENDA.m.set("alerts", JSON.stringify({at: NOW + MIN, list: stale === "with" ? [ev] : []}));
+    const push = pushService(), at = NOW + 10 * MIN;
+    const sent = await w.sendDue(e, at, push, await w.tellTick(e, at, push));
+    return [sent, push.got.map(x => JSON.parse(open(p, x.body).text).w || "")];
+  };
+  assert.deepEqual(await run(null), [1, [""]], "the new plan: the phone's own alert");
+  assert.deepEqual(await run("without"), [1, ["Call with Casey"]], "an older copy without it: Claude's");
+  assert.deepEqual(await run("with"), [1, ["Call with Casey"]], "an older copy with it too: still one push");
+});
+
+test("an evening with an event from the phone and one from Claude is one push naming both", async () => {
+  const {w, e, p, got: [f, dn]} = await told([
+    {kind: "event", t: "Flight", d: "2026-11-11", s: "09:35"}, {kind: "event", t: "Dinner", d: "2026-11-11", s: "18:00"}]);
+  const at = Date.UTC(2026, 10, 11, 0);    // 19:00 on the 10th
+  // The phone's plan from before it picked these up: the evening of its own event that day.
+  e.AGENDA.m.set("alerts", JSON.stringify({at: NOW, list: [{t: at, kind: "eve", d: "2026-11-11"}]}));
+  const push = pushService();
+  assert.equal(await w.sendDue(e, at, push, await w.tellTick(e, at, push)), 1);
+  assert.deepEqual(JSON.parse(open(p, push.got[0].body).text), {t: at, kind: "eve", d: "2026-11-11",
+    w: [{id: f.id, t: "Flight", s: "09:35"}, {id: dn.id, t: "Dinner", s: "18:00"}]});
+});
+
+test("an idea waits in KV for the desktop, and Undo removes it", async () => {
+  const {w, e, got: [r]} = await told([{kind: "idea", for: "gihub", t: "Show the week's calls on Week"}], "GI Hub idea: the week's calls on Week");
+  assert.deepEqual(JSON.parse(e.AGENDA.m.get("idea:" + r.id)), {for: "gihub", t: "Show the week's calls on Week", said: SAID});
+  assert.equal((await call(w, e, "DELETE", "/idea/" + r.id, {tok: null})).status, 401);
+  assert.equal((await call(w, e, "DELETE", "/idea/" + r.id, {tok: CK})).status, 401);
+  assert.equal((await call(w, e, "DELETE", "/idea/" + r.id)).status, 204);
+  assert.equal(e.AGENDA.m.has("idea:" + r.id), false);
+  assert.equal((await call(w, e, "DELETE", "/idea/nope")).status, 400);
+});
+
+test("a to-do's ask is a reminder the sender keeps", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await connected(w, e);
+  const res = await call(w, e, "PUT", "/alerts", {body: {list: [{t: NOW + MIN, kind: "todo", id: "a1b2c3d4e5f@2026-11-09"}]}});
+  assert.deepEqual(await res.json(), {kept: 1, next: NOW + MIN});
+});
+
+test("the phone's own reminders still go when the inbox doesn't answer", async () => {
+  const w = await mod("worker.mjs"), e = env();
+  await connected(w, e);
+  await call(w, e, "PUT", "/alerts", {body: {list: [{t: NOW + MIN, kind: "week"}]}});
+  e.TELL = {idFromName: n => n, get: () => ({async fetch() { throw new Error("down"); }})};
+  const push = pushService();
+  assert.equal(await w.sendDue(e, NOW + MIN, push, await w.tellTick(e, NOW + MIN, push)), 1);
 });

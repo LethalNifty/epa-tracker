@@ -4,7 +4,8 @@
 # npx wrangler deploy
 # Storage is the KV namespace AGENDA, made once with
 # npx wrangler kv namespace create AGENDA, its id below. It holds the sender's
-# own key pair, so no secrets are set by hand.
+# own key pair, so reminders need no secrets set by hand; Tell GI Hub needs
+# two, below.
 name = "gi-hub-agenda"
 main = "worker.mjs"
 compatibility_date = "2026-10-01"
@@ -18,3 +19,15 @@ crons = ["* * * * *"]
 [[kv_namespaces]]
 binding = "AGENDA"
 id = "1617987c74a74688baf3169e5b0c9c53"
+
+# Tell GI Hub's inbox (tell.mjs): a Durable Object on SQLite storage, which the
+# free plan allows. The Claude task's start address and token are secrets the
+# user sets once from this folder: npx wrangler secret put TASK_URL, then
+# npx wrangler secret put TASK_TOKEN (TELL-SETUP.md).
+[[durable_objects.bindings]]
+name = "TELL"
+class_name = "Tell"
+
+[[migrations]]
+tag = "tell-v1"
+new_sqlite_classes = ["Tell"]
