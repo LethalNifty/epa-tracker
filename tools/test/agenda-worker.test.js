@@ -43,9 +43,6 @@ test("a push decrypts on the phone to what was sent (RFC 8291)", async () => {
   assert.equal(got.delim, 2);
   assert.equal(got.rs, 4096);
   assert.equal(got.idlen, 65);
-  // The same opener reads the old sender's pushes, so it checks the RFC, not just itself.
-  const old = require(path.join(ROOT, "tools", "push", "webpush.js"));
-  assert.equal(open(p, old.encrypt(Buffer.from("hello"), p.ecdh.getPublicKey(), p.auth)).text, "hello");
 });
 
 test("the VAPID header verifies with the sender's public key", async () => {

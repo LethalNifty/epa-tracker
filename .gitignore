@@ -8,5 +8,5 @@ questions/
 b[0-9]*.json
 # The fellows' edition, built by tools/fellows/build.mjs (Cloudflare builds its own).
 dist/
-# Wrangler's local working files (tools/timer).
+# Wrangler's local working files (tools/agenda).
 .wrangler/

@@ -1,8 +1,7 @@
 // Web Push from WebCrypto alone, the way a Cloudflare Worker can run it, no
 // packages: message encryption per RFC 8291 (aes128gcm, RFC 8188) and the
-// sender's identity per RFC 8292 (VAPID). tools/push/webpush.js is the old
-// sender's Node twin; tools/test/agenda-worker.test.js opens both the way a
-// phone does.
+// sender's identity per RFC 8292 (VAPID). tools/test/agenda-worker.test.js
+// opens its pushes the way a phone does.
 const te = new TextEncoder();
 
 export const b64u = bytes => {

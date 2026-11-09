@@ -92,7 +92,6 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - **Reminders:**
   - a free Cloudflare Worker (`tools/agenda/`) sends every reminder on the minute, from the list of the next five weeks that the phone works out (`alerts.js`) and uploads when it changes
   - it makes and keeps its own key pair, and holds one phone, the first to connect with its token
-  - the old path (a GitHub Actions workflow running `tools/push/send.js`, started by `tools/timer/`) retires once the phone has moved
   - each push carries only the kind of reminder and the time
   - the phone writes the words from what it has saved
 - **Tests:** about 360, using Node's built-in runner with a small vm harness and no DOM (`node --test tools/test/*.test.js`).

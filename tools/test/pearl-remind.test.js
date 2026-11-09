@@ -7,7 +7,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const {load, state, ROOT} = require("./harness");
-const {dueReminders} = require("../push/schedule");
 
 const at = (y, m, d, h = 0, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
 const P = (id, d, t, extra = {}) => ({id, d, t, who: "", topic: "", sent: null, ts: d + "T15:00:00.000Z", ...extra});
@@ -18,14 +17,6 @@ function phone(now, st) {
   return h;
 }
 const notice = h => h.val(`noticeFor({kind: "pearls", t: callNow()}, remindBrief(callNow()), callNow())`);
-
-test("the sender: Sundays at 17:00 Winnipeg time, and no other day", () => {
-  const due = dueReminders(at(2026, 10, 17, 12), at(2026, 10, 31, 12), []).filter(x => x.kind === "pearls");
-  assert.deepEqual(due, [{kind: "pearls", t: at(2026, 10, 18, 17)}, {kind: "pearls", t: at(2026, 10, 25, 17)}]);
-  // Back-to-back windows send it once.
-  assert.equal(dueReminders(at(2026, 10, 18, 16, 45), at(2026, 10, 18, 17), []).filter(x => x.kind === "pearls").length, 1);
-  assert.equal(dueReminders(at(2026, 10, 18, 17), at(2026, 10, 18, 17, 15), []).filter(x => x.kind === "pearls").length, 0);
-});
 
 test("the brief carries how many pearls wait to be sent, and never their words or names", () => {
   const h = phone("2026-10-18T12:00", twoToSend());
