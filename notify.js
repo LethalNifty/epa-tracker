@@ -99,7 +99,15 @@ function noteEve(msg, brief, now) {
   if (list.length === 1) return {title: day + ": " + noteWhat(list[0]), body: list[0].n || "", tag, url};
   return {title: `${day}: ${list.length} things`, body: list.map(noteWhat).join(", ") + ".", tag, url};
 }
-// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "test", t, s?, d?, id?}; brief: what the app saved, or null.
+// A to-do at its time: its question, or the to-do and Did you do it. The
+// answers wait in GI Hub (Week, or the to-do's sheet). One the phone hasn't
+// picked up yet (Tell GI Hub) carries its words in the sender's copy, w and q.
+function noteTodo(msg, brief) {
+  const o = brief && (brief.agenda || []).find(x => x.id === msg.id && x.todo);
+  const q = o ? o.q || "" : msg.q || "", t = o ? o.t : msg.w || "";
+  return {title: q || t || "A to-do", body: (q ? "" : "Did you do it? ") + "Tap for Done, Tomorrow or Drop it.", tag: "gi-todo-" + (msg.id || ""), url: "./"};
+}
+// msg: {kind: "week" | "ask" | "call" | "study" | "pearls" | "ev" | "eve" | "todo" | "test", t, s?, d?, id?, w?, q?}; brief: what the app saved, or null.
 function noticeFor(msg, brief, now) {
   const kind = msg && msg.kind, b = brief && brief.v === 1 ? brief : null;
   if (kind === "test")
@@ -108,6 +116,7 @@ function noticeFor(msg, brief, now) {
       "Events: 19:00 the evening before, and 30 minutes before.", tag: "gi-test", url: "./"};
   if (kind === "ev") return noteEv(msg, b, now);
   if (kind === "eve") return noteEve(msg, b, now);
+  if (kind === "todo") return noteTodo(msg, b);
   if (kind === "study") return b ? noteStudy(b, now) : NOTE_STUDY_GENERIC;
   if (kind === "pearls") return b ? notePearls(b, now) : NOTE_PEARLS_GENERIC;
   if (kind === "call") {

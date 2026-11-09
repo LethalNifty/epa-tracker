@@ -564,7 +564,7 @@ function viewWeek() {
   let h = `<header class="ph has-gear"><button class="iconbtn phgear" data-action="setopen" aria-label="Settings">${ic("gear")}</button>` + (blk
     ? `<p class="eyebrow mono">Block ${blk.num} · ${esc(blk.name)}</p><h1 class="title">Week ${blk.week} of 4</h1>`
     : `<p class="eyebrow mono">GI Hub</p><h1 class="title">${dayIndex(today) < 0 ? "Almost time" : "Year 1 done"}</h1>`) + `</header>`;
-  h += warningsHTML(today) + watchWeekHTML() + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
+  h += agTodoDueHTML() + warningsHTML(today) + watchWeekHTML() + (cs.cur ? callLiveHTML(cs, now, "week") : "") + monitorHTML(today, cur) + stagesHTML(cur);
   if (!blk) {
     return h + `<div class="card pad empty spaced">${dayIndex(today) < 0 ? "Fellowship starts July 2, 2026." :
       "Year 1 is done. Anything still open is on the EPAs tab. Ask Claude to load the Year 2 schedule."}</div>` +

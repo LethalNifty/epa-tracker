@@ -13,10 +13,11 @@ const agHeading = iso => { const t = agToday();
 function agRowHTML(r) {
   const time = r.from || (r.allDay ? "All day" : "");
   const sub = r.k === "work" ? `until ${r.to}` : r.k === "ev" || r.k === "all"
-    ? [r.to && r.k === "ev" ? `until ${r.to}` : r.more ? "continues tomorrow" : "", r.sub].filter(Boolean).join(" · ") : r.sub;
+    ? [r.to && r.k === "ev" ? `until ${r.to}` : r.more ? "continues tomorrow" : "", r.sub].filter(Boolean).join(" · ")
+    : r.k === "todo" ? [r.done ? "Done" : "To-do", r.sub].filter(Boolean).join(" · ") : r.sub;
   const inner = `<span class="ct mono">${time}</span><i class="cdot"></i><span class="cm"><b>${esc(r.t)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</span>`;
   const cls = `ag-row k-${r.k}${r.off ? " off" : ""}${r.done ? " done" : ""}`;
-  if (r.k === "ev" || r.k === "all") return `<button class="${cls}" data-action="agopen" data-id="${esc(r.id)}">${inner}</button>`;
+  if (r.k === "ev" || r.k === "all" || r.k === "todo") return `<button class="${cls}" data-action="agopen" data-id="${esc(r.id)}">${inner}</button>`;
   if (r.k === "call") return `<button class="${cls}" data-action="agcall">${inner}</button>`;
   if (r.k === "read") return `<button class="${cls}" data-action="agstudy">${inner}</button>`;
   return `<div class="${cls}">${inner}</div>`;
@@ -47,10 +48,10 @@ function agDaysHTML(ctx) {
   let h = `<div class="ag-strip"><button class="iconbtn ag-step" data-action="agweek" data-step="-1" aria-label="Previous week">${ic("back", "sm")}</button>` +
     `<div class="wstrip">${strip}</div><button class="iconbtn ag-step fwd" data-action="agweek" data-step="1" aria-label="Next week">${ic("back", "sm")}</button></div>` +
     `<section class="sec"><div class="sec-head"><h2>${agHeading(agSel)}</h2></div>${agListHTML(agSel, ctx)}</section>`;
-  // The rest of the week: holidays, your events and call; not the daily work rows or reading.
+  // The rest of the week: holidays, your events, to-dos not done yet and call; not the daily work rows or reading.
   let later = "";
   for (let iso = agAddDays(agSel, 1); iso < agAddDays(mon, 7); iso = agAddDays(iso, 1)) {
-    const rows = agDay(iso, ctx).filter(r => r.k === "hol" || r.k === "ev" || r.k === "all" || r.k === "call");
+    const rows = agDay(iso, ctx).filter(r => r.k === "hol" || r.k === "ev" || r.k === "all" || r.k === "call" || (r.k === "todo" && !r.done));
     if (rows.length) later += `<div class="ag-later-d mono">${agDayWords(iso)}</div>` +
       rows.map(r => r.k === "hol" ? `<div class="ag-hol mono">${esc(r.t)}</div>` : agRowHTML(r)).join("");
   }
@@ -95,15 +96,39 @@ function viewAgenda() {
 // ---- The event sheet -----------------------------------------------------------------------------
 function agOpen(id) {
   const it = id ? agState().items.find(x => x.id === id) : null;
-  agSheet = it ? {mode: "edit", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null}
-    : {mode: "new", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null};
+  agSheet = it && it.todo ? {mode: "edit", kind: "todo", id, t: it.t, d: it.d, s: it.s, err: null}
+    : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null}
+    : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null};
   agSheetFresh = true;
 }
+// A new sheet makes an event or a to-do; an open one stays what it is.
+function agKindHTML(s) {
+  if (s.mode !== "new") return "";
+  return `<div class="segtabs ag-kind" role="group" aria-label="Event or to-do">` + [["event", "Event"], ["todo", "To-do"]].map(([k, label]) =>
+    `<button class="${s.kind === k ? "on" : ""}" data-action="agkind" data-kind="${k}" aria-pressed="${s.kind === k}">${label}</button>`).join("") + `</div>`;
+}
+// A to-do: what, its day and the time it asks. Open, it answers like Week does.
+function agTodoSheetHTML() {
+  const s = agSheet, edit = s.mode === "edit", title = edit ? "Edit to-do" : "New to-do", fresh = agSheetFresh ? " fresh" : "";
+  const how = (h, label) => `<button class="pick ghost" data-action="agtodo" data-id="${esc(s.id)}" data-how="${h}">${label}</button>`;
+  return `<div class="scrim${fresh}" data-action="agclose"></div><div class="sheet agsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
+    `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="agclose" aria-label="Close">${ic("x")}</button></div>` +
+    agKindHTML(s) +
+    `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Reply to the email, renew the pass" autocapitalize="sentences"></label>` +
+    `<div class="ag-times"><label class="lbl mono">Day<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
+    `<label class="lbl mono">Time<input type="time" value="${esc(s.s)}" data-ag="s"></label></div>` +
+    `<p class="ssub">It asks once at this time: Done, Tomorrow or Drop it.</p>` +
+    (edit ? `<div class="agtodo-a">${how("done", "Done")}${how("tomorrow", "Tomorrow")}${how("drop", "Drop it")}</div>` : "") +
+    (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
+    `<div class="sactions"><button class="btn primary" data-action="agsave">${edit ? "Save" : "Add to-do"}</button></div></div>`;
+}
 function agSheetHTML() {
+  if (agSheet.kind === "todo") return agTodoSheetHTML();
   const s = agSheet, edit = s.mode === "edit", title = edit ? "Edit event" : "New event", fresh = agSheetFresh ? " fresh" : "";
   const chip = (act, on, label, extra = "") => `<button class="pick ghost${on ? " on" : ""}" data-action="${act}"${extra} aria-pressed="${on}">${label}</button>`;
   return `<div class="scrim${fresh}" data-action="agclose"></div><div class="sheet agsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
     `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="agclose" aria-label="Close">${ic("x")}</button></div>` +
+    agKindHTML(s) +
     (edit && s.uid ? `<p class="ssub">From a calendar file. Adding that file again updates it.</p>` : "") +
     `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Dentist, soccer, a flight" autocapitalize="sentences"></label>` +
     `<label class="lbl mono">${s.multi ? "First day" : "Day"}<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
@@ -123,6 +148,7 @@ function agSheetHTML() {
 }
 // Checks the sheet, then saves it; the sheet stays open with a message when something's missing.
 function agSave() {
+  if (agSheet.kind === "todo") return agTodoSave();
   const s = agSheet, t = s.t.trim(), timed = !s.allDay;
   const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : s.multi && !(agValidIso(s.d2) && s.d2 > s.d) ? "The last day is before the first." :
     timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." : null;
@@ -131,6 +157,20 @@ function agSave() {
   const before = agSnapshot();
   if (s.mode === "new") { agAdd(f); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
+  agSheet = null;
+}
+// A day or time you set yourself is a fresh start: it asks again there.
+function agTodoSave() {
+  const s = agSheet, t = s.t.trim();
+  const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : !AG_HM.test(s.s) ? "Pick a time." : null;
+  if (err) { s.err = err; return; }
+  const before = agSnapshot();
+  if (s.mode === "new") { agAdd({t, d: s.d, s: s.s, todo: {q: "", tom: 0, done: null}}); showToast(`${t} added`, () => agRestore(before)); }
+  else {
+    const it = agState().items.find(x => x.id === s.id), moved = it && it.todo && (it.d !== s.d || it.s !== s.s);
+    agUpdate(s.id, {t, d: s.d, s: s.s, ...(moved ? {todo: {...it.todo, tom: 0}} : {})});
+    showToast("Changes saved", () => agRestore(before));
+  }
   agSheet = null;
 }
 // Typing keeps a sheet in step without a redraw (which would drop the keyboard).
@@ -247,6 +287,18 @@ function agNextHTML() {
     `<span class="mono">${day} · ${nx.from || "All day"}</span>${ic("chev", "sm")}</button>`;
 }
 
+// ---- Week's to-dos ----------------------------------------------------------------------------
+// Today's to-dos whose time has come, each with its three answers; nothing when none.
+function agTodoDueHTML() {
+  const due = agTodosDue(callNow());
+  if (!due.length) return "";
+  return `<section class="sec"><div class="card agtodos">` + due.map(it => {
+    const b = (how, label) => `<button class="pick ghost" data-action="agtodo" data-id="${esc(it.id)}" data-how="${how}">${label}</button>`;
+    return `<div class="agtodo"><span class="mono">To-do · ${it.s}</span><b>${esc(it.t)}</b>${it.todo.q ? `<span>${esc(it.todo.q)}</span>` : ""}` +
+      `<div class="agtodo-a">${b("done", "Done")}${b("tomorrow", "Tomorrow")}${b("drop", "Drop it")}</div></div>`;
+  }).join("") + `</div></section>`;
+}
+
 // ---- Taps --------------------------------------------------------------------------------------
 // Returns false when it redraws by itself.
 function agDispatch(act, d) {
@@ -263,6 +315,15 @@ function agDispatch(act, d) {
   else if (act === "agstudy") { studyTab = "t"; go({page: "study"}); return false; }
   else if (act === "agnew") agOpen(null);
   else if (act === "agopen") agOpen(d.id);
+  else if (act === "agkind" && agSheet && agSheet.mode === "new") { agSheet.kind = d.kind === "todo" ? "todo" : "event"; agSheet.err = null; }
+  // A to-do answered, from Week or its sheet: a toast with Undo.
+  else if (act === "agtodo") {
+    const before = agSnapshot();
+    if (agTodoAnswer(d.id, d.how, callNow())) {
+      showToast(d.how === "done" ? "Marked done" : d.how === "tomorrow" ? "Moved to tomorrow" : "To-do dropped", () => agRestore(before));
+      if (agSheet && agSheet.id === d.id) agSheet = null;
+    }
+  }
   else if (act === "agclose") agSheet = null;
   else if (act === "agsave" && agSheet) agSave();
   else if (act === "agdelete" && agSheet) {

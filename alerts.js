@@ -16,13 +16,19 @@ const alertMidnight = now => { const d = new Date(now); return new Date(d.getFul
 // Each time an event starts in the plan's days (and the day after, whose
 // evening reminder falls inside them) with an alert on: its id with the day,
 // the day, the start ("HH:MM", null all day), title, note, and which alerts.
-// The service worker writes an event's notification from this.
+// A to-do still to ask (not done, fewer than two Tomorrows) is there on its
+// day with todo and its question instead. The service worker writes the
+// notification from this.
 function alertOccurrences(now) {
   const d0 = alertMidnight(now), out = [];
   for (let k = 0; k <= ALERT_DAYS; k++) {
     const iso = fmtDate(alertDay(d0, k));
     for (const it of agState().items) {
       if (!agStartsOn(it, iso)) continue;
+      if (it.todo) {
+        if (!it.todo.done && it.todo.tom < 2) out.push({id: it.id + "@" + iso, d: iso, s: it.s, t: it.t, n: it.n, todo: true, q: it.todo.q});
+        continue;
+      }
       const al = agAlerts(it);
       if (al.length) out.push({id: it.id + "@" + iso, d: iso, s: it.s, t: it.t, n: it.n, eve: al.includes("eve"), soon: al.includes("30")});
     }
@@ -32,8 +38,10 @@ function alertOccurrences(now) {
 
 // Every reminder from local midnight today for ALERT_DAYS days, soonest
 // first: Monday and Wednesday at 08:00, Sunday at 17:00, 20:00 on reading
-// nights to the plan's last day, an hour before each call, and each event's.
+// nights to the plan's last day, an hour before each call, each event's, and
+// each to-do's one ask at its time.
 // The same all day, so redrawing the app never sends it again.
+const alertAt = (day, hm) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), +hm.slice(0, 2), +hm.slice(3)).getTime();
 function alertPlan(now) {
   const d0 = alertMidnight(now), from = d0.getTime(), to = alertDay(d0, ALERT_DAYS).getTime(), out = [];
   const str = callStretches(CallStore.list());
@@ -48,8 +56,9 @@ function alertPlan(now) {
   const eves = new Set();
   for (const o of alertOccurrences(now)) {
     const day = agDate(o.d);
+    if (o.todo) { out.push({t: alertAt(day, o.s), kind: "todo", id: o.id}); continue; }
     if (o.soon) {
-      const s = new Date(day.getFullYear(), day.getMonth(), day.getDate(), +o.s.slice(0, 2), +o.s.slice(3)).getTime();
+      const s = alertAt(day, o.s);
       out.push({t: s - ALERT_SOON, kind: "ev", s, id: o.id});
     }
     // One evening reminder for a day, however many events it has.

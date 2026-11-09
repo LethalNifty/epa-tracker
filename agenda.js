@@ -46,16 +46,29 @@ function agUsualClean(u) {
 // One saved event made whole, or null with no title or date. d2: the last day
 // when it runs over several (inclusive). s and e: "HH:MM", or null for all day;
 // an end before the start runs past midnight into the next day.
+// A to-do is an item with a todo part: one day, a time (08:00 when none), no
+// end, repeat or alerts of its own.
 function agItemClean(x) {
   if (!x || typeof x !== "object" || typeof x.t !== "string" || !x.t.trim() || !agValidIso(x.d)) return null;
-  const s = typeof x.s === "string" && AG_HM.test(x.s) ? x.s : null;
-  let e = s && typeof x.e === "string" && AG_HM.test(x.e) ? x.e : null;
-  let d2 = agValidIso(x.d2) && x.d2 > x.d ? x.d2 : null;
+  const todo = agTodoClean(x.todo);
+  const s = typeof x.s === "string" && AG_HM.test(x.s) ? x.s : todo ? "08:00" : null;
+  let e = !todo && s && typeof x.e === "string" && AG_HM.test(x.e) ? x.e : null;
+  let d2 = !todo && agValidIso(x.d2) && x.d2 > x.d ? x.d2 : null;
   if (s && e && !d2 && e <= s) { if (e === s) e = null; else d2 = agAddDays(x.d, 1); }
-  return {id: typeof x.id === "string" && /^a[a-z0-9]{1,24}$/.test(x.id) ? x.id : "", t: x.t.trim().slice(0, AG_T_MAX), d: x.d, d2, s, e,
-    rep: AG_REPS.includes(x.rep) ? x.rep : null, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
+  const it = {id: typeof x.id === "string" && /^a[a-z0-9]{1,24}$/.test(x.id) ? x.id : "", t: x.t.trim().slice(0, AG_T_MAX), d: x.d, d2, s, e,
+    rep: !todo && AG_REPS.includes(x.rep) ? x.rep : null, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
     uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : "",
-    al: Array.isArray(x.al) ? AG_ALERTS.filter(k => x.al.includes(k)) : null};
+    al: !todo && Array.isArray(x.al) ? AG_ALERTS.filter(k => x.al.includes(k)) : null};
+  if (todo) it.todo = todo;
+  return it;
+}
+// A to-do's part: the question it asks at its time (or none), how many times
+// Tomorrow moved it (after two it asks no more), and when it was done.
+const AG_Q_MAX = 140;
+function agTodoClean(x) {
+  if (!x || typeof x !== "object") return null;
+  return {q: typeof x.q === "string" ? x.q.trim().slice(0, AG_Q_MAX) : "", tom: Number.isInteger(x.tom) ? Math.min(2, Math.max(0, x.tom)) : 0,
+    done: typeof x.done === "string" && !isNaN(Date.parse(x.done)) ? x.done : null};
 }
 // The alerts an event gets: its own choice, or both when none was made; never
 // 30 minutes before an all-day event.
@@ -210,6 +223,25 @@ function agUpdate(id, f) {
   return true;
 }
 function agRemove(id) { const a = agState(); a.items = a.items.filter(x => x.id !== id); Store.save(); }
+// A to-do answered: Done (now), Tomorrow (the day after today, or after its own
+// day when that's later; it asks once more, then sits quietly) or Drop it.
+function agTodoAnswer(id, how, now) {
+  const a = agState(), it = a.items.find(x => x.id === id && x.todo);
+  if (!it || !["done", "tomorrow", "drop"].includes(how)) return false;
+  if (how === "done") it.todo.done = new Date(now).toISOString();
+  else if (how === "tomorrow") {
+    const today = fmtDate(new Date(now));
+    it.d = agAddDays(it.d > today ? it.d : today, 1);
+    it.todo.tom = Math.min(2, it.todo.tom + 1);
+  } else a.items = a.items.filter(x => x !== it);
+  Store.save();
+  return true;
+}
+// Today's to-dos whose time has come and that aren't done, soonest first: Week asks them.
+function agTodosDue(now) {
+  const today = fmtDate(new Date(now)), hm = agHM(now);
+  return agState().items.filter(it => it.todo && !it.todo.done && it.d === today && it.s <= hm).sort((p, q) => p.s < q.s ? -1 : p.s > q.s ? 1 : 0);
+}
 const agSnapshot = () => JSON.parse(JSON.stringify(agState()));
 function agRestore(snap) { Store.state.agenda = agClean(snap); Store.save(); }
 function agSetUsual(u) { agState().usual = agUsualClean(u); Store.save(); }
@@ -259,17 +291,20 @@ function agReadRow(iso, ctx) {
   return row(pcs.map(p => studyShort(p.item) + " · " + (p.a === p.z ? "p. " + p.a : "pp. " + p.a + "–" + p.z)).join(", "),
     pcs.length === 1 ? studyTitle(pcs[0].item) : x.pages + " pages");
 }
-// Your own events on the day.
+// Your own events and to-dos on the day (a to-do's row says whether it's done).
 function agEventRows(iso) {
   const out = [];
   for (const it of agState().items) {
     const sp = agSpan(it, iso);
-    if (sp) out.push({k: sp.allDay ? "all" : "ev", t: it.t, sub: it.n, id: it.id, from: sp.from, to: sp.to === "24:00" ? null : sp.to,
-      cont: sp.cont, more: sp.more, allDay: sp.allDay});
+    if (!sp) continue;
+    const r = {k: it.todo ? "todo" : sp.allDay ? "all" : "ev", t: it.t, sub: it.n, id: it.id, from: sp.from, to: sp.to === "24:00" ? null : sp.to,
+      cont: sp.cont, more: sp.more, allDay: sp.allDay};
+    if (it.todo) r.done = !!it.todo.done;
+    out.push(r);
   }
   return out;
 }
-const AG_KIND_ORDER = {hol: 0, all: 1, work: 2, call: 3, ev: 4, read: 5};
+const AG_KIND_ORDER = {hol: 0, all: 1, work: 2, call: 3, ev: 4, todo: 4, read: 5};
 // A day's rows: the holiday, then all-day things, then the rest by time
 // (what carries on from the night before first).
 function agDay(iso, ctx) {
@@ -284,14 +319,14 @@ function agDay(iso, ctx) {
 function agMarks(iso, ctx) {
   const rows = agDay(iso, ctx);
   return {hol: agHoliday(iso), call: rows.some(r => r.k === "call"), read: rows.some(r => r.k === "read" && !r.off),
-    ev: rows.filter(r => r.k === "ev" || r.k === "all").length};
+    ev: rows.filter(r => r.k === "ev" || r.k === "all" || (r.k === "todo" && !r.done)).length};
 }
-// Your next event in the coming week, or null: for Week's Next line.
+// Your next event or to-do (not one that's done) in the coming week, or null: for Week's Next line.
 function agNext(now) {
   const today = fmtDate(new Date(now)), hm = agHM(now);
   for (let k = 0; k <= 7; k++) {
     const iso = agAddDays(today, k);
-    const list = agEventRows(iso).filter(r => !r.cont && (k > 0 || !r.from || r.from >= hm)).sort((p, q) => (p.from || "") < (q.from || "") ? -1 : 1);
+    const list = agEventRows(iso).filter(r => !r.cont && !r.done && (k > 0 || !r.from || r.from >= hm)).sort((p, q) => (p.from || "") < (q.from || "") ? -1 : 1);
     if (list.length) return {iso, from: list[0].from, t: list[0].t, id: list[0].id};
   }
   return null;
