@@ -85,7 +85,7 @@ function viewAgenda() {
   return `<header class="ph has-gear"><button class="iconbtn phgear" data-action="agnew" aria-label="Add an event">${ic("plus")}</button>` +
     `<p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
     `<div class="segtabs ag-seg" role="group" aria-label="Agenda views">${seg("d", "Days")}${seg("m", "Month")}</div>` +
-    (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) +
+    (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) + agNotesHTML() +
     `<section class="sec"><div class="card ag-links">` +
     `<button class="ag-link" data-action="agfilepick">${ic("download")}<span><b>Add from file</b><span>An invite or a calendar export (.ics)</span></span></button>` +
     `<button class="ag-link" data-action="agusual">${ic("clock")}<span><b>Your usual week</b><span>The work hours shown on each day</span></span></button>` +
@@ -93,10 +93,29 @@ function viewAgenda() {
     (agError ? `<div class="err" role="alert">${esc(agError)}</div>` : "") + `<input type="file" id="agfile" hidden></section>`;
 }
 
+// Notes, newest first, each with Event, To-do and Delete; nothing when there are none.
+function agNotesHTML() {
+  const notes = agState().notes;
+  if (!notes.length) return "";
+  const b = (act, id, label) => `<button class="pick ghost" data-action="${act}" data-id="${esc(id)}">${label}</button>`;
+  return `<section class="sec"><div class="sec-head"><h2>Notes</h2></div><div class="card ag-notes">` + notes.slice().reverse().map(n =>
+    `<div class="agnote"><p>${esc(n.t)}</p><div class="agtodo-a">${b("agnoteev", n.id, "Event")}${b("agnotetodo", n.id, "To-do")}${b("agnotedel", n.id, "Delete")}</div></div>`).join("") +
+    `</div></section>`;
+}
+// A note opens a new event or to-do sheet with its words as What (and all of
+// them in Note when they run past a title); saving it takes the note off the list.
+function agOpenNote(id, kind) {
+  const note = agState().notes.find(x => x.id === id);
+  if (!note) return;
+  agOpen(null);
+  const long = note.t.length > AG_T_MAX;
+  Object.assign(agSheet, {kind, t: long ? note.t.slice(0, AG_T_MAX).trim() : note.t, n: long ? note.t : "", from: id});
+}
+
 // ---- The event sheet -----------------------------------------------------------------------------
 function agOpen(id) {
   const it = id ? agState().items.find(x => x.id === id) : null;
-  agSheet = it && it.todo ? {mode: "edit", kind: "todo", id, t: it.t, d: it.d, s: it.s, err: null}
+  agSheet = it && it.todo ? {mode: "edit", kind: "todo", id, t: it.t, d: it.d, s: it.s, n: it.n, err: null}
     : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null}
     : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null};
   agSheetFresh = true;
@@ -117,6 +136,7 @@ function agTodoSheetHTML() {
     `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Reply to the email, renew the pass" autocapitalize="sentences"></label>` +
     `<div class="ag-times"><label class="lbl mono">Day<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
     `<label class="lbl mono">Time<input type="time" value="${esc(s.s)}" data-ag="s"></label></div>` +
+    `<label class="lbl mono">Note<input type="text" value="${esc(s.n || "")}" data-ag="n" placeholder="Anything to remember"></label>` +
     `<p class="ssub">It asks once at this time: Done, Tomorrow or Drop it.</p>` +
     (edit ? `<div class="agtodo-a">${how("done", "Done")}${how("tomorrow", "Tomorrow")}${how("drop", "Drop it")}</div>` : "") +
     (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
@@ -155,7 +175,7 @@ function agSave() {
   if (err) { s.err = err; return; }
   const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al};
   const before = agSnapshot();
-  if (s.mode === "new") { agAdd(f); showToast(`${t} added`, () => agRestore(before)); }
+  if (s.mode === "new") { if (agAdd(f) && s.from) agRemoveNote(s.from); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
   agSheet = null;
 }
@@ -165,10 +185,12 @@ function agTodoSave() {
   const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : !AG_HM.test(s.s) ? "Pick a time." : null;
   if (err) { s.err = err; return; }
   const before = agSnapshot();
-  if (s.mode === "new") { agAdd({t, d: s.d, s: s.s, todo: {q: "", tom: 0, done: null}}); showToast(`${t} added`, () => agRestore(before)); }
-  else {
+  if (s.mode === "new") {
+    if (agAdd({t, d: s.d, s: s.s, n: s.n || "", todo: {q: "", tom: 0, done: null}}) && s.from) agRemoveNote(s.from);
+    showToast(`${t} added`, () => agRestore(before));
+  } else {
     const it = agState().items.find(x => x.id === s.id), moved = it && it.todo && (it.d !== s.d || it.s !== s.s);
-    agUpdate(s.id, {t, d: s.d, s: s.s, ...(moved ? {todo: {...it.todo, tom: 0}} : {})});
+    agUpdate(s.id, {t, d: s.d, s: s.s, n: s.n || "", ...(moved ? {todo: {...it.todo, tom: 0}} : {})});
     showToast("Changes saved", () => agRestore(before));
   }
   agSheet = null;
@@ -323,6 +345,12 @@ function agDispatch(act, d) {
       showToast(d.how === "done" ? "Marked done" : d.how === "tomorrow" ? "Moved to tomorrow" : "To-do dropped", () => agRestore(before));
       if (agSheet && agSheet.id === d.id) agSheet = null;
     }
+  }
+  // A note: into a new event or to-do sheet, or deleted with Undo.
+  else if (act === "agnoteev" || act === "agnotetodo") agOpenNote(d.id, act === "agnotetodo" ? "todo" : "event");
+  else if (act === "agnotedel") {
+    const before = agSnapshot();
+    if (agRemoveNote(d.id)) showToast("Note deleted", () => agRestore(before));
   }
   else if (act === "agclose") agSheet = null;
   else if (act === "agsave" && agSheet) agSave();

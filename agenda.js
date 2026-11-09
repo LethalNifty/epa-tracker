@@ -78,7 +78,7 @@ function agNewId(taken) {
   do id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));
   return id;
 }
-const agBlank = () => ({items: [], usual: agDefaultUsual(), off: []});
+const agBlank = () => ({items: [], usual: agDefaultUsual(), off: [], notes: []});
 // The saved agenda made whole: blanks dropped, every id present and unique.
 function agClean(raw) {
   const items = [], taken = new Set();
@@ -88,7 +88,30 @@ function agClean(raw) {
     if (!it.id || taken.has(it.id)) it.id = agNewId(taken);
     taken.add(it.id); items.push(it);
   }
-  return {items, usual: agUsualClean(raw && raw.usual), off: agOffClean(raw && raw.off)};
+  return {items, usual: agUsualClean(raw && raw.usual), off: agOffClean(raw && raw.off), notes: agNotesClean(raw && raw.notes)};
+}
+
+// ---- Notes ---------------------------------------------------------------------------------
+// Things in your own words (from Tell GI Hub, or the + box) that wait on the
+// Agenda page to become an event or a to-do: [{id, t, ts}], oldest first, the
+// newest 100. A second note with an id already there is the same note again.
+const AG_NOTES_MAX = 100, AG_NOTE_T = 500, AG_NOTE_ID = /^n[a-z0-9]{1,24}$/;
+function agNoteNewId(taken) {
+  let id;
+  do id = "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));
+  return id;
+}
+function agNotesClean(raw) {
+  const out = [], taken = new Set();
+  for (const x of Array.isArray(raw) ? raw : []) {
+    const t = x && typeof x.t === "string" ? x.t.trim().slice(0, AG_NOTE_T) : "";
+    if (!t) continue;
+    const ok = typeof x.id === "string" && AG_NOTE_ID.test(x.id);
+    if (ok && taken.has(x.id)) continue;
+    const id = ok ? x.id : agNoteNewId(taken);
+    taken.add(id); out.push({id, t, ts: typeof x.ts === "string" ? x.ts : ""});
+  }
+  return out.slice(-AG_NOTES_MAX);
 }
 // Whether an occurrence of the event starts on day o.
 function agStartsOn(it, o) {
@@ -241,6 +264,24 @@ function agTodoAnswer(id, how, now) {
 function agTodosDue(now) {
   const today = fmtDate(new Date(now)), hm = agHM(now);
   return agState().items.filter(it => it.todo && !it.todo.done && it.d === today && it.s <= hm).sort((p, q) => p.s < q.s ? -1 : p.s > q.s ? 1 : 0);
+}
+// A note in your words; with an id already there, no second note. Returns its id, or null with no words.
+function agAddNote(t, id) {
+  const a = agState(), words = typeof t === "string" ? t.trim().slice(0, AG_NOTE_T) : "";
+  if (typeof id === "string" && a.notes.some(x => x.id === id)) return id;
+  if (!words) return null;
+  const nid = typeof id === "string" && AG_NOTE_ID.test(id) ? id : agNoteNewId(new Set(a.notes.map(x => x.id)));
+  a.notes.push({id: nid, t: words, ts: new Date().toISOString()});
+  if (a.notes.length > AG_NOTES_MAX) a.notes.splice(0, a.notes.length - AG_NOTES_MAX);
+  Store.save();
+  return nid;
+}
+function agRemoveNote(id) {
+  const a = agState(), n = a.notes.length;
+  a.notes = a.notes.filter(x => x.id !== id);
+  if (a.notes.length === n) return false;
+  Store.save();
+  return true;
 }
 const agSnapshot = () => JSON.parse(JSON.stringify(agState()));
 function agRestore(snap) { Store.state.agenda = agClean(snap); Store.save(); }

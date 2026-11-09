@@ -1413,6 +1413,11 @@ a.src:active { background: var(--wall-3); }
 .agtodo b { font-size: 15px; font-weight: 520; line-height: 1.3; }
 .agtodo > span:not(.mono) { font-size: 12.5px; color: var(--dim); line-height: 1.35; }
 .agtodo-a { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Agenda: notes in your words, each with Event, To-do and Delete. */
+.ag-notes { padding: 4px 14px; }
+.agnote { padding: 12px 0; }
+.agnote + .agnote { border-top: 1px solid var(--fold); }
+.agnote p { margin: 0; font-size: 14.5px; line-height: 1.4; color: var(--light); white-space: pre-wrap; overflow-wrap: anywhere; }
 /* The new-sheet switch between an event and a to-do. */
 .ag-kind { margin: 0 0 14px; }
 
