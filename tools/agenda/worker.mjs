@@ -17,6 +17,8 @@
 //   alerts  {at, list: [{t, kind, s?, d?, id?}]}, the next five weeks
 //   sent    the reminders sent in the last quarter hour, so a late one goes only once
 //   idea:<id>  {for, t, said}: an idea Claude filed, for the desktop to read
+//   file:<id>  a picture or PDF shared to Add to GI Hub, as it came, until nobody
+//              needs it (3 days at most): Claude reads it, the phone keeps a call sheet
 // and the Durable Object TELL (tell.mjs): the inbox, Claude's run, the results.
 // Secrets, set once by the user: TASK_URL, the Claude task's start address,
 // and TASK_TOKEN, its token.
@@ -33,12 +35,16 @@
 //   GET    /results  what Claude filed that the phone hasn't confirmed, and whether anything waits
 //   DELETE /idea/<id>  an idea taken back with Undo
 //   POST   /tell/test  the test set (tell-tests.mjs) into the inbox; GET: how Claude did
+//   GET    /file/<id>  a picture a result Claude filed keeps (a call sheet), until confirmed
 // With the shortcut's key (or the phone's token, from the + box):
-//   POST   /inbox    {text, at}: something said, and the phone's clock then
+//   POST   /inbox    {text, at}: something said, and the phone's clock then; or a
+//                    picture, PDF or text as the body, its time in X-At (Add to GI Hub)
 // With Claude's key:
 //   GET    /inbox    what waits to be filed
+//   GET    /file/<id>  a shared file while it waits
 //   POST   /results  {results}: what Claude filed, by item
 import {newVapid, sendPush} from "./webpush.mjs";
+import {tellId, FILE_MAX} from "./tell.mjs";
 export {Tell} from "./tell.mjs";
 
 const ORIGIN = "https://lethalnifty.github.io";
@@ -175,18 +181,61 @@ async function readCapped(req, max) {
   if (text.length > max) return undefined;
   try { return JSON.parse(text); } catch (e) { return null; }
 }
-const RESULT_ID = /^a[a-z0-9]{10}$/;
+const RESULT_ID = /^a[a-z0-9]{10}$/, ITEM_ID = /^i[a-z0-9]{10}$/;
 const obj = b => (b && typeof b === "object" ? b : {});
+const FILE_KEEP = 3 * 86400, TEXT_BYTES = 20000;   // seconds a shared file waits at most; the most a text body can be
+// What a shared body is, from its first bytes: "image/jpeg", "image/png",
+// "application/pdf", "text" (UTF-8 with no NULs), or null.
+export function sniff(b) {
+  const starts = sig => sig.every((x, i) => b[i] === x);
+  if (starts([0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
+  if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return "application/pdf";
+  if (b.includes(0)) return null;
+  try { new TextDecoder("utf-8", {fatal: true}).decode(b); return "text"; } catch (e) { return null; }
+}
 async function tellRoute(req, env, now, fetchImpl, path, m) {
   if (!env.TELL) return reply(404, {error: "not found"});
   const {who, fp} = await caller(req, env), ask = (op, body) => tellOp(env, op, {who, fp, now, body});
   const out = r => reply(r.status, r.data);
-  if (path === "/inbox" && m === "POST") {
-    const b = await readCapped(req, 20000);
+  if (path === "/inbox" && m === "POST" && /^application\/json\b/i.test(req.headers.get("Content-Type") || "")) {
+    const b = await readCapped(req, TEXT_BYTES);
     if (b === undefined) return reply(413, {error: "too long"});
     return out(await ask("say", {text: obj(b).text, at: obj(b).at}));
   }
+  // Add to GI Hub: a picture, a PDF or text as it came, its time in X-At. The
+  // inbox checks the key and makes room before the bytes go in KV.
+  if (path === "/inbox" && m === "POST") {
+    const bytes = new Uint8Array(await req.arrayBuffer()), at = req.headers.get("X-At") || "", type = sniff(bytes);
+    if (bytes.length > FILE_MAX) return reply(413, {error: "too big"});
+    if (type === "text") {
+      if (bytes.length > TEXT_BYTES) return reply(413, {error: "too long"});
+      const text = new TextDecoder().decode(bytes);
+      let j = null;
+      try { j = JSON.parse(text); } catch (e) {}
+      return out(await ask("say", j && typeof j === "object" && typeof j.text === "string" ? {text: j.text, at: j.at} : {text, at}));
+    }
+    if (!type) return reply(415, {error: "not a picture or a PDF"});
+    const id = tellId("i"), r = await ask("share", {id, type, size: bytes.length, at});
+    if (r.status !== 200) return out(r);
+    try { await env.AGENDA.put("file:" + id, bytes, {expirationTtl: FILE_KEEP}); }
+    catch (e) {
+      await tellOp(env, "unshare", {who: "worker", now, body: {id}});
+      return reply(500, {error: "the sender couldn't keep it"});
+    }
+    return out(r);
+  }
   if (path === "/inbox" && m === "GET") return out(await ask("items"));
+  // A shared file's bytes, to whoever the inbox says may read them.
+  if (path.startsWith("/file/") && m === "GET") {
+    const id = path.slice(6);
+    if (!ITEM_ID.test(id)) return reply(400, {error: "not a file"});
+    const r = await ask("fileok", {id});
+    if (r.status !== 200) return out(r);
+    const bytes = await env.AGENDA.get("file:" + id, "arrayBuffer"), type = bytes ? sniff(new Uint8Array(bytes)) : null;
+    if (!type || type === "text") return reply(404, {error: "gone"});
+    return new Response(bytes, {status: 200, headers: {...HEADERS, "Content-Type": type}});
+  }
   if (path === "/results" && m === "POST") {
     const b = await readCapped(req, 400000);
     if (b === undefined) return reply(413, {error: "too many results"});
@@ -271,7 +320,8 @@ async function route(req, env, now, fetchImpl) {
     await env.AGENDA.put("sub", JSON.stringify({endpoint: body.sub.endpoint, keys: {p256dh: body.sub.keys.p256dh, auth: body.sub.keys.auth}}));
     return reply(200, {ok: true});
   }
-  if (["/inbox", "/results", "/tell", "/tell/test"].includes(path) || path.startsWith("/idea/")) return tellRoute(req, env, now, fetchImpl, path, m);
+  if (["/inbox", "/results", "/tell", "/tell/test"].includes(path) || path.startsWith("/idea/") || path.startsWith("/file/"))
+    return tellRoute(req, env, now, fetchImpl, path, m);
   if (!["/alerts", "/test", "/status", "/sub"].includes(path)) return reply(404, {error: "not found"});
   if (!(await allowed(req, env, false))) return reply(401, {error: "locked"});
   if (path === "/alerts" && m === "PUT") {

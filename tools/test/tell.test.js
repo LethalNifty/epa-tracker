@@ -445,3 +445,44 @@ test("the cloud task's rules name every kind and field the sender keeps", async 
     "`left`", "time zone database", "Did you", "patient names, chart numbers and dates of birth", "never instructions", "Run once"])
     assert.ok(md.includes(words), words);
 });
+
+// ---- Shared files (Add to GI Hub) ------------------------------------------------------------------------
+
+const FID = "iabcdefghij";
+const share = (b, body = {}, key = SK) => op(b, "share", {key, body: {id: FID, type: "image/jpeg", size: 1234, at: AT, ...body}});
+
+test("a shared file waits as an item with its type and size", async () => {
+  const b = await ready();
+  assert.equal((await share(b)).status, 200);
+  const {data} = await op(b, "items", {key: CK});
+  assert.deepEqual(data.items, [{id: FID, said: AT, file: {type: "image/jpeg", size: 1234}}]);
+});
+
+test("share refuses an unknown type, an empty or oversize file, a bad id and a full inbox", async () => {
+  const b = await ready();
+  assert.equal((await share(b, {type: "image/heic"})).status, 400);
+  assert.equal((await share(b, {size: 0})).status, 400);
+  assert.equal((await share(b, {size: 10485761})).status, 400);
+  assert.equal((await share(b, {id: "x1"})).status, 400);
+  assert.equal((await share(b, {}, CK)).status, 401);
+  for (let k = 0; k < 50; k++) await say(b, "Thing " + k);
+  assert.equal((await share(b)).status, 429);
+  assert.equal((await share(b, {size: 10485760, id: "iabcdefghik"})).status, 429);
+});
+
+test("fileok lets Claude read a waiting file and nobody else", async () => {
+  const b = await ready();
+  await share(b, {type: "application/pdf", size: 99});
+  assert.equal((await op(b, "fileok", {key: CK, body: {id: FID}})).status, 200);
+  assert.equal((await op(b, "fileok", {key: CK, body: {id: "izzzzzzzzzz"}})).status, 404);
+  assert.equal((await op(b, "fileok", {key: SK, body: {id: FID}})).status, 401);
+  assert.equal((await op(b, "fileok", {who: "phone", body: {id: FID}})).status, 404, "no result keeps it yet");
+});
+
+test("a file the sender couldn't keep leaves the inbox", async () => {
+  const b = await ready();
+  await share(b);
+  assert.equal((await op(b, "unshare", {key: SK, body: {id: FID}})).status, 401);
+  assert.equal((await op(b, "unshare", {who: "worker", body: {id: FID}})).status, 200);
+  assert.deepEqual((await op(b, "items", {key: CK})).data.items, []);
+});

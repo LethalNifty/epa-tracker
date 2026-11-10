@@ -7,8 +7,10 @@
 //
 // Storage:
 //   keys     {shortcut, claude}: SHA-256 fingerprints of the keys Settings made
-//   inbox    [{id, text, said, off, got, test?}]: what waits for Claude. said is
-//            the phone's clock with its offset, off that offset in minutes
+//   inbox    [{id, text | file, said, off, got, test?}]: what waits for Claude. said
+//            is the phone's clock with its offset, off that offset in minutes;
+//            file {type, size} is a picture or PDF shared to Add to GI Hub, its
+//            bytes in KV under file:<id> (worker.mjs), 3 days at most
 //   seen     {hash: got}: what was said lately, so a resend from Reminders is one item
 //   run      {at, took, tries, next, err, fails, firing}: Claude's run
 //   results  [{id, item, kind, ..., said, off, line, at, ack?}]: what Claude filed,
@@ -23,7 +25,9 @@ import {TELL_TESTS, tellScore} from "./tell-tests.mjs";
 
 const TEXT_MAX = 4000, INBOX_MAX = 50, MINUTE = 60000, DAY = 864e5;
 const SEEN_KEEP = 3 * DAY;
-const HEX64 = /^[0-9a-f]{64}$/;
+const HEX64 = /^[0-9a-f]{64}$/, ITEM_ID = /^i[a-z0-9]{10}$/;
+// What Add to GI Hub takes: pictures and PDFs, 10 MB each at most.
+export const FILE_TYPES = ["image/jpeg", "image/png", "application/pdf"], FILE_MAX = 10485760;
 const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 // A fresh id: the prefix and ten random letters and digits.
@@ -213,12 +217,39 @@ const OPS = {
     await this.storage.put("seen", seen);
     return [200, {ok: true}];
   }},
+  // A file shared to Add to GI Hub: the Worker has its bytes; the item keeps
+  // what it is, its size and when it was shared (one share's files carry the same).
+  share: {who: ["shortcut", "phone"], async run(b, now) {
+    if (!ITEM_ID.test(b.id || "") || !FILE_TYPES.includes(b.type) || !Number.isInteger(b.size) || b.size < 1 || b.size > FILE_MAX)
+      return [400, {error: "not a picture or PDF the inbox takes"}];
+    const inbox = (await this.storage.get("inbox")) || [];
+    if (inbox.length >= INBOX_MAX) return [429, {error: "the inbox is full"}];
+    const {said, off} = saidParse(b.at, now);
+    inbox.push({id: b.id, file: {type: b.type, size: b.size}, said, off, got: now});
+    await this.storage.put("inbox", inbox);
+    return [200, {ok: true}];
+  }},
+  // The Worker couldn't keep a shared file's bytes: its item goes too.
+  unshare: {who: ["worker"], async run(b) {
+    const inbox = (await this.storage.get("inbox")) || [], i = inbox.findIndex(x => x.id === b.id && x.file);
+    if (i < 0) return [404, {error: "no such file"}];
+    inbox.splice(i, 1);
+    await this.storage.put("inbox", inbox);
+    return [200, {ok: true}];
+  }},
+  // Whether a shared file's bytes may be read: by Claude while its item
+  // waits, by the phone while a result it hasn't confirmed keeps it.
+  fileok: {who: ["claude", "phone"], async run(b, now, who) {
+    const ok = who === "claude" ? ((await this.storage.get("inbox")) || []).some(x => x.id === b.id && x.file)
+      : fresh((await this.storage.get("results")) || [], now).some(r => !r.ack && (r.keep || []).includes(b.id));
+    return ok ? [200, {ok: true}] : [404, {error: "no such file"}];
+  }},
   // Claude reads what waits; the run now holds those items.
   items: {who: ["claude"], async run() {
     const inbox = (await this.storage.get("inbox")) || [], run = (await this.storage.get("run")) || {};
     run.took = [...new Set([...(run.took || []), ...inbox.map(x => x.id)])];
     await this.storage.put("run", run);
-    return [200, {items: inbox.map(x => ({id: x.id, text: x.text, said: x.said}))}];
+    return [200, {items: inbox.map(x => x.file ? {id: x.id, said: x.said, file: x.file} : {id: x.id, text: x.text, said: x.said})}];
   }},
   // Claude's results, by the item each came from. An item that's no longer
   // waiting was filed already (a late second run): skipped. A result that
@@ -345,8 +376,9 @@ export class Tell {
     if (!m || typeof m.op !== "string") return answer(400, {error: "not a request"});
     const f = Object.hasOwn(OPS, m.op) ? OPS[m.op] : null;
     if (!f) return answer(404, {error: "no such op"});
-    if (!f.who.includes(await this.role(m))) return answer(401, {error: "locked"});
-    const [status, data] = await f.run.call(this, m.body && typeof m.body === "object" ? m.body : {}, Number.isFinite(m.now) ? m.now : Date.now());
+    const who = await this.role(m);
+    if (!f.who.includes(who)) return answer(401, {error: "locked"});
+    const [status, data] = await f.run.call(this, m.body && typeof m.body === "object" ? m.body : {}, Number.isFinite(m.now) ? m.now : Date.now(), who);
     return answer(status, data);
   }
   // Who's asking: the phone or the Worker as the Worker says, else whichever key matches.
