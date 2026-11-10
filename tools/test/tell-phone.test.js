@@ -252,9 +252,19 @@ test("the test set runs from Settings and shows how Claude did", async () => {
   const {c, h} = await tellPhone();
   h.click("teltest"); await settle(h);
   assert.ok(c.calls.includes("POST /tell/test"));
-  assert.equal((await c.env.TELL.storage.get("inbox")).filter(x => x.test).length, 20);
+  assert.equal((await c.env.TELL.storage.get("inbox")).filter(x => x.test).length, 25);
   h.click("telscore"); await settle(h);
-  assert.match(h.html(), /0 of 20 right<\/b>, 0 filed so far/);
+  assert.match(h.html(), /0 of 24 right<\/b>, 0 filed so far/);
+  assert.ok(h.html().includes("The test set: 23 made-up things said and a pair of made-up call sheets"));
+  // A miss says what was wanted and what came; the sheets', what was read wrong.
+  const ids = await c.env.TELL.storage.get("testIds"), sheet = await c.env.TELL.storage.get("testSheet");
+  await c.env.TELL.storage.put("tests", {[ids[1]]: [{kind: "event", t: "Dentist", d: "2026-11-13", s: "21:00"}],
+    [sheet.hsc]: [{kind: "note", t: "A shared file Claude couldn't read"}]});
+  h.click("telscore"); await settle(h);
+  const html = h.html();
+  assert.match(html, /0 of 24 right<\/b>, 2 filed so far/);
+  assert.ok(html.includes("Wanted event 2026-11-13 09:00; got event 2026-11-13 21:00"), "a said test's miss");
+  assert.ok(html.includes("Wanted one call schedule; got note"), "the sheets' miss");
 });
 
 // ---- The Claude added card ------------------------------------------------------------------------

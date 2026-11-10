@@ -299,10 +299,12 @@ function tellKeyHTML(which, label) {
     (tellShow === which ? `<input class="tellshow mono" type="text" readonly value="${esc(key)}" aria-label="${label}">` : "");
 }
 const tellBrief = x => [x.kind, ...[x.d, x.s].filter(Boolean).map(v => Array.isArray(v) ? v.join(" or ") : v)].join(" ");
-const tellMissWords = m => `Wanted ${tellBrief(m.want || {})}; got ${m.got && m.got.length ? m.got.map(tellBrief).join(", ") : "nothing"}`;
+// A miss in words: what was wanted and what came, or, for the made-up sheets, what was read wrong.
+const tellMissWords = m => Array.isArray(m.words) ? m.words.join("; ") :
+  `Wanted ${(m.want || []).map(tellBrief).join(", ")}; got ${m.got && m.got.length ? m.got.map(tellBrief).join(", ") : "nothing"}`;
 function tellTestHTML() {
   const s = tellResult, miss = m => `<li><b>${esc(m.say)}</b><span class="mono">${esc(tellMissWords(m))}</span></li>`;
-  return `<p class="rnote">The test set: 20 made-up things said, to see how Claude files them. Check it a few minutes after you run it.</p>` +
+  return `<p class="rnote">The test set: 23 made-up things said and a pair of made-up call sheets, to see how Claude files them. Check it a few minutes after you run it.</p>` +
     `<div class="rbtns"><button class="btn" data-action="teltest">Run the test set</button><button class="btn" data-action="telscore">Check the test</button></div>` +
     (s ? `<p class="rnote"><b>${s.right} of ${s.n} right</b>${s.done < s.n ? `, ${s.done} filed so far` : ""}.</p>` +
       (s.misses && s.misses.length ? `<ul class="tellmiss">${s.misses.map(miss).join("")}</ul>` : "") : "");

@@ -385,13 +385,13 @@ test("tests never alert", async () => {
 
 // ---- The test set ------------------------------------------------------------------------------------
 
-test("the test set is 20 sentences with no real names", async () => {
+test("the test set is 23 sentences with no real names", async () => {
   const {TELL_TESTS} = await mod("tell-tests.mjs");
-  assert.equal(TELL_TESTS.length, 20);
+  assert.equal(TELL_TESTS.length, 23);
   // Every capitalized word after the first is a placeholder name, a day or a known word.
-  const ok = new Set(["Brook", "Casey", "Quill", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-    "GI", "Hub", "Heidi", "Week", "Orlando"]);
-  const KINDS = ["event", "todo", "change", "scope", "pearl", "idea", "note"];
+  const ok = new Set(["Brook", "Casey", "Quill", "Rowan", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "November", "December", "I", "GI", "Hub", "Heidi", "Week", "Orlando"]);
+  const KINDS = ["event", "todo", "change", "scope", "pearl", "idea", "note", "callswap"];
   for (const x of TELL_TESTS) {
     assert.match(x.at, /^2026-11-\d{2}T\d{2}:\d{2}:00-05:00$/, x.say);
     for (const n of (x.say.match(/\b[A-Z][A-Za-z]*/g) || []).slice(1)) assert.ok(ok.has(n), `${n} in "${x.say}"`);
@@ -416,6 +416,85 @@ test("a test result counts as right only when every field matches", async () => 
   assert.equal(tellScore(tests, {1: [{...move, chk: undefined}]}).right, 0, "Check this was wanted");
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on Quill's biopsy", d: "2026-11-16", s: "08:00"}]}).right, 0);
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on the biopsy", d: "2026-11-16", s: "08:00"}]}).right, 1);
+});
+
+test("the made-up sheets are a whole block in placeholder names", async () => {
+  const {TELL_SHEET} = await mod("tell-tests.mjs");
+  assert.deepEqual([TELL_SHEET.from, TELL_SHEET.to, TELL_SHEET.days.length], ["2026-12-17", "2027-01-13", 28]);
+  const fellows = ["Brook", "Casey", "Quill", "Rowan", "Sage", "Tamsin"], res = ["Resident G", "Resident K", "Resident M"];
+  const atts = ["Ames", "Birch", "Cole", "Dunn", "Ellis", "Frost"], ok = new Set([...fellows, ...res, ...atts, ""]);
+  for (const x of TELL_SHEET.days) for (const site of ["hsc", "stb"]) {
+    const {day, night} = x[site];
+    for (const n of [...day.fellows, ...day.res, day.att, ...(day.tpn || []), night.fellow, ...night.res, night.att]) assert.ok(ok.has(n), `${n} on ${x.d}`);
+  }
+  for (const p of TELL_SHEET.people) assert.ok(ok.has(p.n), p.n);
+  // What the sheets are there to test: a night one sheet leaves blank, a 17:00 attending change, and two notes.
+  const day = d => TELL_SHEET.days.find(x => x.d === d);
+  assert.deepEqual([day("2026-12-31").stb.night.fellow, !!day("2026-12-31").hsc.night.fellow], ["", true]);
+  assert.notEqual(day("2026-12-22").hsc.night.att, day("2026-12-22").hsc.day.att);
+  assert.deepEqual(TELL_SHEET.notes.map(n => [n.d, n.site, n.t]), [["2026-12-21", "hsc", "No call 1200-1700"], ["2027-01-07", "stb", "No call 0800-1200"]]);
+  for (const n of TELL_SHEET.notes) assert.ok(day(n.d)[n.site].day.fellows.includes(n.who), n.who);
+  assert.match(TELL_SHEET.rules[0].t, /junior resident takes inside calls, the attending outside calls/);
+});
+
+test("the test set puts the made-up sheets in the inbox with their repository paths", async () => {
+  const fs = require("node:fs");
+  const {TELL_SHEET} = await mod("tell-tests.mjs");
+  const b = await ready();
+  assert.equal((await op(b, "test", {who: "phone"})).status, 200);
+  const all = await items(b), sheets = all.filter(x => x.repo);
+  assert.equal(all.length, 25);
+  assert.deepEqual(sheets.map(x => [x.repo, x.said, x.file.type]),
+    [["tools/agenda/test-sheets/hsc.png", TELL_SHEET.at, "image/png"], ["tools/agenda/test-sheets/stb.png", TELL_SHEET.at, "image/png"]]);
+  for (const x of sheets) assert.ok(fs.existsSync(path.join(ROOT, x.repo)), x.repo);
+  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 24, done: 0, right: 0, misses: []});
+  // Claude's reading of them is scored like a test, and never reaches the phone.
+  const [h, s] = sheets, read = {item: h.id, with: [s.id], kind: "call", days: TELL_SHEET.days, notes: TELL_SHEET.notes, people: [], rules: [], look: [],
+    sheets: [{site: "hsc", from: TELL_SHEET.from, to: TELL_SHEET.to, file: h.id}, {site: "stb", from: TELL_SHEET.from, to: TELL_SHEET.to, file: s.id}]};
+  assert.deepEqual((await file(b, [read])).data.drop, []);
+  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 24, done: 1, right: 1, misses: []});
+  assert.deepEqual((await pick(b)).data.results, []);
+});
+
+test("a sheet read right scores right, and a wrong night fellow is a miss in words", async () => {
+  const {TELL_TESTS, TELL_SHEET, tellScore} = await mod("tell-tests.mjs");
+  const ids = {hsc: "ihsctest001", stb: "istbtest001"};
+  const read = () => ({kind: "call", days: structuredClone(TELL_SHEET.days), notes: structuredClone(TELL_SHEET.notes), people: [], rules: [], look: [],
+    sheets: [{site: "hsc", from: TELL_SHEET.from, to: TELL_SHEET.to, file: ids.hsc}, {site: "stb", from: TELL_SHEET.from, to: TELL_SHEET.to, file: ids.stb}]});
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [read()]}), {n: 24, done: 1, right: 1, misses: []});
+  const wrong = read();
+  wrong.days.find(x => x.d === "2026-12-31").stb.night.fellow = "Casey";
+  const s = tellScore(TELL_TESTS, {}, {ids, rs: [wrong]});
+  assert.equal(s.right, 0);
+  assert.deepEqual(s.misses.map(m => [m.say, m.words]), [["The made-up call sheets", ["Thu 31 Dec St. Boniface night: wanted none, got Casey"]]]);
+  // Case doesn't matter; a sheet without its own picture does, and so does a note left out.
+  const upper = read();
+  upper.days[0].hsc.night.fellow = upper.days[0].hsc.night.fellow.toUpperCase();
+  assert.equal(tellScore(TELL_TESTS, {}, {ids, rs: [upper]}).right, 1);
+  const nopic = read();
+  delete nopic.sheets[1].file;
+  nopic.notes.pop();
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [nopic]}).misses[0].words,
+    ["St. Boniface sheet: wanted its own picture", "Thu 7 Jan St. Boniface note for Casey: missing"]);
+  // Not filed yet: not done. Many differences: five, and how many more.
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: null}), {n: 24, done: 0, right: 0, misses: []});
+  const bad = read();
+  for (const x of bad.days) x.hsc.night.att = "Nobody";
+  const w = tellScore(TELL_TESTS, {}, {ids, rs: [bad]}).misses[0].words;
+  assert.deepEqual([w.length, w[5]], [6, "and 23 more"]);
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [read(), read()]}).misses[0].words, ["Wanted one call schedule; got call, call"]);
+});
+
+test("a swap read as the same slots in any order scores right", async () => {
+  const {TELL_TESTS, tellScore} = await mod("tell-tests.mjs");
+  const i = TELL_TESTS.findIndex(x => x.say.startsWith("Casey is taking my call"));
+  const slots = [{d: "2026-12-03", site: "both", slot: "night", from: "Casey", to: "me"}, {d: "2026-11-30", site: "both", slot: "night", from: "me", to: "casey"}];
+  assert.equal(tellScore(TELL_TESTS, {[i]: [{kind: "callswap", slots}]}).right, 1);
+  assert.equal(tellScore(TELL_TESTS, {[i]: [{kind: "callswap", slots: [slots[1]]}]}).right, 0, "half a swap");
+  assert.equal(tellScore(TELL_TESTS, {[i]: [{kind: "callswap", slots: [{...slots[0], from: "me", to: "Casey"}, slots[1]]}]}).right, 0, "the wrong way round");
+  const sat = TELL_TESTS.findIndex(x => x.say.startsWith("I swapped my Saturday"));
+  assert.equal(tellScore(TELL_TESTS, {[sat]: [{kind: "callswap", slots: [{d: "2026-12-05", site: "stb", slot: "day", from: "me", to: "Quill"}]}]}).right, 1,
+    "any site when the words name none");
 });
 
 // ---- The cloud task's rules ------------------------------------------------------------------------------
