@@ -117,7 +117,7 @@ function rosterHolders(x, slot) {
 function rosterMineHTML(r, pl, x) {
   const now = x.now.map(({d, slot}) => pl.mine.find(s => s.uid === `gi-roster-${d}-${slot === "night" ? "n" : "d"}`)).filter(Boolean)
     .map(s => rosterStretchHTML({s: s.s, e: s.e, segs: [s]}, `<span class="tag wli">Now yours</span>`));
-  const gone = x.gone.map(({d, slot}) => `<article class="cst"><div class="cst-top mono"><span>${rosterDay(d)}</span><span>was yours</span></div>` +
+  const gone = x.gone.map(({d, slot}) => `<article class="cst rost-gone"><div class="cst-top mono"><span>${rosterDay(d)}</span><span>was yours</span></div>` +
     `<h3><span>${CALL_WEEKDAYS[agDate(d).getDay()]} ${slot}</span><span class="tag warn">No longer yours</span></h3>` +
     `<div class="cseg"><div class="cseg-site"><span class="mono">Now</span><span>${rosterHolders(pl.next[d], slot)}</span></div></div></article>`);
   return now.length || gone.length ? `<section class="sec"><div class="sec-head"><h2>Changes for you</h2></div>${now.join("")}${gone.join("")}</section>` : "";
@@ -132,11 +132,12 @@ function rosterOtherHTML(other) {
     `</div></section>`;
 }
 // A sheet's picture as a tile that opens it; a PDF as a page.
-function rosterThumbHTML(pic, sh) {
+function rosterThumbHTML(pic, sh, note) {
   const pdf = RosterStore.state.types[pic] === "application/pdf";
   return `<button class="rost-sheet" data-action="rostpic" data-id="${esc(pic)}">` +
     (pdf ? `<span class="rost-pdf mono">PDF</span>` : `<img class="rost-thumb" data-rostimg="${esc(pic)}" alt="">`) +
-    `<span class="rost-site">${ROSTER_SITE[sh.site]}</span><span class="rost-dates mono">${rosterDay(sh.from)} to ${rosterDay(sh.to)}</span></button>`;
+    `<span class="rost-site">${ROSTER_SITE[sh.site]}</span><span class="rost-dates mono">${rosterDay(sh.from)} to ${rosterDay(sh.to)}</span>` +
+    (note ? `<span class="rost-chgd">${esc(note)}</span>` : "") + `</button>`;
 }
 function rosterPicsHTML(r, p) {
   const pics = r.kind === "call" ? r.sheets.filter(x => x.file) : [];
@@ -169,6 +170,89 @@ function rosterCheckView(id) {
     `Then send ${r.kind === "call" ? "the sheets" : "the swap"} to Claude in chat.</p></section>`;
 }
 
+// ---- On Call: Who's on, Find someone and the sheets ----------------------------------------------------
+// One site on one day: the day team (08:00 to 17:00) with its notes, and the
+// night (17:00 to 08:00), Now on the slot on now and You on yours; on a night
+// with no fellow there, the site's footer rules; its Call button once Call
+// has the site's paging number.
+function rosterSiteHTML(d, k, at, me) {
+  const st = RosterStore.state, t = st.days[d] && st.days[d][k], tel = callTel(CallStore.state.nums[k]);
+  const who = ns => (ns = ns.filter(Boolean)).length ? ns.map(n => rosterYou(n, me)).join(", ") : `<span class=\"none\">None listed</span>`;
+  const line = (label, v) => `<div class="cseg-site"><span class="mono">${label}</span><span>${v}</span></div>`;
+  const now = slot => at.d === d && at.slot === slot ? ` <span class="tag wli">Now</span>` : "";
+  let h = `<article class="cst rost-sitecard"><div class="cst-top mono"><span>${ROSTER_SITE[k]}</span><span>${rosterDay(d)}</span></div>`;
+  if (!t) return h + `<p class="rost-note">Not on the sheets you shared.</p></article>`;
+  h += `<div class="cseg"><div class="cseg-when mono">Day · 08:00 → 17:00${now("day")}</div>` +
+    line(t.day.fellows.length > 1 ? "Fellows" : "Fellow", who(t.day.fellows)) +
+    st.notes.filter(x => x.d === d && x.site === k).map(x => `<div class="cseg-site"><span></span><span class="res">${esc(x.who)}: ${esc(x.t)}</span></div>`).join("") +
+    line(t.day.res.length > 1 ? "Residents" : "Resident", who(t.day.res)) + line("Attending", who([t.day.att])) +
+    (t.day.tpn && t.day.tpn.length ? line("TPN", who(t.day.tpn)) : "") + `</div>`;
+  h += `<div class="cseg"><div class="cseg-when mono">Night · 17:00 → 08:00${now("night")}</div>` + line("Fellow", who([t.night.fellow])) +
+    (t.night.fellow ? "" : st.rules.filter(x => x.site === k).map(x => `<p class="rost-rule">${esc(x.t)}</p>`).join("")) +
+    line(t.night.res.length > 1 ? "Residents" : "Resident", who(t.night.res)) + line("Attending", who([t.night.att])) + `</div>`;
+  if (tel) h += `<a class="btn callbtn" href="${tel}">${ic("phone")}Call ${CALL_SITES.find(x => x[0] === k)[1]}</a>`;
+  return h + `</article>`;
+}
+// Who's on: a chip for each day from the slot on now (before 08:00, last
+// night) through the roster, and both sites on the day picked; then Find someone.
+function rosterWhoHTML(now) {
+  const st = RosterStore.state, at = rosterNow(now), today = fmtDate(new Date(now));
+  const all = Object.keys(st.days).sort(), days = all.filter(d => d >= at.d).slice(0, 42);
+  const head = `<section class="sec rost-who"><div class="sec-head"><h2>Who's on</h2>`;
+  if (!days.length) return head + `</div><div class="card pad"><p class="rost-note">Share the call schedule to GI Hub to see who's on.</p></div></section>`;
+  const sel = days.includes(route.rostDay) ? route.rostDay : days[0], q = route.rostFind || "";
+  return head + `<span class="mono">To ${rosterDay(all[all.length - 1])}</span></div><div class="pickrow chips rost-days">` +
+    days.map(d => `<button class="pick ghost${d === sel ? " on" : ""}" data-action="rostday" data-d="${d}" aria-pressed="${d === sel}">` +
+      `${d === today ? "Today" : d < today ? "Last night" : rosterShort(d)}</button>`).join("") + `</div>` +
+    ROSTER_SITES.map(k => rosterSiteHTML(sel, k, at, st.me)).join("") +
+    `<label class="lbl mono rost-find">Find someone<input id="rostfind" type="search" autocomplete="off" placeholder="A name" value="${esc(q)}"></label>` +
+    `<div id="rostfound" class="card pad rost-found"${q.trim().length < 2 ? " hidden" : ""}>${rosterFoundHTML(q, now)}</div></section>`;
+}
+// Every slot from the slot on now where a name, or a full name from the
+// footers, has the words: up to 20, next first, each person named when the
+// words find more than one.
+function rosterFoundHTML(q, now) {
+  q = String(q || "").trim().toLowerCase();
+  if (q.length < 2) return "";
+  const st = RosterStore.state, at = rosterNow(now), key = (d, slot) => d + (slot === "day" ? 0 : 1);
+  const full = new Map(st.people.map(p => [p.n.toLowerCase(), p.full.toLowerCase()]));
+  const hit = n => !!n && (n.toLowerCase().includes(q) || (full.get(n.toLowerCase()) || "").includes(q));
+  const out = [], names = new Set();
+  for (const d of Object.keys(st.days).sort()) for (const slot of ROSTER_SLOTS) {
+    if (key(d, slot) < key(at.d, at.slot)) continue;
+    for (const k of ROSTER_SITES) {
+      const t = st.days[d][k];
+      if (!t) continue;
+      const roles = slot === "day" ? [["fellow", t.day.fellows], ["resident", t.day.res], ["attending", [t.day.att]], ["TPN consults", t.day.tpn || []]] :
+        [["fellow", [t.night.fellow]], ["resident", t.night.res], ["attending", [t.night.att]]];
+      for (const [role, ns] of roles) for (const n of ns) if (hit(n)) { out.push({d, slot, k, role, n}); names.add(n.toLowerCase()); }
+    }
+  }
+  if (!out.length) return `<p class="rost-note">No one by that name from today on.</p>`;
+  return out.slice(0, 20).map(x => `<p class="rost-hit">${rosterDay(x.d)} · ${ROSTER_SITE[x.k]} ${x.slot} · ${x.role}${names.size > 1 ? ` · ${esc(x.n)}` : ""}</p>`).join("") +
+    (out.length > 20 ? `<p class="rost-note">and ${out.length - 20} more</p>` : "");
+}
+// Typing in Find someone keeps the words and redraws only what they find.
+function rosterField(t) {
+  if (!t || t.id !== "rostfind") return false;
+  route.rostFind = t.value;
+  const box = document.getElementById("rostfound");
+  if (box) { box.innerHTML = rosterFoundHTML(t.value, callNow()); box.hidden = t.value.trim().length < 2; }
+  return true;
+}
+// The sheets as shared, on Call until their last night is over: what changed
+// since each (the swaps after it), or that its reading was thrown away.
+function rosterSheetsHTML() {
+  const st = RosterStore.state, list = st.sheets.filter(x => x.pic);
+  if (!list.length) return "";
+  return `<section class="sec"><div class="sec-head"><h2>Shared sheets</h2><span class="mono">Tap one to read it</span></div><div class="rost-sheets">` +
+    list.map(sh => {
+      const ds = [...new Set(st.swaps.filter(w => w.at > sh.at && w.d >= sh.from && w.d <= sh.to && (w.site === "both" || w.site === sh.site)).map(w => w.d))].sort();
+      return rosterThumbHTML(sh.pic, sh, sh.unread ? "Its reading was thrown away. Send it to Claude in chat." :
+        ds.length ? `Changed since this sheet: ${ds.map(rosterDay).join(", ")}` : "");
+    }).join("") + `</div></section>`;
+}
+
 // ---- A sheet full screen -----------------------------------------------------------------------------
 // Over the page, outside it (render puts it there), so nothing that moves the
 // page moves it. Pinch zoom is the page's own.
@@ -188,6 +272,8 @@ function rosterPicHTML() {
 // once while it's on screen and given back once it isn't.
 const rosterUrls = new Map();
 function rosterAfterRender() {
+  const row = route.rostDayX && document.querySelector ? document.querySelector(".rost-days") : null;
+  if (row) row.scrollLeft = route.rostDayX;
   if (!document.querySelectorAll || typeof URL === "undefined" || !URL.createObjectURL) return;
   const els = Array.from(document.querySelectorAll("[data-rostimg]")).filter(el => el && el.dataset && el.dataset.rostimg);
   const on = new Set(els.map(el => el.dataset.rostimg));
@@ -241,6 +327,10 @@ function rosterDispatch(act, d) {
   if (act === "rostnot") { rosterNot(d.id); return false; }
   if (act === "rostme") rosterSetMe(d.name || "", callNow());
   else if (act === "rostall") route.rostAll = !route.rostAll;
+  else if (act === "rostday") {
+    const row = document.querySelector ? document.querySelector(".rost-days") : null;
+    route.rostDay = d.d; route.rostDayX = row ? row.scrollLeft : 0;
+  }
   else if (act === "rostpic") route.rostPic = d.id;
   else if (act === "rostpicx") delete route.rostPic;
   return true;

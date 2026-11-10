@@ -1295,7 +1295,7 @@ document.getElementById("app").addEventListener("submit", ev => {
 document.getElementById("app").addEventListener("input", ev => {
   // The backup passphrase stays in memory, out of every draft.
   if (!FELLOWS && bkField(ev.target)) return;
-  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && (watchField(ev.target) || tellField(ev.target))) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
+  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && (watchField(ev.target) || tellField(ev.target) || rosterField(ev.target))) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;

@@ -1471,6 +1471,17 @@ a.src:active { background: var(--wall-3); }
 .rostview-top .btn { flex: 0 0 auto; width: auto; min-height: 40px; margin: 0; padding: 0 16px; }
 img.rostview-pic { display: block; width: 100%; height: auto; }
 iframe.rostview-pic { display: block; width: 100%; height: calc(100vh - 64px); border: 0; background: #fff; }
+.rost-days { margin-top: 0; }
+.rost-days + .cst { margin-top: 12px; }
+.rost-sitecard .callbtn { margin: 6px 0 12px; }
+.rost-rule { margin: 2px 0 6px 70px; font-size: 12.5px; line-height: 1.35; color: var(--flu); }
+.rost-find { display: block; margin-top: 14px; }
+.rost-found { margin-top: 10px; }
+.rost-hit { margin: 0; padding: 7px 0; font-size: 14px; line-height: 1.35; }
+.rost-hit + .rost-hit { border-top: 1px solid var(--fold); }
+.rost-found .rost-note:first-child { margin: 0; }
+.rost-chgd { font-size: 12px; line-height: 1.3; color: var(--flu); }
+.rost-sitecard .none, .rost-grid .none, .rost-gone .none { color: var(--dim); font-weight: 400; }
 
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }

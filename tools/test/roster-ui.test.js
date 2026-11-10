@@ -314,3 +314,143 @@ test("pictures come from the phone as object URLs, given back once they're off t
   assert.deepEqual(gone, ["blob:1"]);
   assert.equal(made.length, 2);
 });
+
+// ---- Who's on, Find someone and the sheets on Call ---------------------------------------------------
+const callPage = h => { h.run(`go({page: "call", from: "week"})`); return main(h.html()); };
+const cards = html => [...html.matchAll(/<article class="cst[^"]*">[^]*?<\/article>/g)].map(m => m[0]);
+
+test("Who's on shows both sites' day and night teams, with Now and You", () => {
+  const h = phone("2026-11-24T20:00");
+  added(h, call(block()));
+  h.run(`CallStore.setNum("hsc", "204-555-0100")`);
+  const page = callPage(h), at = page.indexOf("<h2>Who's on</h2>");
+  assert.ok(at > page.indexOf('<section class="callnow"') && at < page.indexOf("<h2>By week</h2>"), "under the live card");
+  const who = section(page, "Who's on");
+  assert.match(who, /<span class="mono">To Wed 16 Dec<\/span>/);
+  assert.match(who, /data-action="rostday" data-d="2026-11-24" aria-pressed="true">Today</);
+  assert.match(who, /data-action="rostday" data-d="2026-11-25" aria-pressed="false">Wed 25</);
+  const [hsc, stb] = cards(who);
+  assert.equal(text(hsc), "HSC Tue 24 Nov Day · 08:00 → 17:00 Fellows Brook, Rowan Resident Resident G Attending Ames " +
+    "Night · 17:00 → 08:00 Now Fellow You Resident Resident K Attending Ames Call HSC");
+  assert.match(hsc, /href="tel:2045550100"/);
+  assert.equal(text(stb), "St. Boniface Tue 24 Nov Day · 08:00 → 17:00 Fellow Quill Resident Resident M Attending Ellis " +
+    "Night · 17:00 → 08:00 Now Fellow You Resident None listed Attending Ellis");
+  // Another day: no Now, and You only where you are.
+  h.click("rostday", {d: "2026-11-25"});
+  const wed = section(main(h.html()), "Who's on");
+  assert.match(wed, /data-d="2026-11-25" aria-pressed="true">Wed 25</);
+  assert.doesNotMatch(wed, />Now<|>You</);
+});
+
+test("before 08:00 Who's on opens on last night with Now on it", () => {
+  const h = phone("2026-11-25T06:30");
+  added(h, call(block()));
+  const who = section(callPage(h), "Who's on");
+  assert.match(who, /data-d="2026-11-24" aria-pressed="true">Last night</);
+  assert.match(who, /data-d="2026-11-25" aria-pressed="false">Today</);
+  const hsc = text(cards(who)[0]);
+  assert.match(hsc, /^HSC Tue 24 Nov Day · 08:00 → 17:00 Fellows/);
+  assert.match(hsc, /Night · 17:00 → 08:00 Now Fellow You/);
+  assert.doesNotMatch(hsc, /17:00 Now Fellows/);
+});
+
+test("at 17:00 Now moves to the night while Call is open", () => {
+  const h = phone("2026-11-26T16:59", "Tamsin");
+  added(h, call(block()));
+  assert.match(text(cards(section(callPage(h), "Who's on"))[0]), /Day · 08:00 → 17:00 Now/);
+  h.setNow("2026-11-26T17:00");
+  h.run("callTick()");
+  const hsc = text(cards(section(main(h.html()), "Who's on"))[0]);
+  assert.match(hsc, /Night · 17:00 → 08:00 Now/);
+  assert.doesNotMatch(hsc, /Day · 08:00 → 17:00 Now/);
+});
+
+test("a night with no fellow at a site shows the footer rule", () => {
+  const h = phone("2026-11-24T09:00");
+  const r = call(block());
+  r.rules = [{site: "stb", t: "No fellow listed overnight: page the St. Boniface attending."}, {site: "hsc", t: "No fellow listed overnight: page the HSC attending."}];
+  added(h, r);
+  callPage(h);
+  h.click("rostday", {d: "2026-11-27"});
+  const [hsc, stb] = cards(section(main(h.html()), "Who's on"));
+  assert.match(text(stb), /Night · 17:00 → 08:00 Fellow None listed No fellow listed overnight: page the St\. Boniface attending\. Resident None listed Attending Ellis/);
+  assert.doesNotMatch(hsc, /rost-rule/);
+  h.click("rostday", {d: "2026-11-26"});
+  assert.doesNotMatch(section(main(h.html()), "Who's on"), /rost-rule/);
+});
+
+test("Find someone lists when a person is on", () => {
+  const h = phone("2026-11-24T09:00");
+  const r = call(block());
+  r.people = [{n: "Ames", full: "Avery Ames"}];
+  added(h, r);
+  const page = callPage(h);
+  assert.match(page, /<input id="rostfind" type="search"/);
+  h.els.rostfound = {innerHTML: "", hidden: true};
+  const find = v => { h.fire("input", {id: "rostfind", value: v}); return h.els.rostfound; };
+  const hits = box => [...box.innerHTML.matchAll(/<p class="rost-hit">(.*?)<\/p>/g)].map(m => text(m[1]));
+  assert.equal(find("q").hidden, true);
+  let box = find("quill");
+  assert.equal(box.hidden, false);
+  assert.equal(hits(box).length, 20);
+  assert.deepEqual(hits(box).slice(0, 3), ["Tue 24 Nov · St. Boniface day · fellow", "Wed 25 Nov · St. Boniface day · fellow", "Thu 26 Nov · St. Boniface day · fellow"]);
+  assert.ok(hits(box).includes("Tue 1 Dec · HSC night · fellow"));
+  assert.match(text(box.innerHTML), /and \d+ more$/);
+  // A full name from the sheets' footers finds its person; several people name each one.
+  assert.equal(hits(find("AVERY"))[0], "Tue 24 Nov · HSC day · attending");
+  assert.equal(hits(find("resident"))[0], "Tue 24 Nov · HSC day · resident · Resident G");
+  assert.match(text(find("nobody").innerHTML), /^No one by that name from today on\.$/);
+  // Drawn again, the words and what they found are still there.
+  find("quill");
+  h.run("route.keepScroll = true; render()");
+  const again = main(h.html());
+  assert.match(again, /<input id="rostfind" type="search" autocomplete="off"[^>]* value="quill">/);
+  assert.match(again, /<div id="rostfound" class="card pad rost-found"><p class="rost-hit">Tue 24 Nov · St\. Boniface day · fellow<\/p>/);
+});
+
+test("the sheets sit at the bottom of Call and say which nights changed since", async () => {
+  const h = phone("2026-11-12T09:00");
+  await take(h, call(block()));
+  h.click("rostcheck", {id: "acall000001"});
+  h.click("rostadd", {id: "acall000001"});
+  h.setNow("2026-11-20T10:00");
+  put(h, swapOf([{d: "2026-12-03", site: "both", slot: "night", from: "me", to: "Sage"}]));
+  h.val(`rosterSwap(__r.id, rosterClean(__r, callNow()), callNow())`);
+  // Block 7's HSC sheet, its reading thrown away.
+  const b7 = call(block({from: "2026-12-17", to: "2027-01-13"}), {id: "acall000007", h: "ihscsheet07"});
+  b7.sheets = b7.sheets.slice(0, 1);
+  await take(h, b7);
+  h.run(`rosterThrow("acall000007", callNow())`);
+  const page = callPage(h), at = page.indexOf("<h2>Shared sheets</h2>");
+  assert.ok(at > page.indexOf("<h2>Upcoming</h2>") && at < page.indexOf("<h2>Paging numbers</h2>"), "above Paging numbers");
+  const tiles = [...section(page, "Shared sheets").matchAll(/<button class="rost-sheet" data-action="rostpic" data-id="([^"]+)">([^]*?)<\/button>/g)];
+  assert.deepEqual(tiles.map(m => [m[1], text(m[2])]), [
+    [H1, "HSC Thu 19 Nov to Wed 16 Dec Changed since this sheet: Thu 3 Dec"],
+    [S1, "St. Boniface Thu 19 Nov to Wed 16 Dec Changed since this sheet: Thu 3 Dec"],
+    ["ihscsheet07", "HSC Thu 17 Dec to Wed 13 Jan Its reading was thrown away. Send it to Claude in chat."]]);
+  h.click("rostpic", {id: S1});
+  assert.match(h.html(), /<div class="rostview" role="dialog" aria-label="St\. Boniface sheet, Thu 19 Nov to Wed 16 Dec">/);
+  h.click("rostpicx");
+  assert.deepEqual(h.val("[route.page, 'rostPic' in route]"), ["call", false]);
+});
+
+test("Call with no roster says to share the sheets", () => {
+  const page = callPage(phone());
+  assert.equal(text(section(page, "Who's on")), "Who's on Share the call schedule to GI Hub to see who's on.");
+  assert.doesNotMatch(page, /Shared sheets|rostfind/);
+});
+
+test("with a roster and none of your shifts, Call and Week say so, and Clear call data clears the roster", () => {
+  const h = phone(undefined, "Tamsin");
+  added(h, call(block()));
+  const page = callPage(h);
+  assert.equal(cards(section(page, "Who's on")).length, 2);
+  assert.match(text(page), /No call shifts for you in the sheets you shared\./);
+  assert.match(text(week(h)), /No call shifts for you in the sheets you shared\./);
+  callPage(h);
+  assert.match(main(h.html()), /data-action="callclear"/);
+  h.click("callclear");
+  assert.equal(toast(h), "Call data cleared");
+  assert.deepEqual(h.val("RosterStore.state.days"), {});
+  assert.match(text(section(main(h.html()), "Who's on")), /Share the call schedule to GI Hub/);
+});

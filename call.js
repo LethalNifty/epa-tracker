@@ -237,6 +237,9 @@ function callTel(num) {
   return (t.match(/\d/g) || []).length >= 3 ? "tel:" + t.replace(/#/g, "%23") : null;
 }
 const callMidnight = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+// The full app's roster from the shared sheets, when there is one.
+const callRoster = () => typeof RosterStore === "object" && (Object.keys(RosterStore.state.days).length > 0 || RosterStore.state.sheets.length > 0);
+const CALL_NONE_MINE = "No call shifts for you in the sheets you shared.";
 
 // ---- Import ----------------------------------------------------------------------------
 let callError = null, callTimer = null, callKey = "";
@@ -384,7 +387,7 @@ function callInviteHTML(msg, btn, head, meta) {
 // The Week tab's card when you are not on call: the next stretch with a
 // countdown and the week ahead as a trace; the stretches after it are on Call.
 function callCardHTML(cs, now) {
-  if (!cs.has) return callInviteHTML("Import your block's call file to see your next shift and who's on at each site.", "Import call schedule");
+  if (!cs.has) return callInviteHTML(callRoster() ? CALL_NONE_MINE : "Import your block's call file to see your next shift and who's on at each site.", "Import call schedule");
   if (!cs.next) return callInviteHTML("No call left in the schedule you imported.", "Import the next block");
   const nx = cs.next, first = nx.segs[0], more = cs.up.length - 1;
   let h = `<section class="sec"><div class="sec-head"><h2>Call</h2><span class="mono">Next in <b data-until="${nx.s}">${callSpan(nx.s - now)}</b></span></div>` +
@@ -439,7 +442,7 @@ function callScheduleHTML(withImport) {
     (callError ? `<div class="err" role="alert">${esc(callError)}</div>` : "") : "") +
     `<p class="cnote${withImport ? "" : " first"}">${last && last.file ? `Last file: <b>${esc(last.file)}</b>. ` : ""}Pick your block's call file from Files. ` +
     `Importing a block again updates it.</p>` +
-    (CallStore.isEmpty() ? "" : `<button class="btn danger" data-action="callclear">Clear call data</button>`) +
+    (CallStore.isEmpty() && !callRoster() ? "" : `<button class="btn danger" data-action="callclear">Clear call data</button>`) +
     `<p class="bnote mono">Names and numbers stay on this phone</p></div></section>`;
 }
 const callBackLabel = () => ({week: "This week", epas: "EPAs", plan: "Plan", biopsy: "Biopsy", agenda: "Agenda"}[route.from] || "This week");
@@ -455,6 +458,9 @@ function viewCall() {
     (left.length ? `<div class="ph-meta mono"><b>${left.length}</b> shift${left.length === 1 ? "" : "s"} left · <b>${Math.round(hrs)}</b> hours</div>` : "") +
     `</header>`;
   if (cs.cur) h += callLiveHTML(cs, now, "call");
+  // Who's on and the shared sheets (the full app only).
+  if (typeof rosterWhoHTML === "function") h += rosterWhoHTML(now);
+  const sheets = typeof rosterSheetsHTML === "function" ? rosterSheetsHTML() : "";
   if (left.length) {
     h += callWeeksHTML(all, now, left[left.length - 1].e, cs.cur);
     if (cs.up.length) h += `<section class="sec"><div class="sec-head"><h2>${cs.cur ? "After this" : "Upcoming"}</h2>` +
@@ -463,19 +469,21 @@ function viewCall() {
         `${st.e - st.s > 16 * HOUR_MS ? " → " + callDay(st.e) : ""}</span><span>${callHours(st.s, st.e)} h</span></div>` +
         `<h3><span>${callTitle(st)}</span>${i === 0 ? `<span class="tag wli">In <b data-until="${st.s}">${callSpan(st.s - now)}</b></span>` : ""}</h3>` +
         st.segs.map(x => callSegHTML(x, st.segs.length > 1)).join("") + `</article>`).join("") + `</section>`;
-    return h + callNumbersHTML() + callScheduleHTML(true);
+    return h + sheets + callNumbersHTML() + callScheduleHTML(true);
   }
   h += cs.has ? callInviteHTML("No call left in the schedule you imported.", "Import the next block", "Schedule", callLastImport())
+    : callRoster() ? callInviteHTML(CALL_NONE_MINE, "Import call schedule", "Schedule", callLastImport())
     : callInviteHTML("Import your block's call file to see your shifts and who's on at each site.", "Import call schedule", "Schedule", "Nothing imported");
-  return h + callNumbersHTML() + (CallStore.isEmpty() ? "" : callScheduleHTML(false));
+  return h + sheets + callNumbersHTML() + (CallStore.isEmpty() && !callRoster() ? "" : callScheduleHTML(false));
 }
 
 // ---- Keeping the clock current -------------------------------------------------------
 // Countdowns tick while Week or Call is open. When a shift starts or ends the
 // screen redraws, unless you are typing or the log sheet is open.
+// Who's on's slot on now too, so its Now moves at 08:00 and 17:00.
 function callKeyAt(now) {
-  const cs = callStatus(CallStore.list(), now);
-  return [cs.cur && cs.cur.s, cs.seg && cs.seg.uid, cs.next && cs.next.s].join("|");
+  const cs = callStatus(CallStore.list(), now), r = typeof rosterNow === "function" && callRoster() ? rosterNow(now) : null;
+  return [cs.cur && cs.cur.s, cs.seg && cs.seg.uid, cs.next && cs.next.s, r && r.d + r.slot].join("|");
 }
 function callAfterRender() {
   if (route.focus && document.querySelector) {
@@ -484,13 +492,13 @@ function callAfterRender() {
   }
   delete route.focus;
   clearTimeout(callTimer);
-  if ((route.page === "week" || route.page === "call") && CallStore.list().length) {
+  if ((route.page === "week" || route.page === "call") && (CallStore.list().length || callRoster())) {
     callKey = callKeyAt(callNow());
     callTimer = setTimeout(callTick, 20000);
   }
 }
 function callTick() {
-  const now = callNow(), a = document.activeElement, busy = sheet || (a && a.tagName === "INPUT");
+  const now = callNow(), a = document.activeElement, busy = sheet || route.rostPic || (a && a.tagName === "INPUT");
   if (callKeyAt(now) !== callKey && !busy) { route.keepScroll = true; render(); return; }
   if (document.querySelectorAll) {
     const cs = callStatus(CallStore.list(), now), all = callStretches(CallStore.list());
