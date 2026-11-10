@@ -26,7 +26,8 @@
 // With the phone's token:
 //   GET    /vapid    the sender's public key, for the phone to subscribe with (no token)
 //   PUT    /sub      {sub, key}: this phone, subscribed with that key
-//   PUT    /alerts   {list, ack?}: every reminder the phone wants; ack, the results it now has
+//   PUT    /alerts   {list, ack?}: every reminder the phone wants; ack, the results it now
+//                    has (their call sheets go from KV: the phone keeps them now)
 //   POST   /test     one test reminder, now
 //   GET    /status   {sub, key, kept, next}
 //   DELETE /sub      forget the phone, its reminders and its token
@@ -182,6 +183,10 @@ async function readCapped(req, max) {
   try { return JSON.parse(text); } catch (e) { return null; }
 }
 const RESULT_ID = /^a[a-z0-9]{10}$/, ITEM_ID = /^i[a-z0-9]{10}$/;
+// Shared files nobody needs any more. One that won't go now expires on its own.
+async function dropFiles(env, ids) {
+  for (const id of Array.isArray(ids) ? ids : []) { try { await env.AGENDA.delete("file:" + id); } catch (e) {} }
+}
 const obj = b => (b && typeof b === "object" ? b : {});
 const FILE_KEEP = 3 * 86400, TEXT_BYTES = 20000;   // seconds a shared file waits at most; the most a text body can be
 // What a shared body is, from its first bytes: "image/jpeg", "image/png",
@@ -241,6 +246,7 @@ async function tellRoute(req, env, now, fetchImpl, path, m) {
     if (b === undefined) return reply(413, {error: "too many results"});
     const r = await ask("file", {results: obj(b).results});
     if (r.status !== 200) return out(r);
+    await dropFiles(env, r.data.drop);
     // Filed, whatever happens next. Ideas wait for the desktop (it lists idea: keys);
     // the phone hears what was added.
     try {
@@ -335,7 +341,7 @@ async function route(req, env, now, fetchImpl) {
     // Claude's results this plan now has: the inbox keeps them ten minutes
     // more, for a minute check that reads an older copy of the plan.
     const ack = Array.isArray(body.ack) ? body.ack.filter(id => typeof id === "string" && RESULT_ID.test(id)).slice(0, 200) : [];
-    if (ack.length && env.TELL) await tellOp(env, "ack", {who: "worker", now, body: {ids: ack, at: now}});
+    if (ack.length && env.TELL) await dropFiles(env, obj((await tellOp(env, "ack", {who: "worker", now, body: {ids: ack, at: now}})).data).drop);
     const next = list.find(a => a.t > now);
     return reply(200, {kept: list.length, next: next ? next.t : null});
   }

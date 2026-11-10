@@ -13,8 +13,10 @@
 //            bytes in KV under file:<id> (worker.mjs), 3 days at most
 //   seen     {hash: got}: what was said lately, so a resend from Reminders is one item
 //   run      {at, took, tries, next, err, fails, firing}: Claude's run
-//   results  [{id, item, kind, ..., said, off, line, at, ack?}]: what Claude filed,
-//            until the phone confirms it (and ten minutes more), 200 at most
+//   results  [{id, item, kind, ..., said, off, line, at, with?, keep?, ack?}]: what
+//            Claude filed, until the phone confirms it (and ten minutes more), 200
+//            at most. with: the other items it came from (one share's sheets);
+//            keep: the shared files the phone keeps with it (call sheets)
 //   tests    {item id: results}, testIds [item id by place in the set]: the test run
 //   last     when Claude last filed anything
 //
@@ -78,12 +80,68 @@ const dayWords = iso => { const d = new Date(dayMs(iso)); return `${WD[d.getUTCD
 const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
 const cut = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 const IDEA_FOR = ["gihub", "heidi"];
+
+// ---- Call schedules -------------------------------------------------------------------------------
+// A call result is the whole block as read from one share's sheets: each
+// sheet's site, dates and file, every day's day and night teams at each site,
+// the notes and whose they are, the footers' full names and rules, and lines
+// worth a look. A swap moves slots from one person to another ("me" is you).
+// Names stay as written: the phone works out whose shifts are whose.
+const SITES = ["hsc", "stb"], SWAP_SITES = ["both", "hsc", "stb"], SLOTS = ["night", "day"];
+const DAYS_MAX = 62, UNREAD = "A shared file Claude couldn't read";
+const rec = v => v && typeof v === "object" ? v : {};
+const list = v => Array.isArray(v) ? v : [];
+const name = v => str(v, 40);
+const names = v => (Array.isArray(v) ? v : typeof v === "string" ? [v] : []).map(name).filter(Boolean).slice(0, 4);
+function siteDay(x) {
+  const dy = rec(x.day), nt = rec(x.night), day = {fellows: names(dy.fellows), res: names(dy.res), att: name(dy.att)}, tpn = names(dy.tpn);
+  if (tpn.length) day.tpn = tpn;
+  return {day, night: {fellow: name(nt.fellow), res: names(nt.res), att: name(nt.att)}};
+}
+function callClean(raw, near) {
+  const sheets = list(raw.sheets).map(rec).filter(x => SITES.includes(x.site) && near(x.from) && near(x.to) && x.from <= x.to &&
+    dayMs(x.to) - dayMs(x.from) < DAYS_MAX * DAY).slice(0, 6)
+    .map(x => ({site: x.site, from: x.from, to: x.to, ...(typeof x.file === "string" && ITEM_ID.test(x.file) ? {file: x.file} : {})}));
+  // A site's day counts only inside one of that site's sheets.
+  const covers = (site, d) => sheets.some(x => x.site === site && x.from <= d && d <= x.to);
+  const days = [];
+  for (const x of list(raw.days).map(rec)) {
+    if (!near(x.d) || days.some(y => y.d === x.d)) continue;
+    const e = {d: x.d};
+    for (const site of SITES) if (x[site] && typeof x[site] === "object" && covers(site, x.d)) e[site] = siteDay(x[site]);
+    if (e.hsc || e.stb) days.push(e);
+  }
+  days.sort((a, b) => a.d < b.d ? -1 : 1).splice(DAYS_MAX);
+  if (!sheets.length || !days.length) return null;
+  const notes = list(raw.notes).map(rec).filter(x => SITES.includes(x.site) && near(x.d) && covers(x.site, x.d) && name(x.who) && str(x.t, 120))
+    .slice(0, 100).map(x => ({d: x.d, site: x.site, who: name(x.who), t: str(x.t, 120)}));
+  const people = [];
+  for (const x of list(raw.people).map(rec)) {
+    const n = name(x.n), full = str(x.full, 80);
+    if (n && full && people.length < 80 && !people.some(y => y.n === n)) people.push({n, full});
+  }
+  const rules = list(raw.rules).map(rec).filter(x => SITES.includes(x.site) && str(x.t, 300)).slice(0, 6).map(x => ({site: x.site, t: str(x.t, 300)}));
+  const look = list(raw.look).map(x => str(x, 200)).filter(Boolean).slice(0, 20);
+  return {kind: "call", sheets, days, notes, people, rules, look};
+}
+// Every slot has a day, a night or day slot and two people, or none is kept:
+// half a swap would be wrong. No site is both.
+function swapClean(raw, near) {
+  const slots = [];
+  for (const x of list(raw.slots).map(rec)) {
+    const site = x.site == null ? "both" : x.site, from = name(x.from), to = name(x.to);
+    if (!near(x.d) || !SWAP_SITES.includes(site) || !SLOTS.includes(x.slot) || !from || !to || from.toLowerCase() === to.toLowerCase()) return null;
+    slots.push({d: x.d, site, slot: x.slot, from, to});
+  }
+  return slots.length && slots.length <= 8 ? {kind: "callswap", slots} : null;
+}
 // One result from Claude made whole, for the item it came from, or null:
 // only the fields GI Hub reads, cut to size, real days near when it was said.
 export function resultClean(raw, item) {
   if (!raw || typeof raw !== "object") return null;
   const sd = item.said.slice(0, 10), shm = item.said.slice(11, 16);
   const day = v => realDay(v) && v >= addDays(sd, -1) && v <= addDays(sd, 400) ? v : null;
+  const near = v => realDay(v) && v >= addDays(sd, -60) && v <= addDays(sd, 400);
   let r;
   if (raw.kind === "event") {
     const t = str(raw.t, 120), d = day(raw.d), s = hm(raw.s), e = s ? hm(raw.e) : null, d2 = day(raw.d2), n = str(raw.n, 500);
@@ -131,14 +189,21 @@ export function resultClean(raw, item) {
     const t = str(raw.t, TEXT_MAX);
     if (!t) return null;
     r = {kind: "note", t};
+  } else if (raw.kind === "call") {
+    if (!(r = callClean(raw, near))) return null;
+  } else if (raw.kind === "callswap") {
+    if (!(r = swapClean(raw, near))) return null;
   } else return null;
   if (raw.chk === true && ["event", "todo", "change"].includes(r.kind)) r.chk = true;
   r = {id: tellId("a"), item: item.id, ...r, said: item.said, off: item.off};
+  const w = [...new Set(list(raw.with).filter(x => typeof x === "string" && ITEM_ID.test(x) && x !== item.id))].slice(0, 10);
+  if (w.length) r.with = w;
   r.line = resultLine(r);
   return r;
 }
 // What a result says in the "added" notification and on the Claude added card.
-// A scope case never says more than that it's there.
+// A scope case never says more than that it's there, a call schedule or swap
+// no more than its dates.
 export function resultLine(r) {
   const when = (d, s) => dayWords(d) + (s ? ", " + s : "");
   let line;
@@ -148,6 +213,11 @@ export function resultLine(r) {
   else if (r.kind === "scope") line = "Scope case, check it in Endo";
   else if (r.kind === "pearl") line = "Pearl: " + cut(r.t, 60);
   else if (r.kind === "idea") line = `${r.for === "heidi" ? "Heidi" : "GI Hub"} idea, waits for the desktop`;
+  else if (r.kind === "call") line = `Call schedule, ${dayWords(r.sheets.map(x => x.from).sort()[0])} to ${dayWords(r.sheets.map(x => x.to).sort().at(-1))}, check it in Call`;
+  else if (r.kind === "callswap") {
+    const ds = [...new Set(r.slots.map(x => x.d))];
+    line = ds.length === 1 ? `Call swap on ${dayWords(ds[0])}, check it in Call` : `Call swap, ${ds.length} days, check it in Call`;
+  }
   else line = "Note: " + cut(r.t, 60);
   return r.chk ? line + " (check this)" : line;
 }
@@ -255,36 +325,51 @@ const OPS = {
   // waiting was filed already (a late second run): skipped. A result that
   // can't be used never loses what was said: the item's own words go in as a
   // note, beside the results that could (in place of them all, if none could).
+  // The items a result came with (one share's other sheets) are filed with it.
+  // drop: the shared files filed here that no result keeps, for the Worker to delete.
   file: {who: ["claude"], async run(b, now) {
     if (!Array.isArray(b.results)) return [400, {error: "results, a list"}];
     if (b.results.length > RESULTS_MAX) return [413, {error: "too many results"}];
-    const inbox = (await this.storage.get("inbox")) || [], byItem = new Map();
+    const inbox = (await this.storage.get("inbox")) || [], byItem = new Map(), waiting = new Map(inbox.map(x => [x.id, x]));
     for (const raw of b.results) if (raw && typeof raw.item === "string") byItem.set(raw.item, [...(byItem.get(raw.item) || []), raw]);
     const results = fresh((await this.storage.get("results")) || [], now), tests = (await this.storage.get("tests")) || {};
-    const added = [], ideas = [];
+    const added = [], ideas = [], filed = new Set();
     let kept = 0, skipped = 0;
     for (const [id, raws] of byItem) {
-      const i = inbox.findIndex(x => x.id === id);
-      if (i < 0) { skipped += raws.length; continue; }
-      const item = inbox[i];
+      const item = waiting.get(id);
+      if (!item) { skipped += raws.length; continue; }
+      // What came with it, whether or not its results can be used: waiting, and a test only with a test.
+      const own = [id, ...raws.flatMap(r => list(rec(r).with)).filter(w => w !== id && waiting.has(w) && !waiting.get(w).test === !item.test)];
       const good = raws.map(r => resultClean(r, item)).filter(Boolean);
-      const rs = good.length === raws.length ? good : [...good, resultClean({kind: "note", t: item.text}, item)];
-      for (const r of rs) r.at = now;
+      const rs = good.length === raws.length ? good : [...good, resultClean({kind: "note", t: item.file ? UNREAD : item.text}, item)];
+      for (const r of rs) {
+        r.at = now;
+        if (r.with && !(r.with = r.with.filter(w => own.includes(w))).length) delete r.with;
+        // A call result keeps its sheets' pictures: its own files, never a test's.
+        if (r.kind !== "call") continue;
+        const mine = [id, ...(r.with || [])].filter(w => waiting.get(w).file);
+        r.sheets = r.sheets.map(x => !x.file || mine.includes(x.file) ? x : {site: x.site, from: x.from, to: x.to});
+        const keep = [...new Set(r.sheets.map(x => x.file).filter(Boolean))];
+        if (keep.length && !item.test) r.keep = keep;
+      }
       kept += rs.length;
-      inbox.splice(i, 1);
+      for (const w of own) filed.add(w);
       if (item.test) { tests[id] = rs; continue; }
       results.push(...rs); added.push(...rs);
       for (const r of rs) if (r.kind === "idea") ideas.push({id: r.id, for: r.for, t: r.t, said: r.said});
     }
     results.splice(0, Math.max(0, results.length - RESULTS_MAX));
+    const keep = new Set(added.flatMap(r => r.keep || []));
+    const drop = inbox.filter(x => filed.has(x.id) && x.file && !x.test && !keep.has(x.id)).map(x => x.id);
+    const rest = inbox.filter(x => !filed.has(x.id));
     // The run is over once nothing it took still waits.
-    const run = (await this.storage.get("run")) || {}, left = (run.took || []).filter(id => inbox.some(x => x.id === id));
-    await this.storage.put("inbox", inbox);
+    const run = (await this.storage.get("run")) || {}, left = (run.took || []).filter(id => rest.some(x => x.id === id));
+    await this.storage.put("inbox", rest);
     await this.storage.put("results", results);
     if (Object.keys(tests).length) await this.storage.put("tests", tests);
     await this.storage.put("run", left.length ? run : {});
     if (kept) await this.storage.put("last", now);
-    return [200, {ok: true, kept, skipped, left, ideas, added: added.length ? {kind: "added", t: now, lines: added.slice(0, LINES).map(r => r.line),
+    return [200, {ok: true, kept, skipped, left, drop, ideas, added: added.length ? {kind: "added", t: now, lines: added.slice(0, LINES).map(r => r.line),
       more: Math.max(0, added.length - LINES), fin: added.some(r => r.kind === "change")} : null}];
   }},
   // The phone picks up what it hasn't confirmed, and whether anything waits
@@ -298,14 +383,14 @@ const OPS = {
     return [200, {results: results.filter(r => !r.ack), wait}];
   }},
   // The phone's plan upload confirmed these (the Worker passes them on, with
-  // the time that upload was kept).
+  // the time that upload was kept). drop: the files they kept, on the phone now.
   ack: {who: ["worker"], async run(b, now) {
     const ids = new Set(Array.isArray(b.ids) ? b.ids : []), at = Number.isFinite(b.at) ? b.at : now;
-    const results = (await this.storage.get("results")) || [];
+    const results = (await this.storage.get("results")) || [], drop = [];
     let n = 0;
-    for (const r of results) if (ids.has(r.id) && !r.ack) { r.ack = at; n++; }
+    for (const r of results) if (ids.has(r.id) && !r.ack) { r.ack = at; n++; drop.push(...(r.keep || [])); }
     if (n) await this.storage.put("results", results);
-    return [200, {ok: true, n}];
+    return [200, {ok: true, n, drop}];
   }},
   // The test set (tell-tests.mjs): the 20 go in the inbox as if said at their
   // fixed times, in place of any earlier run's, and Claude files them like

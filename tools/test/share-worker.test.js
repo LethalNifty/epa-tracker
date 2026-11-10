@@ -134,3 +134,38 @@ test("a picture the sender couldn't keep isn't left waiting", async () => {
   assert.equal((await share(c, JPEG)).status, 500);
   assert.deepEqual(await items(c), []);
 });
+
+// ---- What Claude files from them --------------------------------------------------------------------------
+
+const DAYS = ["2026-11-19", "2026-11-20"].map(d => ({d,
+  hsc: {day: {fellows: ["Brook"], res: [], att: "Ames"}, night: {fellow: "Casey", res: [], att: "Birch"}},
+  stb: {day: {fellows: ["Rowan"], res: [], att: "Cole"}, night: {fellow: "Casey", res: [], att: "Dunn"}}}));
+const call = (h, s) => ({item: h, with: [s], kind: "call", days: DAYS, notes: [], people: [], rules: [], look: [],
+  sheets: [{site: "hsc", from: "2026-11-19", to: "2026-12-16", file: h}, {site: "stb", from: "2026-11-19", to: "2026-12-16", file: s}]});
+const results = (c, list) => c.json(CK, "POST", "/results", {results: list});
+
+test("confirming a call result lets the sender delete its pictures", async () => {
+  const c = await sender();
+  await share(c, PNG, "image/png");
+  await share(c, JPEG);
+  const [h, s] = await items(c);
+  assert.equal((await results(c, [call(h.id, s.id)])).status, 200);
+  assert.equal(files(c).length, 2, "kept for the phone");
+  const got = (await (await c.call(PT, "GET", "/results")).json()).results;
+  assert.deepEqual(got.map(x => x.kind), ["call"]);
+  const pic = await c.call(PT, "GET", "/file/" + s.id);
+  assert.equal(pic.status, 200);
+  assert.equal(pic.headers.get("Content-Type"), "image/jpeg");
+  assert.deepEqual(new Uint8Array(await pic.arrayBuffer()), JPEG);
+  assert.equal((await c.json(PT, "PUT", "/alerts", {list: [], ack: [got[0].id]})).status, 200);
+  assert.deepEqual(files(c), []);
+  assert.equal((await c.call(PT, "GET", "/file/" + s.id)).status, 404);
+});
+
+test("Claude's result drops the files it doesn't keep", async () => {
+  const c = await sender();
+  await share(c, JPEG);
+  const [it] = await items(c);
+  assert.equal((await results(c, [{item: it.id, kind: "event", t: "Flight to Toronto", d: "2026-12-23", s: "11:00"}])).status, 200);
+  assert.deepEqual(files(c), []);
+});

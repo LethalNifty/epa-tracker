@@ -486,3 +486,118 @@ test("a file the sender couldn't keep leaves the inbox", async () => {
   assert.equal((await op(b, "unshare", {who: "worker", body: {id: FID}})).status, 200);
   assert.deepEqual((await op(b, "items", {key: CK})).data.items, []);
 });
+
+// ---- Call schedules and swaps ---------------------------------------------------------------------------
+
+const H1 = "ihscsheet01", S1 = "istbsheet01";
+const plusDays = (iso, k) => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + k)).toISOString().slice(0, 10);
+const team = (k = 0) => ({
+  hsc: {day: {fellows: ["Brook"], res: ["Resident G"], att: "Ames"}, night: {fellow: k % 2 ? "Casey" : "Quill", res: ["Resident K"], att: "Birch"}},
+  stb: {day: {fellows: ["Rowan"], res: [], att: "Cole", tpn: ["Sage"]}, night: {fellow: k % 2 ? "Casey" : "Quill", res: ["Resident M"], att: "Dunn"}},
+});
+const CALL = (n = 2) => ({item: H1, with: [S1], kind: "call",
+  sheets: [{site: "hsc", from: "2026-11-19", to: "2026-12-16", file: H1}, {site: "stb", from: "2026-11-19", to: "2026-12-16", file: S1}],
+  days: Array.from({length: n}, (_, k) => ({d: plusDays("2026-11-19", k), ...team(k)})),
+  notes: [{d: "2026-11-20", site: "hsc", who: "Brook", t: "No call 1200-1700"}],
+  people: [{n: "Brook", full: "Brook Ashdown"}],
+  rules: [{site: "stb", t: "No fellow overnight: the junior resident takes inside calls, the attending outside calls"}],
+  look: ["Fri 20 Nov: the St. Boniface night attending is hard to read"]});
+const twoSheets = async b => { await share(b, {id: H1}); await share(b, {id: S1}); };
+
+test("a call result from two sheets files both items and keeps both pictures", async () => {
+  const b = await ready();
+  await twoSheets(b);
+  await items(b);
+  const r = await file(b, [CALL()]);
+  assert.equal(r.data.kept, 1);
+  assert.deepEqual(r.data.left, []);
+  assert.deepEqual(r.data.drop, []);
+  assert.deepEqual(r.data.added.lines, ["Call schedule, Thu 19 Nov to Wed 16 Dec, check it in Call"]);
+  assert.deepEqual(await items(b), []);
+  const [got, ...rest] = (await pick(b)).data.results;
+  assert.deepEqual(rest, []);
+  const {item, ...want} = CALL();
+  for (const [k, v] of Object.entries(want)) assert.deepEqual(got[k], v, k);
+  assert.deepEqual(got.keep, [H1, S1]);
+  // The phone may read both pictures now, and Claude no longer.
+  for (const id of [H1, S1]) {
+    assert.equal((await op(b, "fileok", {who: "phone", body: {id}})).status, 200);
+    assert.equal((await op(b, "fileok", {key: CK, body: {id}})).status, 404);
+  }
+});
+
+test("a booking picture filed as an event drops its file", async () => {
+  const b = await ready();
+  await share(b);
+  const r = await file(b, [{item: FID, kind: "event", t: "Flight to Toronto", d: "2026-12-23", s: "11:00"}]);
+  assert.deepEqual(r.data.drop, [FID]);
+  const [got] = (await pick(b)).data.results;
+  assert.equal(got.keep, undefined);
+  assert.equal((await op(b, "fileok", {who: "phone", body: {id: FID}})).status, 404);
+});
+
+test("a shared file Claude couldn't read is a note, and its pictures go", async () => {
+  const b = await ready();
+  await twoSheets(b);
+  await items(b);
+  const r = await file(b, [{...CALL(), days: []}]);
+  assert.deepEqual(r.data.left, []);
+  assert.deepEqual(r.data.drop, [H1, S1]);
+  assert.deepEqual((await pick(b)).data.results.map(x => [x.kind, x.line]), [["note", "Note: A shared file Claude couldn't read"]]);
+});
+
+test("the call line and the swap line carry dates only", async () => {
+  const {resultLine} = await mod("tell.mjs");
+  const swap = (d, from, to) => ({d, site: "both", slot: "night", from, to});
+  const lines = [
+    resultLine({kind: "call", sheets: [{site: "stb", from: "2026-11-26", to: "2026-12-16"}, {site: "hsc", from: "2026-11-19", to: "2026-12-09"}]}),
+    resultLine({kind: "callswap", slots: [swap("2026-11-30", "me", "Casey"), {...swap("2026-11-30", "Casey", "me"), slot: "day"}]}),
+    resultLine({kind: "callswap", slots: [swap("2026-12-03", "Casey", "me"), swap("2026-11-30", "me", "Casey")]}),
+  ];
+  assert.deepEqual(lines, ["Call schedule, Thu 19 Nov to Wed 16 Dec, check it in Call", "Call swap on Mon 30 Nov, check it in Call",
+    "Call swap, 2 days, check it in Call"]);
+  for (const line of lines) for (const n of ["Casey", "Brook"]) assert.ok(!line.includes(n), line);
+});
+
+test("callswap needs a day, a slot and two names", async () => {
+  const {resultClean} = await mod("tell.mjs");
+  const item = {id: "iaaaaaaaaaa", text: "I swapped my Nov 30 night with Casey", said: AT, off: -300};
+  const ok = {d: "2026-11-30", site: "both", slot: "night", from: "me", to: "Casey"};
+  const r = resultClean({kind: "callswap", slots: [ok]}, item);
+  assert.deepEqual(r.slots, [ok]);
+  assert.equal(r.line, "Call swap on Mon 30 Nov, check it in Call");
+  const {site, ...noSite} = ok;
+  assert.deepEqual(resultClean({kind: "callswap", slots: [noSite]}, item).slots, [ok], "no site is both");
+  for (const bad of [{...ok, d: "2026-11-31"}, {...ok, slot: "evening"}, {...ok, from: ""}, {...ok, to: " "}, {...ok, site: "vgh"}, {...ok, to: "Me"}])
+    assert.equal(resultClean({kind: "callswap", slots: [ok, bad]}, item), null, JSON.stringify(bad));
+  assert.equal(resultClean({kind: "callswap", slots: []}, item), null);
+  assert.equal(resultClean({kind: "callswap", slots: Array(9).fill(ok)}, item), null);
+  // Through the inbox, a swap that can't be used keeps your words.
+  const b = await ready();
+  await say(b, item.text);
+  const [x] = await items(b);
+  await file(b, [{item: x.id, kind: "callswap", slots: [{...ok, slot: "evening"}]}]);
+  assert.deepEqual((await pick(b)).data.results.map(y => [y.kind, y.t]), [["note", item.text]]);
+});
+
+test("a call result is cut to size", async () => {
+  const {resultClean} = await mod("tell.mjs");
+  const item = {id: H1, said: AT, off: -300, file: {type: "image/png", size: 9}};
+  const raw = CALL(70);
+  raw.sheets = [{site: "hsc", from: "2026-11-19", to: "2026-12-16", file: H1}, {site: "hsc", from: "2026-12-17", to: "2027-01-27"},
+    {site: "stb", from: "2026-11-19", to: "2026-12-16", file: S1}, {site: "stb", from: "2026-12-17", to: "2027-01-27"}];
+  raw.days[0].hsc.night.fellow = "Q".repeat(50);
+  raw.days[0].hsc.day.fellows = ["A", "B", "C", "D", "E", "F"];
+  const r = resultClean(raw, item);
+  assert.equal(r.days.length, 62);
+  assert.equal(r.days.at(-1).d, "2027-01-19");
+  assert.equal(r.days[0].hsc.night.fellow, "Q".repeat(40));
+  assert.deepEqual(r.days[0].hsc.day.fellows, ["A", "B", "C", "D"]);
+  // A day no sheet of that site covers is left out at that site.
+  const one = CALL(3);
+  one.sheets = [one.sheets[0]];
+  assert.deepEqual(resultClean(one, item).days.map(x => [x.d, !!x.hsc, !!x.stb]),
+    [["2026-11-19", true, false], ["2026-11-20", true, false], ["2026-11-21", true, false]]);
+  assert.equal(resultClean({...CALL(), sheets: []}, item), null);
+  assert.equal(resultClean({...CALL(), days: [{d: "2026-11-31", ...team()}]}, item), null);
+});
