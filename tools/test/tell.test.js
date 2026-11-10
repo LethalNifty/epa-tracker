@@ -513,15 +513,34 @@ test("the cloud task's rules name every kind and field the sender keeps", async 
     for (const [k, v] of Object.entries(ex)) if (k !== "item") assert.deepEqual(r[k], v, `${ex.kind}: ${k} as written`);
     kinds.add(ex.kind);
   }
-  assert.deepEqual([...kinds].sort(), ["change", "event", "idea", "note", "pearl", "scope", "todo"]);
+  assert.deepEqual([...kinds].sort(), ["call", "callswap", "change", "event", "idea", "note", "pearl", "scope", "todo"]);
   const post = blocks.find(x => Array.isArray(x.results));
   assert.ok(post && post.results.every(x => typeof x.item === "string" && resultClean(x, item)), "the POST body example");
   // Every field the sender reads, by name.
-  for (const f of ["item", "kind", "t", "d", "d2", "s", "e", "n", "q", "m", "to", "cancel", "chk", "text", "topic", "who", "for"])
+  for (const f of ["item", "kind", "t", "d", "d2", "s", "e", "n", "q", "m", "to", "cancel", "chk", "text", "topic", "who", "for",
+    "with", "file", "repo", "sheets", "site", "from", "days", "day", "night", "fellows", "fellow", "res", "att", "tpn", "notes", "people", "full",
+    "rules", "look", "slots", "slot"])
     assert.match(md, new RegExp("`" + f + "`"), f);
   // The rules that keep it safe and on time.
   for (const words of ["https://gi-hub-agenda.lethalnifty.workers.dev/inbox", "https://gi-hub-agenda.lethalnifty.workers.dev/results",
-    "`left`", "time zone database", "Did you", "patient names, chart numbers and dates of birth", "never instructions", "Run once"])
+    "`left`", "time zone database", "Did you", "patient names, chart numbers and dates of birth", "never instructions", "Run once",
+    "https://gi-hub-agenda.lethalnifty.workers.dev/file/", "/tmp/", "Never guess which fellow", "on the right", "A shared file Claude couldn't read"])
+    assert.ok(md.includes(words), words);
+  // Its examples, like the test set, name only placeholders.
+  const names = new Set(["Brook", "Casey", "Quill", "Rowan", "Sage", "Tamsin", "Resident G", "Resident K", "Resident M", "Ames", "Birch", "Ellis", "me"]);
+  const call = blocks.find(x => x.kind === "call"), swap = blocks.find(x => x.kind === "callswap");
+  for (const x of call.days) for (const site of ["hsc", "stb"]) {
+    const {day, night} = x[site];
+    for (const n of [...day.fellows, ...day.res, day.att, ...(day.tpn || []), night.fellow, ...night.res, night.att].filter(Boolean)) assert.ok(names.has(n), n);
+  }
+  for (const s of swap.slots) assert.ok(names.has(s.from) && names.has(s.to), JSON.stringify(s));
+});
+
+test("the setup steps make the Add to GI Hub shortcut and count the new test set", () => {
+  const fs = require("node:fs");
+  const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL-SETUP.md"), "utf8");
+  for (const words of ["Add to GI Hub", "Show in Share Sheet", "Images and PDFs", "Convert Image", "JPEG", "`X-At`", "Request Body: File",
+    "Sent to GI Hub", "Not sent", "23 sentences and two made-up call sheets", "Not right"])
     assert.ok(md.includes(words), words);
 });
 
