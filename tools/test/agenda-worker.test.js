@@ -417,16 +417,16 @@ test("the test run goes through Claude like anything said, and never reaches the
   assert.equal((await call(w, e, "POST", "/tell/test", {tok: SK})).status, 401);
   assert.equal((await call(w, e, "POST", "/tell/test")).status, 200);
   const {items} = await (await call(w, e, "GET", "/inbox", {tok: CK})).json();
-  assert.equal(items.length, 20);
+  assert.equal(items.length, 25, "23 things said and the two made-up sheets");
   assert.equal(items[0].said, "2026-11-09T14:05:00-05:00", "said at its fixed time, not now");
   const push = pushService();
   const res = await call(w, e, "POST", "/results", {tok: CK, fetchImpl: push, body: {results: items.map(x => ({item: x.id, kind: "note", t: x.text}))}});
-  assert.equal((await res.json()).kept, 20);
+  assert.equal((await res.json()).kept, 25);
   assert.equal(push.got.length, 0);
   assert.deepEqual((await (await call(w, e, "GET", "/results")).json()).results, []);
-  // Filed as notes, only the two that are notes are right.
+  // Filed as notes, only the two that are notes are right, and notes aren't a call schedule.
   const score = await (await call(w, e, "GET", "/tell/test")).json();
-  assert.deepEqual([score.n, score.done, score.right, score.misses.length], [20, 20, 2, 18]);
+  assert.deepEqual([score.n, score.done, score.right, score.misses.length], [24, 24, 2, 22]);
 });
 
 test("the phone's own reminders still go when the inbox doesn't answer", async () => {
