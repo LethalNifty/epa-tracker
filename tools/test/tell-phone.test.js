@@ -282,6 +282,36 @@ test("the card lists what was added today with Undo, and folds away after a day"
   assert.equal(cardOf(week(h)), "");
 });
 
+test("a scope case and a which-one question wait on the card until you deal with them", async () => {
+  const {c, h} = await tellPhone([ev("a1", "Dentist", "2026-11-13", "09:00", "10:00"), ev("a2", "Dentist", "2026-11-20", "09:00", "10:00")]);
+  const r = await files(c, [{kind: "scope", text: "Colonoscopy, two small polyps taken with a cold snare", d: "2026-11-09"},
+    {kind: "change", m: "dentist", to: {s: "11:00"}}, {kind: "note", t: "The clinic parking moved to level 3"}], "A scope case, and the dentist at 11");
+  await pick(h, "2026-11-09T14:05");
+  // Three days on, the note's row has folded away; the case and the question still wait.
+  h.setNow("2026-11-12T14:05");
+  let card = cardOf(week(h));
+  assert.match(card, new RegExp(`data-action="telscope" data-id="${r[0].id}"`));
+  assert.match(card, new RegExp(`data-action="telpick" data-id="${r[1].id}"`));
+  assert.doesNotMatch(card, /Note: The clinic parking/);
+  // Check in Endo hands the words to the Case box, and the row goes.
+  h.click("telscope", {id: r[0].id});
+  assert.equal(h.val("scopeCap.text"), "Colonoscopy, two small polyps taken with a cold snare");
+  assert.doesNotMatch(cardOf(h.html()), /telscope/);
+  // The answer shows for a day from now, with Undo.
+  h.click("telpick", {id: r[1].id, item: "a2"});
+  card = cardOf(h.html());
+  assert.match(card, /Moved: Dentist to Fri 20 Nov, 11:00/);
+  assert.match(card, new RegExp(`data-action="telundo" data-id="${r[1].id}"`));
+  // However much comes after, a row still waiting is kept.
+  const k = kept(h);
+  k.added.unshift({id: "aaaaaaaaaa1", kind: "scope", line: "Scope case, check it in Endo", at: at(2026, 11, 1, 9), scope: {text: "Gastroscopy, normal", d: "2026-11-01"}});
+  for (let i = 0; i < 45; i++) k.added.push({id: "an" + String(i).padStart(9, "0"), kind: "note", line: "Note " + i, at: at(2026, 11, 12, 14)});
+  h.store.set("gi-tell-v1", JSON.stringify(k)); h.run("tellKept = null");
+  await pick(h, "2026-11-12T15:00");
+  assert.ok(kept(h).added.some(e => e.id === "aaaaaaaaaa1"));
+  assert.equal(kept(h).added.length, 40);
+});
+
 test("Undo takes back each kind", async () => {
   const {c, h} = await tellPhone([ev("a1", "Dentist", "2026-11-13", "09:00", "10:00"), ev("a2", "Physio", "2026-11-16", "16:00", "17:00")]);
   const r = await files(c, [

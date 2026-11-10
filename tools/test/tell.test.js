@@ -169,6 +169,16 @@ test("what Claude couldn't file becomes a note in your words", async () => {
   assert.equal((await op(b, "file", {key: CK, body: {results: "nope"}})).status, 400);
 });
 
+test("a result Claude got wrong keeps your words as a note, beside the ones it got right", async () => {
+  const b = await ready();
+  await say(b, "Pearl: lactulose first, and remind me to email the program office on the 31st");
+  const [x] = await items(b);
+  const r = await file(b, [{item: x.id, kind: "pearl", t: "Lactulose first"}, {item: x.id, kind: "todo", t: "Email the program office", d: "2026-11-31"}]);
+  assert.equal(r.data.kept, 2);
+  assert.deepEqual((await pick(b)).data.results.map(x => [x.kind, x.t]),
+    [["pearl", "Lactulose first"], ["note", "Pearl: lactulose first, and remind me to email the program office on the 31st"]]);
+});
+
 test("a to-do without a time asks at the next 08:00", async () => {
   const {resultClean} = await mod("tell.mjs");
   const item = said => ({id: "iaaaaaaaaaa", text: "x", said, off: -300});

@@ -221,8 +221,9 @@ const OPS = {
     return [200, {items: inbox.map(x => ({id: x.id, text: x.text, said: x.said}))}];
   }},
   // Claude's results, by the item each came from. An item that's no longer
-  // waiting was filed already (a late second run): skipped. An item whose
-  // results are all unusable becomes a note in its own words.
+  // waiting was filed already (a late second run): skipped. A result that
+  // can't be used never loses what was said: the item's own words go in as a
+  // note, beside the results that could (in place of them all, if none could).
   file: {who: ["claude"], async run(b, now) {
     if (!Array.isArray(b.results)) return [400, {error: "results, a list"}];
     if (b.results.length > RESULTS_MAX) return [413, {error: "too many results"}];
@@ -235,8 +236,8 @@ const OPS = {
       const i = inbox.findIndex(x => x.id === id);
       if (i < 0) { skipped += raws.length; continue; }
       const item = inbox[i];
-      let rs = raws.map(r => resultClean(r, item)).filter(Boolean);
-      if (!rs.length) rs = [resultClean({kind: "note", t: item.text}, item)];
+      const good = raws.map(r => resultClean(r, item)).filter(Boolean);
+      const rs = good.length === raws.length ? good : [...good, resultClean({kind: "note", t: item.text}, item)];
       for (const r of rs) r.at = now;
       kept += rs.length;
       inbox.splice(i, 1);

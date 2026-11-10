@@ -38,7 +38,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view
 - alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before; either can be turned off per event, and an all-day event gets the evening one only
-- to-dos: a day and time, then one notification asking whether it's done (Done, Tomorrow or Drop it); open ones show on Week until done
+- to-dos: a day and time; at that time one notification asks whether it's done (Done, Tomorrow or Drop it), and Week asks too for the rest of that day; one never answered stays on its day in Agenda, unasked
 - Notes: things to keep that aren't on a day yet, each one tap from becoming an event or a to-do
 - Tell GI Hub (full app only): say it to a Back Tap shortcut, or type it on the + (Tell); Claude's cloud task files it in a few minutes as events, to-dos, changes, scope cases, pearls, ideas or notes, and a Claude added card at the top of Week shows each with Undo
 

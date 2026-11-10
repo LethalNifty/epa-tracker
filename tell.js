@@ -100,7 +100,7 @@ function tellPick(force) {
       if (!k.ack.includes(res.id)) k.ack.push(res.id);
     }
     const was = JSON.stringify(k.wait);
-    k.seen = k.seen.slice(-TELL_SEEN_MAX); k.ack = k.ack.slice(-TELL_ACK_MAX); k.added = k.added.slice(-TELL_ADDED_MAX);
+    k.seen = k.seen.slice(-TELL_SEEN_MAX); k.ack = k.ack.slice(-TELL_ACK_MAX); k.added = tellTrim(k.added);
     k.wait = r.data.wait || null;
     tellSave();
     const a = document.activeElement;
@@ -217,7 +217,14 @@ function tellMove(it, to) {
 // order it filed them within one pickup), each with Undo; a scope case with
 // Check in Endo, a change that matched several with its choices. Under it,
 // when Claude is slow or its last start failed: Waiting for Claude.
+// A row that waits on you (a scope case to check, a question to answer) stays
+// past the day until you deal with it, and the 40 rows kept never push it out.
 const TELL_SHOW = 24 * 3600000;
+const tellWaits = e => !!(e.scope || e.ask);
+function tellTrim(list) {
+  let drop = list.length - TELL_ADDED_MAX;
+  return list.filter(e => { if (drop > 0 && !tellWaits(e)) { drop--; return false; } return true; });
+}
 function tellRowHTML(e) {
   const id = esc(e.id), line = esc(e.line.replace(/ \(check this\)$/, ""));
   const open = (e.kind === "event" || e.kind === "todo") && agState().items.some(x => x.id === e.id);
@@ -232,7 +239,7 @@ function tellRowHTML(e) {
 }
 function tellCardHTML() {
   const k = tellLoad(), now = callNow();
-  const rows = k.added.map((e, i) => [e, i]).filter(([e]) => e.at > now - TELL_SHOW).sort((x, y) => y[0].at - x[0].at || x[1] - y[1]).map(([e]) => e);
+  const rows = k.added.map((e, i) => [e, i]).filter(([e]) => e.at > now - TELL_SHOW || tellWaits(e)).sort((x, y) => y[0].at - x[0].at || x[1] - y[1]).map(([e]) => e);
   const w = tellOn() && k.wait;
   if (!rows.length && !w) return "";
   const why = w && w.err === "setup" ? ": the task isn't set up yet" : w && w.err ? `: it couldn't start (error ${esc(String(w.err))})` : "";
@@ -262,22 +269,25 @@ function tellUndo(id) {
   showToast(msg);
 }
 // Which one a change meant: it applies to that one, and the row says what it
-// did, with Undo. Neither: nothing changes and the question goes.
+// did, with Undo, for a day from now. Neither: nothing changes and the question goes.
 function tellChoose(id, item) {
   const k = tellLoad(), e = k.added.find(x => x.id === id && x.ask);
   if (!e) return;
   const it = item && agState().items.find(x => x.id === item);
-  if (it) { Object.assign(e, tellDo(it, {cancel: e.ask.cancel, to: e.ask.to, chk: e.chk})); delete e.ask; }
+  if (it) { Object.assign(e, tellDo(it, {cancel: e.ask.cancel, to: e.ask.to, chk: e.chk}), {at: callNow()}); delete e.ask; }
   else { k.added = k.added.filter(x => x !== e); if (item) showToast("That one's gone"); }
   tellSave();
 }
-// A scope case: the + sheet's Case box with its words, read as the day it was said.
+// A scope case: the + sheet's Case box with its words, read as the day it was
+// said. The case is the Case box's now (kept as a draft like anything typed
+// there), so its row goes.
 function tellScope(id) {
-  const e = tellLoad().added.find(x => x.id === id && x.scope);
+  const k = tellLoad(), e = k.added.find(x => x.id === id && x.scope);
   if (!e) return;
   scopeCap = {text: e.scope.text, cards: [], removed: 0, day: e.scope.d};
   scopeOpenCapture();
   scopeRead();
+  k.added = k.added.filter(x => x !== e); tellSave();
 }
 
 // ---- Settings -------------------------------------------------------------------------------------
