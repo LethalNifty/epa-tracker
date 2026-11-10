@@ -1832,6 +1832,7 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
    Everything stays NBI; urgent cases carry the mucosa red of the Call card.
    ============================================================================ */
 .segtabs.three { grid-template-columns: repeat(3, 1fr); }
+.segtabs.four { grid-template-columns: repeat(4, 1fr); }
 .textbtn.sm { min-height: 32px; font-size: 13px; }
 .textbtn .ic.sm { margin-right: 5px; vertical-align: -3px; }
 

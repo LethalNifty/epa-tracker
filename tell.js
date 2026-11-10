@@ -332,6 +332,69 @@ function tellTestScore() {
   });
 }
 
+// ---- The + box -------------------------------------------------------------------------------------
+// With Tell GI Hub on, the + has a fourth switch, Tell: a box for what you'd
+// say to the shortcut, for when talking out loud won't do. It goes to the same
+// inbox with the phone's token, said at the phone's clock and offset.
+// tellSheet: {text, busy, err, focus} while the + flow has it (app.js plusOn "t").
+let tellSheet = null;
+function tellOpen() {
+  if (!tellSheet) tellSheet = {text: "", busy: false, err: null, focus: true};
+}
+// The phone's clock with its offset: 2026-11-09T14:05:00-05:00.
+function tellAt(ms) {
+  const d = new Date(ms), off = -d.getTimezoneOffset(), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` +
+    (off < 0 ? "-" : "+") + p(Math.floor(Math.abs(off) / 60)) + ":" + p(Math.abs(off) % 60);
+}
+function tellSheetHTML() {
+  const s = tellSheet;
+  return `<div class="scrim" data-action="telclose"></div>` +
+    `<div class="sheet tellsheet" role="dialog" aria-modal="true" aria-label="Tell GI Hub">` + plusHeadHTML("telclose") +
+    `<p class="ssub">What you'd say to the shortcut. Claude files it in a few minutes. No patient names or numbers.</p>` +
+    `<section class="monitor capmon" aria-label="Tell GI Hub"><div class="monitor-in">` +
+    `<div class="ov mono"><span>${tellDay(fmtDate(getToday()))}</span><span>Tell</span></div>` +
+    `<textarea id="tellbox" class="capbox" rows="4" maxlength="4000" data-tel="text" placeholder="Dentist Friday at 3" ` +
+    `autocapitalize="sentences" aria-label="Say or type what to tell GI Hub">${esc(s.text)}</textarea>` +
+    `<div class="cap-f"><span class="cap-hint">${ic("mic", "sm")}<span>Tap the mic on your keyboard and say it.</span></span></div></div></section>` +
+    (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
+    `<div class="sactions"><button class="btn primary" data-action="telsay"${s.busy ? " disabled" : ""}>${s.busy ? "Sending…" : "Send to Claude"}</button></div></div>`;
+}
+// Typing keeps the words; nothing redraws.
+function tellField(t) {
+  if (!tellSheet || !t.dataset || t.dataset.tel !== "text") return false;
+  tellSheet.text = t.value;
+  return true;
+}
+// Switching to Tell brings the keyboard up on its box, one tap from the mic.
+function tellAfterRender() {
+  if (!tellSheet || !tellSheet.focus || plusOn !== "t") return;
+  tellSheet.focus = false;
+  const box = document.getElementById("tellbox");
+  if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {}
+}
+// Sent: the + closes and says so. Not sent: the box keeps the words and says
+// why (a toast does, if the box was closed meanwhile).
+function tellSay() {
+  const s = tellSheet;
+  if (!s || s.busy) return;
+  const text = s.text.trim();
+  if (!text) { s.err = "Type or say something first."; return; }
+  s.busy = true; s.err = null;
+  alertsRun(async () => {
+    const r = await alertsAsk("POST", "/inbox", {text, at: tellAt(callNow())});
+    if (r.status === 401) alertsGone = true;
+    const err = r.status === 200 ? null : r.status === 0 ? "Not sent. Try again when you have signal." : "Not sent. " + alertsNoGo(r.status);
+    s.busy = false;
+    if (tellSheet === s) { if (err) s.err = err; else tellSheet = null; }
+    if (!err) showToast("Sent to Claude. It files it in a few minutes.");
+    else if (tellSheet !== s) showToast(err);
+    // Not over someone typing on another part of the +.
+    const a = document.activeElement;
+    if (plusOn === "t" || !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) { route.keepScroll = true; render(); }
+  });
+}
+
 // ---- Taps -------------------------------------------------------------------------------------------
 // Every tel* action. Returns false when it redraws by itself.
 function tellDispatch(act, d) {
@@ -344,5 +407,7 @@ function tellDispatch(act, d) {
   else if (act === "telundo") tellUndo(d.id);
   else if (act === "telpick") tellChoose(d.id, d.item);
   else if (act === "telscope") tellScope(d.id);
+  else if (act === "telsay") tellSay();
+  else if (act === "telclose") tellSheet = null;
   return true;
 }

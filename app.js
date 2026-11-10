@@ -808,11 +808,14 @@ function viewBiopsy(opts = {}) {
 // between the case, EPA observation and pearl sheets, one shown at a time, and
 // each keeps what was typed until the + flow ends: closing, saving or deleting
 // the sheet in view ends it (render checks).
-let plusOn = null;    // "c", "e" or "p" while the + flow is open
+let plusOn = null;    // "c", "e", "p" or "t" while the + flow is open
 const PLUS = [["c", "Case", "scope"], ["e", "EPA", "epas"], ["p", "Pearl", "pearl"]].filter(x => !FELLOWS || x[0] !== "p");
+// With Tell GI Hub on (the full app only), a fourth: Tell, a box for what you'd say to the shortcut.
+const plusTabs = () => typeof tellOn === "function" && tellOn() ? [...PLUS, ["t", "Tell", "mic"]] : PLUS;
 function plusHeadHTML(close) {
-  return `<div class="grab"></div><div class="shead plushead"><div class="segtabs${PLUS.length === 3 ? " three" : ""} plusseg" role="group" aria-label="Log">` +
-    PLUS.map(([k, label, icon]) => `<button class="${plusOn === k ? "on" : ""}" data-action="plusto" data-to="${k}"` +
+  const tabs = plusTabs();
+  return `<div class="grab"></div><div class="shead plushead"><div class="segtabs${{3: " three", 4: " four"}[tabs.length] || ""} plusseg" role="group" aria-label="Log">` +
+    tabs.map(([k, label, icon]) => `<button class="${plusOn === k ? "on" : ""}" data-action="plusto" data-to="${k}"` +
       (plusOn === k ? ` aria-current="true"` : "") + `>${ic(icon, "sm")}${label}</button>`).join("") +
     `</div><button class="iconbtn" data-action="${close}" aria-label="Close">${ic("x")}</button></div>`;
 }
@@ -821,10 +824,12 @@ function plusTo(k) {
   if (k === "c" && !scopeSheet) scopeOpenCapture();
   if (k === "e" && !sheet) openSheet();
   if (k === "p" && !pearlSheet) { pearlOpen(null); pearlSheet.focusBox = true; }
+  if (k === "t" && !FELLOWS) tellOpen();
   plusOn = k; sheetFresh = false; scopeSheetFresh = false; pearlSheetFresh = false;
 }
 function plusEnd() {
   plusOn = null; sheet = null; sheetError = null; pearlSheet = null;
+  if (!FELLOWS) tellSheet = null;
   if (scopeSheet && scopeSheet.kind === "capture") scopeSheet = null;
 }
 const plusShows = k => !plusOn || plusOn === k;
@@ -1095,14 +1100,14 @@ function render() {
   // Opening the app (or coming back to it) on Week powers the monitor on.
   if (p === "week" && !introDone && !setup) { introDone = true; liveBootArm(); }
   // The sheet in view on the + closed (a save, a delete, Close): the + flow ends.
-  if (plusOn && !{c: scopeSheet, e: sheet, p: pearlSheet}[plusOn]) plusEnd();
+  if (plusOn && !{c: scopeSheet, e: sheet, p: pearlSheet, t: !FELLOWS && tellSheet}[plusOn]) plusEnd();
   let html;
   try {
     const body = setup ? felSetupHTML() : p === "week" ? viewWeek() : p === "epas" ? viewEpas() : p === "plan" ? viewPlan() :
       p === "endo" ? viewEndo() : p === "call" ? viewCall() : p === "study" ? viewStudy() : p === "pearls" ? viewPearls() : p === "agenda" ? viewAgenda() : p === "guides" ? viewGuides() : viewEpa(route.code);
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
-      (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
+      (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (!FELLOWS && tellSheet && plusShows("t") ? tellSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
       (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
@@ -1127,6 +1132,7 @@ function render() {
   remindAfterRender();
   guidesAfterRender();
   pearlsAfterRender();
+  if (!FELLOWS) tellAfterRender();
   setAfterRender();
   reviewAfterRender();
   liveAfterRender(p);
@@ -1144,7 +1150,7 @@ function holdPage(on) {
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq);
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq || (!FELLOWS && tellSheet));
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1289,7 +1295,7 @@ document.getElementById("app").addEventListener("submit", ev => {
 document.getElementById("app").addEventListener("input", ev => {
   // The backup passphrase stays in memory, out of every draft.
   if (!FELLOWS && bkField(ev.target)) return;
-  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && watchField(ev.target)) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
+  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && (watchField(ev.target) || tellField(ev.target))) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;

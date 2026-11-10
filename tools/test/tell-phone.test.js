@@ -401,3 +401,85 @@ test("an added push tells the open app to pick up", async () => {
   h.run("appMessage({tell: 1})");
   assert.equal(h.val("__picks"), 1);
 });
+
+// ---- The + box for typing ----------------------------------------------------------------------
+const tabs = h => [...h.html().matchAll(/data-action="plusto" data-to="(\w)"/g)].map(m => m[1]);
+// The + opened, switched to Tell, and words typed in its box.
+function typeTell(h, words) {
+  h.click("scopeopen");
+  h.click("plusto", {to: "t"});
+  h.fire("input", {dataset: {tel: "text"}, value: words});
+}
+
+test("the + has a Tell switch only when Tell GI Hub is on", async () => {
+  const off = await openApp(await sender(at(2026, 11, 9, 14)));
+  off.click("scopeopen");
+  assert.deepEqual(tabs(off), ["c", "e", "p"], "reminders off: no Tell");
+  assert.match(off.html(), /class="segtabs three plusseg"/);
+
+  const {h} = await tellPhone();
+  h.click("setclose"); h.click("scopeopen");
+  assert.deepEqual(tabs(h), ["c", "e", "p", "t"]);
+  assert.match(h.html(), /class="segtabs four plusseg"/);
+  assert.match(h.html(), /data-to="t">[^<]*<svg[^>]*><use href="#i-mic"\/><\/svg>Tell<\/button>/);
+  // Switching to it brings up the keyboard on its box, one tap from the mic.
+  let focused = 0;
+  h.els.tellbox = {focus: () => { focused++; }};
+  h.click("plusto", {to: "t"});
+  assert.equal(h.val("plusOn"), "t");
+  assert.match(h.html(), /<textarea id="tellbox"[^>]*data-tel="text"/);
+  assert.equal(focused, 1);
+  // The words stay while you look at Case and come back.
+  h.fire("input", {dataset: {tel: "text"}, value: "Dentist Friday at 3"});
+  h.click("plusto", {to: "c"}); h.click("plusto", {to: "t"});
+  assert.match(h.html(), />Dentist Friday at 3<\/textarea>/);
+  // Closing ends the + flow.
+  h.click("telclose");
+  assert.equal(h.val("plusOn"), null);
+  assert.ok(!/data-tel="text"/.test(h.html()));
+  assert.equal(h.val("anySheet()"), false);
+
+  h.click("setopen"); h.click("teloff"); await settle(h); h.click("setclose");
+  h.click("scopeopen");
+  assert.deepEqual(tabs(h), ["c", "e", "p"], "turned off: the switch goes");
+});
+
+test("what you type goes to the inbox with the phone's clock and offset", async () => {
+  const {c, h} = await tellPhone();
+  h.click("setclose");
+  h.setNow("2026-11-09T14:05");
+  typeTell(h, "  Dentist Friday at 3  ");
+  h.click("telsay"); await settle(h);
+  assert.deepEqual(c.sent.filter(x => x.what === "POST /inbox").map(x => x.body),
+    [{text: "Dentist Friday at 3", at: "2026-11-09T14:05:00-05:00"}]);
+  const inbox = await c.env.TELL.storage.get("inbox");
+  assert.equal(inbox.length, 1);
+  assert.equal(inbox[0].text, "Dentist Friday at 3");
+  assert.equal(inbox[0].off, -300);
+  // Sent: the + closes and says so.
+  assert.equal(h.val("plusOn"), null);
+  assert.ok(!/data-tel="text"/.test(h.html()));
+  assert.match(h.html(), /Sent to Claude\. It files it in a few minutes\./);
+  // Nothing typed: nothing goes.
+  typeTell(h, "   ");
+  h.click("telsay"); await settle(h);
+  assert.equal(c.sent.filter(x => x.what === "POST /inbox").length, 1);
+  assert.match(h.html(), /Type or say something first\./);
+});
+
+test("with no signal the words stay and say Not sent", async () => {
+  const {c, h} = await tellPhone();
+  h.click("setclose");
+  typeTell(h, "Flight on the 11th at 9:35");
+  c.block = /^POST \/inbox$/;
+  h.click("telsay"); await settle(h);
+  assert.match(h.html(), /Not sent\. Try again when you have signal\./);
+  assert.match(h.html(), />Flight on the 11th at 9:35<\/textarea>/);
+  assert.equal(h.val("plusOn"), "t");
+  assert.equal(await c.env.TELL.storage.get("inbox"), undefined);
+  // With signal again, the same words go.
+  c.block = null;
+  h.click("telsay"); await settle(h);
+  assert.deepEqual((await c.env.TELL.storage.get("inbox")).map(x => x.text), ["Flight on the 11th at 9:35"]);
+  assert.match(h.html(), /Sent to Claude\. It files it in a few minutes\./);
+});
