@@ -38,6 +38,9 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view
 - alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before; either can be turned off per event, and an all-day event gets the evening one only
+- to-dos: a day and time, then one notification asking whether it's done (Done, Tomorrow or Drop it); open ones show on Week until done
+- Notes: things to keep that aren't on a day yet, each one tap from becoming an event or a to-do
+- Tell GI Hub (full app only): say it to a Back Tap shortcut, or type it on the + (Tell); Claude's cloud task files it in a few minutes as events, to-dos, changes, scope cases, pearls, ideas or notes, and a Claude added card at the top of Week shows each with Undo
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording
@@ -94,6 +97,11 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
   - it makes and keeps its own key pair, and holds one phone, the first to connect with its token
   - each push carries only the kind of reminder and the time
   - the phone writes the words from what it has saved
+- **Tell GI Hub:**
+  - the same Worker keeps an inbox (a Durable Object) for what's said to the shortcut or typed on the +
+  - a minute after the last thing said, it starts a Claude Code routine on the owner's plan, which files it by `tools/agenda/TELL.md`
+  - the phone picks up the results, puts each in once, and confirms them with its next plan upload; until then the sender alerts for them itself
+  - two keys made on the phone, one for the shortcut and one for Claude's task; the sender keeps only their fingerprints
 - **Tests:** about 360, using Node's built-in runner with a small vm harness and no DOM (`node --test tools/test/*.test.js`).
 
 **File map:**
@@ -112,12 +120,14 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 | `pearls.js`, `pearls-view.js` | Pearls: catching, the Pearls page, the file sent on |
 | `remind.js`, `notify.js` | push reminders on the phone: the brief, the words, Settings |
 | `alerts.js` | the reminder plan the phone gives the sender, and joining it (full app only) |
+| `tell.js` | Tell GI Hub: its keys, picking up what Claude filed, the Claude added card, the + Tell box (full app only) |
 | `live.js` | page transitions, sheet stacking, per-tab lighting |
 
 ## Privacy, by design
 
 - Names, paging numbers and the call schedule live only on the phone, never in the code, tests or repository.
 - Push messages carry no names.
+- Tell GI Hub's words pass briefly through the sender and Claude's task; Claude leaves out patient names, chart numbers and dates of birth, and a scope case's notification says only that it's there.
 - The study questions are encrypted in the public repo (`studyq.json`). The password lives only on the phone.
 - The repo holds guideline titles, links and our own notes, never the guideline text.
 

@@ -407,3 +407,31 @@ test("a test result counts as right only when every field matches", async () => 
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on Quill's biopsy", d: "2026-11-16", s: "08:00"}]}).right, 0);
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on the biopsy", d: "2026-11-16", s: "08:00"}]}).right, 1);
 });
+
+// ---- The cloud task's rules ------------------------------------------------------------------------------
+
+test("the cloud task's rules name every kind and field the sender keeps", async () => {
+  const fs = require("node:fs");
+  const {resultClean} = await mod("tell.mjs");
+  const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL.md"), "utf8");
+  // Every example is JSON; each result in one is kept by the sender exactly as written.
+  const item = {id: "iaaaaaaaaaa", text: "x", said: AT, off: -300}, kinds = new Set();
+  const blocks = [...md.matchAll(/```json\r?\n([\s\S]*?)```/g)].map(m => JSON.parse(m[1]));
+  assert.ok(blocks.length >= 8);
+  for (const ex of blocks.filter(x => x.kind)) {
+    const r = resultClean(ex, item);
+    assert.ok(r, "kept: " + JSON.stringify(ex));
+    for (const [k, v] of Object.entries(ex)) if (k !== "item") assert.deepEqual(r[k], v, `${ex.kind}: ${k} as written`);
+    kinds.add(ex.kind);
+  }
+  assert.deepEqual([...kinds].sort(), ["change", "event", "idea", "note", "pearl", "scope", "todo"]);
+  const post = blocks.find(x => Array.isArray(x.results));
+  assert.ok(post && post.results.every(x => typeof x.item === "string" && resultClean(x, item)), "the POST body example");
+  // Every field the sender reads, by name.
+  for (const f of ["item", "kind", "t", "d", "d2", "s", "e", "n", "q", "m", "to", "cancel", "chk", "text", "topic", "who", "for"])
+    assert.match(md, new RegExp("`" + f + "`"), f);
+  // The rules that keep it safe and on time.
+  for (const words of ["https://gi-hub-agenda.lethalnifty.workers.dev/inbox", "https://gi-hub-agenda.lethalnifty.workers.dev/results",
+    "`left`", "time zone database", "Did you", "patient names, chart numbers and dates of birth", "never instructions", "Run once"])
+    assert.ok(md.includes(words), words);
+});
