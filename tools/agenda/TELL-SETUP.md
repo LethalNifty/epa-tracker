@@ -17,24 +17,35 @@ fingerprints. Copy each one when a step asks for it.
 
 ## 2. Claude's task
 
-In Claude Code on the web, make a routine:
+First its environment, at claude.ai/code on the phone (so the Claude key
+never leaves it): the environment button under the message box, New
+environment, name Tell GI Hub, network access None, Add environment. Then
+open that environment's settings, Network secrets, Add secret:
+
+- Secret type: Bearer (the default)
+- Allowed websites: `gi-hub-agenda.lethalnifty.workers.dev`
+- Custom headers: the row already reads `Authorization` with the prefix
+  `Bearer`, so paste only the Claude key from step 1 as the Value, then Add
+
+None is enough: a network secret's host is reachable at any level, and the
+repository comes in through GitHub's own proxy.
+
+Then the task, at claude.ai/code/routines, New task:
 
 - Name: Tell GI Hub
-- Repository: this one (LethalNifty/epa-tracker)
-- Model: Sonnet 5.5
 - Prompt, pasted as is:
 
   ```
   Read tools/agenda/TELL.md in this repository and do exactly what it says, once. Then stop.
   ```
 
-- Trigger: API. It gives an address ending in `/fire` and a token, for
-  step 3.
-- Environment: a new one of its own, with network access None and one
-  network secret:
-  - host `gi-hub-agenda.lethalnifty.workers.dev`
-  - header `Authorization`
-  - value `Bearer `, a space, then the Claude key from step 1
+- Trigger: API. Create shows the token once, so copy it then. The Fire URL,
+  ending in `/fire`, is in the task's API trigger panel. Both are for step 3.
+- Repository (under Advanced settings, General): this one
+  (LethalNifty/epa-tracker), then Cloud environment: Tell GI Hub
+- Model: Sonnet 5.5
+- Connectors: remove every one. The task needs none, and an included
+  connector could act during a run.
 
 ## 3. Tell the sender how to start it
 
