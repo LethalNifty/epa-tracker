@@ -454,3 +454,85 @@ test("with a roster and none of your shifts, Call and Week say so, and Clear cal
   assert.deepEqual(h.val("RosterStore.state.days"), {});
   assert.match(text(section(main(h.html()), "Who's on")), /Share the call schedule to GI Hub/);
 });
+
+// ---- A roster file from chat ---------------------------------------------------------------------
+// Call's Import with a file, as the file picker hands it over.
+async function pick(h, name, data) {
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
+  h.fire("change", {id: "callfile", dataset: {}, value: name, files: [{name, arrayBuffer: async () => bytes.slice().buffer}]});
+  for (let i = 0; i < 3; i++) await new Promise(r => setImmediate(r));
+}
+// The file Claude makes in chat: the same reading, with no pictures.
+const chat = days => {
+  const {id, item, line, ...r} = call(days);
+  return {...r, sheets: r.sheets.map(({file, ...x}) => x)};
+};
+const ERR = /<div class="err" role="alert">That file isn't a call schedule GI Hub can read\.<\/div>/;
+
+test("a roster file opens the same check", async () => {
+  const h = phone();
+  // The sender's reading was thrown away; its pictures stay on Call.
+  await take(h, call(block()));
+  h.click("rostcheck", {id: "acall000001"});
+  h.click("rostnot", {id: "acall000001"});
+  h.run(`go({page: "call", from: "week"})`);
+  await pick(h, "GI-Call-Block6.json", JSON.stringify(chat(block())));
+  const id = h.val("route.rost");
+  assert.match(id, /^f[a-z0-9]{10}$/);
+  assert.deepEqual(h.val("[route.page, route.from]"), ["call", "week"]);
+  const page = main(h.html());
+  assert.match(text(page), /^This week Read from the HSC and St\. Boniface sheets Check the new block 5 nights for you · 28 days at both sites/);
+  assert.equal(count(section(page, "Your shifts"), '<article class="cst'), 5);
+  // The pictures kept from the reading thrown away, to read beside it.
+  assert.deepEqual([...section(page, "The sheets").matchAll(/data-action="rostpic" data-id="([^"]+)"/g)].map(m => m[1]), [H1, S1]);
+  assert.match(page, new RegExp(`data-action="rostadd" data-id="${id}">(<svg[^]*?</svg>)?Add to Call<`));
+  // Left for later, it waits on Week like any other.
+  assert.match(text(cardOf(week(h))), /Call schedule, Thu 19 Nov to Wed 16 Dec 5 nights for you Check/);
+  h.click("rostcheck", {id});
+  h.click("rostadd", {id});
+  assert.equal(toast(h), "Call: 5 nights added");
+  assert.deepEqual(shifts(h), CASEY.map(d => `gi-roster-${d}-n`));
+  // Read now, with the pictures kept; Call names the file.
+  assert.deepEqual(h.val("RosterStore.state.sheets.map(x => [x.site, x.pic, !!x.unread])"), [["hsc", H1, false], ["stb", S1, false]]);
+  assert.match(main(h.html()), /Last file: <b>GI-Call-Block6\.json<\/b>/);
+  assert.match(text(cardOf(week(h))), /Call: 5 nights added Undo/);
+});
+
+test("an .ics file still imports as before", async () => {
+  const h = phone();
+  h.run(`go({page: "call", from: "week"})`);
+  await pick(h, "call-sample.ics", require("node:fs").readFileSync(require("node:path").join(__dirname, "fixtures", "call-sample.ics")));
+  assert.match(toast(h), /^Imported \d+ call shifts$/);
+  assert.ok(h.val("CallStore.list().length") > 0);
+  assert.deepEqual(h.val("[route.page, 'rost' in route]"), ["call", false]);
+  assert.deepEqual(h.val("RosterStore.state.pend"), {});
+  assert.doesNotMatch(main(h.html()), /role="alert"/);
+});
+
+test("a JSON file that isn't a roster says so", async () => {
+  const h = phone();
+  h.run(`go({page: "call", from: "week"})`);
+  const empty = {...chat(block()), days: []};
+  for (const [name, src] of [["pearl.json", JSON.stringify({kind: "pearl", t: "x"})], ["block6.json", JSON.stringify(empty)],
+    ["block6.json", "{ not json"], ["list.json", "[1, 2]"]]) {
+    h.run("callError = null");
+    await pick(h, name, src);
+    assert.match(main(h.html()), ERR, name + ": " + src);
+    assert.deepEqual(h.val("[route.page, 'rost' in route]"), ["call", false]);
+    assert.deepEqual(h.val("RosterStore.state.pend"), {});
+  }
+  // A good file after a bad one clears what was said.
+  await pick(h, "GI-Call-Block6.json", JSON.stringify(chat(block())));
+  assert.equal(h.val("callError"), null);
+  assert.match(h.val("route.rost"), /^f[a-z0-9]{10}$/);
+});
+
+test("a swap file from chat opens the swap's check", async () => {
+  const h = phone("2026-11-20T10:00");
+  added(h, call(block()));
+  h.run(`go({page: "call", from: "week"})`);
+  const {id, item, line, ...sw} = swapOf([{d: "2026-12-03", site: "both", slot: "night", from: "me", to: "Sage"}]);
+  await pick(h, "swap.json", JSON.stringify(sw));
+  assert.match(h.val("route.rost"), /^f[a-z0-9]{10}$/);
+  assert.match(text(main(h.html())), /Call swap Check what changed 1 change for you/);
+});

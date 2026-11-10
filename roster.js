@@ -250,7 +250,7 @@ function rosterKeepUndo(id, snap) {
 // A call result in: each sheet replaces its site's days, notes and rules in
 // its dates, and the site's sheets there. A sheet with no picture (a file made
 // in chat) keeps the picture of the sheet it replaces. Then your shifts.
-function rosterAddCall(id, r, now) {
+function rosterAddCall(id, r, now, file = "Shared sheets") {
   const st = RosterStore.state, before = rosterSnap();
   for (const sh of r.sheets) {
     rosterPutSheet(st.days, sh, r.days);
@@ -265,7 +265,7 @@ function rosterAddCall(id, r, now) {
   rosterSortSheets(st.sheets);
   const lo = r.sheets.map(x => x.from).sort()[0], hi = r.sheets.map(x => x.to).sort().pop();
   const n = rosterApplyShifts(lo, hi);
-  if (st.me) CallStore.state.last = {at: new Date(now).toISOString(), file: "Shared sheets", n};
+  if (st.me) CallStore.state.last = {at: new Date(now).toISOString(), file, n};
   rosterKeepUndo(id, before);
   RosterStore.save(); CallStore.save();
   return {n};
@@ -411,6 +411,22 @@ async function rosterTake(res, now) {
   st.pend[res.id] = lost ? {r, at: now, lost} : {r, at: now};
   RosterStore.save();
   return {id: res.id, kind: r.kind, line: typeof res.line === "string" ? res.line : "", at: now, call: res.id};
+}
+
+// ---- A roster file from chat ---------------------------------------------------------------------
+// The file Claude makes in chat after Not right: the same reading, with no
+// pictures. It waits for the same check, with its row on the Claude added
+// card, and the check opens. null when it isn't a roster the phone can use.
+function rosterImport(obj, name, now) {
+  const st = RosterStore.state, r = rosterClean(obj, now), abc = "abcdefghijklmnopqrstuvwxyz0123456789";
+  if (!r) return null;
+  let id;
+  do id = "f" + Array.from({length: 10}, () => abc[Math.floor(Math.random() * abc.length)]).join(""); while (st.pend[id] || st.undo[id]);
+  st.pend[id] = {r, at: now, name: String(name || "").slice(0, 80)};
+  RosterStore.save();
+  if (typeof tellLoad === "function") { tellLoad().added.push({id, kind: r.kind, line: "", at: now, call: id}); tellSave(); }
+  go({page: "call", from: route.page === "call" ? route.from || "week" : route.page, rost: id});
+  return id;
 }
 
 // ---- Tidying ------------------------------------------------------------------------------------

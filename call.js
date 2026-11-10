@@ -271,9 +271,21 @@ function callClear() {
 // locations (Google Drive among them) when one is set. The contents are
 // checked instead.
 function callFileInput() { return `<input type="file" id="callfile" hidden>`; }
+// In the full app a JSON file is a roster file made in chat, which opens its
+// check; any other JSON file isn't a call schedule. The rest is read as .ics.
 function callReadFile(f) {
   if (!f) return;
-  const done = text => { callImport(text, f.name); route.keepScroll = true; render(); };
+  const done = text => {
+    const t = text.replace(/^\uFEFF/, "").trim();
+    if (typeof rosterImport === "function" && (/\.json$/i.test(f.name || "") || t[0] === "{" || t[0] === "[")) {
+      let obj = null;
+      try { obj = JSON.parse(t); } catch (e) {}
+      callError = null;
+      if (obj && rosterImport(obj, f.name, callNow())) return;
+      callError = "That file isn't a call schedule GI Hub can read.";
+    } else callImport(text, f.name);
+    route.keepScroll = true; render();
+  };
   const fail = () => { callError = "Couldn't read that file. Try again."; route.keepScroll = true; render(); };
   if (typeof f.arrayBuffer === "function") f.arrayBuffer().then(b => done(icsText(new Uint8Array(b))), fail);
   else { const rd = new FileReader(); rd.onload = () => done(icsText(new Uint8Array(rd.result))); rd.onerror = fail; rd.readAsArrayBuffer(f); }

@@ -139,11 +139,13 @@ function rosterThumbHTML(pic, sh, note) {
     `<span class="rost-site">${ROSTER_SITE[sh.site]}</span><span class="rost-dates mono">${rosterDay(sh.from)} to ${rosterDay(sh.to)}</span>` +
     (note ? `<span class="rost-chgd">${esc(note)}</span>` : "") + `</button>`;
 }
+// A sheet with no picture (a file made in chat) shows the one Call keeps for it.
 function rosterPicsHTML(r, p) {
-  const pics = r.kind === "call" ? r.sheets.filter(x => x.file) : [];
+  const kept = sh => sh.file || (RosterStore.state.sheets.find(x => x.site === sh.site && x.from <= sh.to && sh.from <= x.to && x.pic) || {}).pic;
+  const pics = r.kind === "call" ? r.sheets.map(sh => [kept(sh), sh]).filter(x => x[0]) : [];
   if (!pics.length && !p.lost) return "";
   return `<section class="sec"><div class="sec-head"><h2>The sheets</h2><span class="mono">Tap one to read it</span></div>` +
-    (pics.length ? `<div class="rost-sheets">${pics.map(sh => rosterThumbHTML(sh.file, sh)).join("")}</div>` : "") +
+    (pics.length ? `<div class="rost-sheets">${pics.map(([pic, sh]) => rosterThumbHTML(pic, sh)).join("")}</div>` : "") +
     (p.lost ? `<p class="rost-note">${p.lost === 1 ? "One picture" : p.lost + " pictures"} didn't reach the phone in time. What Claude read is all here.</p>` : "") + `</section>`;
 }
 // The page for a waiting check, or "" when there's none (done, or thrown away).
@@ -299,7 +301,7 @@ function rosterAdd(id) {
   let msg;
   if (r.kind === "callswap") msg = rosterSwap(id, r, now).n ? "Call updated" : "Nothing in Call changed";
   else {
-    rosterAddCall(id, r, now);
+    rosterAddCall(id, r, now, p.name || undefined);
     msg = pl.over ? "Call updated" : !st.me || !pl.mine.length ? "Call schedule added, no shifts for you" :
       pl.nights ? `Call: ${rosterN(pl.nights, "night")} added` : `Call: ${rosterN(pl.mine.length, "day shift")} added`;
   }
