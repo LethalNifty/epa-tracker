@@ -353,6 +353,29 @@ function rosterNow(now) {
   return h < 8 ? {d: agAddDays(d, -1), slot: "night"} : {d, slot: h < 17 ? "day" : "night"};
 }
 
+// ---- Picking up -----------------------------------------------------------------------------------
+// A call schedule or swap Claude filed, held for a check with the pictures it
+// keeps: the entry for the Claude added card. undefined when a picture didn't
+// come (no signal, or trouble at the sender): the result waits for the next
+// pickup, unconfirmed, so the sender keeps the pictures. A picture already
+// gone (its 3 days are up) doesn't stop the check. null when the phone can't
+// use it, or it's here already.
+async function rosterTake(res, now) {
+  const st = RosterStore.state, r = rosterClean(res, now);
+  if (!r || st.pend[res.id] || st.undo[res.id]) return null;
+  let lost = 0;
+  for (const id of r.kind === "call" ? [...new Set(r.sheets.map(x => x.file).filter(Boolean))] : []) {
+    if (await rosterPics.get(id)) continue;
+    const b = await alertsBytes("/file/" + id);
+    if (b.status === 404) { lost++; continue; }
+    if (b.status !== 200 || !b.bytes) return undefined;
+    try { await rosterPics.put(id, {type: b.type, bytes: b.bytes}); } catch (e) { return undefined; }
+  }
+  st.pend[res.id] = lost ? {r, at: now, lost} : {r, at: now};
+  RosterStore.save();
+  return {id: res.id, kind: r.kind, line: typeof res.line === "string" ? res.line : "", at: now, call: res.id};
+}
+
 // ---- Tidying ------------------------------------------------------------------------------------
 // A sheet's picture goes once its last night is over (08:00 the day after its
 // last day); the sheet, its days and notes 4 weeks after that; and any picture

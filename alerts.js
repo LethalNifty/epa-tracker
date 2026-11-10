@@ -116,6 +116,18 @@ async function alertsAsk(method, p, body, tok = alertsLoad().tok) {
   } catch (e) { return {status: 0, data: null}; }
   finally { clearTimeout(t); }
 }
+// One file from the sender (a shared sheet's picture): {status, bytes, type};
+// status 0 with no connection, or none of it in a minute.
+async function alertsBytes(p, tok = alertsLoad().tok) {
+  if (typeof fetch !== "function") return {status: 0, bytes: null, type: ""};
+  const ctl = typeof AbortController === "function" ? new AbortController() : null, t = ctl && setTimeout(() => ctl.abort(), 60000);
+  try {
+    const res = await fetch(ALERTS_URL + p, {method: "GET", headers: tok ? {Authorization: "Bearer " + tok} : {}, signal: ctl ? ctl.signal : undefined});
+    if (res.status !== 200) return {status: res.status, bytes: null, type: ""};
+    return {status: 200, bytes: await res.arrayBuffer(), type: (res.headers && res.headers.get("Content-Type")) || ""};
+  } catch (e) { return {status: 0, bytes: null, type: ""}; }
+  finally { clearTimeout(t); }
+}
 function alertsRun(fn) {
   alertsWork = (alertsWork || Promise.resolve()).then(fn).catch(() => {});
   return alertsWork;

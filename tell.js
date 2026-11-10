@@ -93,8 +93,12 @@ function tellPick(force) {
     for (const res of r.data.results) {
       if (!res || typeof res.id !== "string" || !TELL_ID.test(res.id)) continue;
       if (!seen.has(res.id)) {
+        // A call schedule or swap comes with its pictures or not at all: without
+        // them it waits for the next pickup, unconfirmed.
+        const roster = res.kind === "call" || res.kind === "callswap";
+        const e = !roster ? tellApply(res, callNow()) : typeof rosterTake === "function" ? await rosterTake(res, callNow()) : null;
+        if (e === undefined) continue;
         seen.add(res.id); k.seen.push(res.id);
-        const e = tellApply(res, callNow());
         if (e) { k.added.push(e); fresh++; }
       }
       if (!k.ack.includes(res.id)) k.ack.push(res.id);
@@ -220,12 +224,13 @@ function tellMove(it, to) {
 // A row that waits on you (a scope case to check, a question to answer) stays
 // past the day until you deal with it, and the 40 rows kept never push it out.
 const TELL_SHOW = 24 * 3600000;
-const tellWaits = e => !!(e.scope || e.ask);
+const tellWaits = e => !!(e.scope || e.ask || (e.call && typeof RosterStore === "object" && RosterStore.state.pend[e.call]));
 function tellTrim(list) {
   let drop = list.length - TELL_ADDED_MAX;
   return list.filter(e => { if (drop > 0 && !tellWaits(e)) { drop--; return false; } return true; });
 }
 function tellRowHTML(e) {
+  if (e.call && typeof rosterRowHTML === "function") return rosterRowHTML(e);
   const id = esc(e.id), line = esc(e.line.replace(/ \(check this\)$/, ""));
   const open = (e.kind === "event" || e.kind === "todo") && agState().items.some(x => x.id === e.id);
   const what = open ? `<button class="tellopen" data-action="agopen" data-id="${id}"><b>${line}</b></button>` : `<b>${line}</b>`;
@@ -259,6 +264,7 @@ function tellUndo(id) {
     const a = agState(), it = agItemClean(u.put), i = a.items.findIndex(x => x.id === u.put.id);
     if (it) { if (i >= 0) a.items[i] = it; else a.items.push(it); Store.save(); }
   } else if (u.note) agRemoveNote(u.note);
+  else if (u.roster) { if (typeof rosterUndo === "function") rosterUndo(u.roster); }
   else if (u.pearl) {
     const p = Store.state.pearls.find(x => x.id === u.pearl);
     if (p && p.sent) msg = "Already sent, so it stays in Pearls";
