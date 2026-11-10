@@ -1268,9 +1268,7 @@ function dispatch(act, d) {
     else go({page: "call", from, focus: act === "callsetup" ? d.site : undefined}); }
   else if (act === "callimport") { document.getElementById("callfile").click(); }
   else if (act === "callclear") {
-    const before = CallStore.snapshot();
-    CallStore.clear(); callError = null;
-    showToast("Call data cleared", () => CallStore.restore(before));
+    showToast("Call data cleared", callClear());
     route.keepScroll = true; render(); }
   else if (act === "remindon" && !FELLOWS) { alertsConnect(); }
   else if (act === "remindtest" && !FELLOWS) { alertsTest(); }
@@ -1431,6 +1429,7 @@ if (navigator.serviceWorker && navigator.serviceWorker.addEventListener)
   navigator.serviceWorker.addEventListener("message", ev => appMessage(ev.data));
 Store.load();
 CallStore.load();
+if (typeof RosterStore === "object") RosterStore.load();
 draftsBoot(openedFromLink);
 render();
 // iOS may clear a web app's storage when the phone runs short of space: ask
@@ -1438,7 +1437,8 @@ render();
 if (navigator.storage && navigator.storage.persist)
   navigator.storage.persisted().then(kept => kept || navigator.storage.persist()).catch(() => {});
 // The fellows' edition has no reminders, study questions or daily backup; it checks its invite code instead.
-if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); backupDaily(); tellPick(); }
+if (!FELLOWS) { remindInit(); studyqInit(); watchCheck(); remindOpened(); backupDaily(); tellPick();
+  if (typeof rosterTidy === "function") rosterTidy(callNow()).catch(() => {}); }
 else felCheckAccess();
 guidesInit();
 // ---- Updates ----------------------------------------------------------------------------

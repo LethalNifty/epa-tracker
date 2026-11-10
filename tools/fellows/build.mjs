@@ -20,9 +20,9 @@ const OUT = path.resolve(process.argv[2] || path.join(ROOT, "dist"));
 // LF throughout, so a Windows checkout (core.autocrlf) builds the same as Cloudflare's.
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\r\n/g, "\n");
 // The owner's watch on the fellows' codes (watch.js), daily backup to
-// Cloudflare (backup.js), reminder sender (alerts.js) and Tell GI Hub
-// (tell.js) never reach the fellows.
-const OWNER_ONLY = ["watch.js", "backup.js", "alerts.js", "tell.js"];
+// Cloudflare (backup.js), reminder sender (alerts.js), Tell GI Hub (tell.js)
+// and the call roster from the shared sheets (roster.js) never reach the fellows.
+const OWNER_ONLY = ["watch.js", "backup.js", "alerts.js", "tell.js", "roster.js"];
 const LEFT_OUT = new Set(["./", "studyq.json", ...OWNER_ONLY]);
 const DESCRIPTION = "EPA tracker, procedure log and guideline library for GI fellows.";
 

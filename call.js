@@ -256,6 +256,14 @@ function callImport(src, name) {
   showToast(msg, () => CallStore.restore(before));
   return {ok: true, added: m.added, changed: m.changed, removed: m.removed};
 }
+// Clear call data: the shifts and numbers, and in the full app the roster from
+// the shared sheets. Returns what puts it all back.
+function callClear() {
+  const before = CallStore.snapshot(), roster = typeof RosterStore === "object" ? RosterStore.snapshot() : null;
+  CallStore.clear(); callError = null;
+  if (roster) { RosterStore.clear(); rosterTidySoon(); }
+  return () => { CallStore.restore(before); if (roster) RosterStore.restore(roster); };
+}
 // No accept filter on the picker: iOS greys out .ics files in some Files
 // locations (Google Drive among them) when one is set. The contents are
 // checked instead.
@@ -391,7 +399,9 @@ function callCardHTML(cs, now) {
 }
 function callSegHTML(x, many) {
   return `<div class="cseg"><div class="cseg-when mono">${many ? `${callWd(x.s)} ${callHM(x.s)} → ${callWd(x.e)} ${callHM(x.e)}` : callRange(x.s, x.e)}</div>` +
-    CALL_SITES.map(([k, short]) => `<div class="cseg-site"><span class="mono">${short}</span><span>${callWho(x[k].att)}</span>` +
+    CALL_SITES.map(([k, short]) => `<div class="cseg-site"><span class="mono">${short}</span>` +
+      // A night whose attending changes at 17:00 names the day one too.
+      `<span>${callWho(x[k].att)}${x[k].day ? ` from ${callHM(x.s)} (${esc(x[k].day)} until then)` : ""}</span>` +
       `<span class="res">${x[k].res ? esc(x[k].res) : "No resident"}</span></div>`).join("") +
     (x.so ? `<div class="cseg-so"><span class="mono">Sign-out</span><span class="v">${callSignout(x.so)}</span></div>` : "") + `</div>`;
 }
