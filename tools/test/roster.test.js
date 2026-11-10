@@ -268,6 +268,27 @@ test("tidy drops a picture after the last night and the roster 4 weeks later", a
   assert.deepEqual(JSON.parse(h.store.get("gi-roster-v1")).sheets, []);
 });
 
+test("a picture an Undo would bring back stays through tidying until its last night is over", async () => {
+  const h = phone();
+  const days = [day("2026-11-20", team(["Brook"], "Casey"), team(["Rowan"], "Casey"))];
+  add(h, call(days, {from: "2026-11-19", to: "2026-12-16"}));
+  // A revised HSC sheet with its own picture: its Undo puts the first one back.
+  add(h, call(days, {id: "acall000002", sheets: [{site: "hsc", from: "2026-11-19", to: "2026-12-16", file: "ihscsheet02"}]}));
+  await h.run(`Promise.all(["${H1}", "${S1}", "ihscsheet02"].map(id => rosterPics.put(id, {type: "image/png", bytes: new ArrayBuffer(4)})))`);
+  h.run(`RosterStore.state.types = {${H1}: "image/png"}`);
+  const keys = async () => (await got(h, `rosterPics.keys()`)).sort();
+  // The next morning the app starts and tidies.
+  await h.run(`rosterTidy(${at(2026, 11, 13, 7, 30)})`);
+  assert.deepEqual(await keys(), [H1, "ihscsheet02", S1]);
+  assert.deepEqual(h.val(`RosterStore.state.types`), {[H1]: "image/png"});
+  h.run(`rosterUndo("acall000002")`);
+  assert.deepEqual(h.val(`RosterStore.state.sheets.map(x => x.pic)`), [H1, S1]);
+  assert.ok(await got(h, `rosterPics.get("${H1}")`), "its picture is still there");
+  // After the block's last night, nothing keeps any of them.
+  await h.run(`rosterTidy(${at(2026, 12, 17, 8, 0)})`);
+  assert.deepEqual(await keys(), []);
+});
+
 test("the roster isn't in the backup and goes with Clear call data", () => {
   const h = phone();
   add(h, call([day("2026-11-20", team(["Brook"], "Casey"), team(["Rowan"], "Casey"))], {people: [{n: "Ames", full: "Morgan Ames"}]}));

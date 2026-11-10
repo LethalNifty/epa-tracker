@@ -432,7 +432,8 @@ function rosterImport(obj, name, now) {
 // ---- Tidying ------------------------------------------------------------------------------------
 // A sheet's picture goes once its last night is over (08:00 the day after its
 // last day); the sheet, its days and notes 4 weeks after that; and any picture
-// that no sheet and no waiting check points to.
+// that no sheet, no waiting check and no Undo points to (an Undo's until that
+// sheet's last night is over).
 async function rosterTidy(now) {
   const st = RosterStore.state, today = fmtDate(new Date(now));
   let changed = false;
@@ -453,6 +454,8 @@ async function rosterTidy(now) {
   for (const sh of st.sheets) if (sh.pic && now >= rosterAt(agAddDays(sh.to, 1), 8)) { sh.pic = ""; changed = true; }
   const keep = new Set(st.sheets.map(x => x.pic).filter(Boolean));
   for (const p of Object.values(st.pend)) for (const sh of rosterList(p && p.r && p.r.sheets)) if (sh.file) keep.add(sh.file);
+  for (const u of Object.values(st.undo)) for (const sh of rosterList(u && u.roster && u.roster.sheets))
+    if (sh.pic && now < rosterAt(agAddDays(sh.to, 1), 8)) keep.add(sh.pic);
   for (const id of Object.keys(st.types)) if (!keep.has(id)) { delete st.types[id]; changed = true; }
   if (changed) RosterStore.save();
   for (const id of await rosterPics.keys()) if (!keep.has(id)) await rosterPics.del(id);
