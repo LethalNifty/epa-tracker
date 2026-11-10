@@ -42,7 +42,10 @@ Then the task, at claude.ai/code/routines, New task:
 - Trigger: API. Create shows the token once, so copy it then. The Fire URL,
   ending in `/fire`, is in the task's API trigger panel. Both are for step 3.
 - Repository (under Advanced settings, General): this one
-  (LethalNifty/epa-tracker), then Cloud environment: Tell GI Hub
+  (LethalNifty/epa-tracker), then Cloud environment: Tell GI Hub. If the
+  list says No repositories found, first install the Claude GitHub App at
+  `github.com/apps/claude/installations/new`: LethalNifty, Only select
+  repositories, epa-tracker.
 - Model: Sonnet 5.5
 - Connectors: remove every one. The task needs none, and an included
   connector could act during a run.
@@ -72,19 +75,33 @@ In Reminders, make a list called To GI Hub. Then in Shortcuts, a new
 shortcut called Tell GI Hub:
 
 1. Dictate Text.
-2. Add New Reminder: the Dictated Text, in the list To GI Hub.
-3. Find Reminders where List is To GI Hub and Is Not Completed.
-4. Repeat with Each:
-   1. Format Date: the Repeat Item's Creation Date, ISO 8601, with the time.
+2. Add New Reminder: tap the grey Reminder, which is its name, and pick
+   Dictated Text, in the list To GI Hub. Dictated Text in the box after
+   "with" only adds a note, and with no name the shortcut stops with No
+   title was provided.
+3. Find Reminders. It starts as Filter New Reminder: tap New Reminder and
+   Clear, so it reads Find All Reminders. Then two filters, with All true:
+   List is To GI Hub, and Is Not Completed (tap the second filter's List,
+   pick Is Completed, then set it to is not).
+4. Repeat with Each, in the same shortcut:
+   1. Format Date: the Repeat Item's Date Created (Creation Date on some
+      phones), ISO 8601, with the time.
    2. Get Contents of URL: `https://gi-hub-agenda.lethalnifty.workers.dev/inbox`
       - Method: POST
       - Header: `Authorization`, value `Bearer `, a space, then the
         Shortcut key from step 1
-      - Request Body: JSON, with `text` set to the Repeat Item's Title and
-        `at` set to the Formatted Date
+      - Request Body: JSON, with `text` set to the Repeat Item's Title
+        (once picked, it shows as just Repeat Item) and `at` set to the
+        Formatted Date
    3. Get Dictionary Value: `ok` in the Contents of URL.
    4. If the Dictionary Value has any value: Remove Reminders (the Repeat
       Item), then Show Notification "Sent to GI Hub".
+
+The first run asks for the microphone, Reminders, the sender and deleting
+reminders: allow each, Always Allow where it's offered. If it still asks
+before every delete: iPhone Settings, Apps, Shortcuts, Advanced, Allow
+Deleting Without Confirmation. When the delete question offers Add To
+Calendar, skip it: GI Hub is the calendar.
 
 With no signal, what you said waits in To GI Hub and goes the next time the
 shortcut runs. The same words sent twice count once.
@@ -95,7 +112,7 @@ iPhone Settings, Accessibility, Touch, Back Tap, Double Tap: Tell GI Hub.
 
 ## 6. Try it
 
-Double tap the back of the phone and say "Test, dentist Friday at 9". In a
+Double tap the back of the phone and say "Dentist Friday at 9". In a
 few minutes GI Hub says what it added, and it's on the Claude added card at
 the top of Week. Tap Undo there.
 
@@ -126,6 +143,10 @@ npx wrangler kv key delete "idea:<id>" --binding AGENDA --remote
 
 - Week says "Waiting for Claude: it couldn't start (error 401)" or 404:
   `TASK_URL` or `TASK_TOKEN` is wrong. Redo step 3.
+- Week says just Waiting for Claude, with no reason: open the task's latest
+  run at claude.ai/code/routines. A 401 from gi-hub-agenda there means the
+  network secret isn't the current Claude key: delete the secret and add
+  it again (step 2), with only the key as its Value.
 - The shortcut never says Sent: check its header has the Shortcut key, and
   that Tell GI Hub is still on in Settings.
 - Turning Tell GI Hub off in Settings shuts the inbox: both keys stop
