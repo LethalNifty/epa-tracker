@@ -1176,81 +1176,2493 @@
  "call": {
   "v": 1,
   "shifts": {
-   "gi-call-20261013@demo": {
-    "uid": "gi-call-20261013@demo",
+   "gi-roster-2026-09-29-n": {
+    "uid": "gi-roster-2026-09-29-n",
+    "s": 1790719200000,
+    "e": 1790773200000,
+    "hsc": {
+     "att": "Ames",
+     "res": "Resident K"
+    },
+    "stb": {
+     "att": "Ellis",
+     "res": ""
+    },
+    "so": "Rowan (HSC) + Quill (HSC) + Tamsin (St B)"
+   },
+   "gi-roster-2026-10-05-n": {
+    "uid": "gi-roster-2026-10-05-n",
+    "s": 1791237600000,
+    "e": 1791291600000,
+    "hsc": {
+     "att": "Ames",
+     "res": "Resident K"
+    },
+    "stb": {
+     "att": "Ellis",
+     "res": ""
+    },
+    "so": "Rowan (HSC) + Quill (HSC) + Tamsin (St B)"
+   },
+   "gi-roster-2026-10-13-n": {
+    "uid": "gi-roster-2026-10-13-n",
     "s": 1791928800000,
     "e": 1791982800000,
-    "so": "Day Fellow (HSC) + Day Fellow (St B)",
     "hsc": {
-     "att": "Okafor",
-     "res": "Resident G"
+     "att": "Cole",
+     "res": "Resident K",
+     "day": "Birch"
     },
     "stb": {
-     "att": "Lindqvist",
-     "res": "none"
-    }
+     "att": "Frost",
+     "res": ""
+    },
+    "so": "Rowan (HSC) + Quill (HSC) + Tamsin (St B)"
    },
-   "gi-call-20261016@demo": {
-    "uid": "gi-call-20261016@demo",
+   "gi-roster-2026-10-16-n": {
+    "uid": "gi-roster-2026-10-16-n",
     "s": 1792188000000,
     "e": 1792242000000,
-    "so": "Day Fellow (HSC) + Day Fellow (St B)",
     "hsc": {
-     "att": "Okafor",
+     "att": "Birch",
+     "res": "Resident K"
+    },
+    "stb": {
+     "att": "Frost",
+     "res": ""
+    },
+    "so": "Rowan (HSC) + Quill (HSC) + Tamsin (St B)"
+   },
+   "gi-roster-2026-10-17-d": {
+    "uid": "gi-roster-2026-10-17-d",
+    "s": 1792242000000,
+    "e": 1792274400000,
+    "hsc": {
+     "att": "Birch",
      "res": "Resident G"
     },
     "stb": {
-     "att": "Lindqvist",
-     "res": "none"
-    }
+     "att": "Frost",
+     "res": "Resident M"
+    },
+    "so": ""
    },
-   "gi-call-20261017@demo": {
-    "uid": "gi-call-20261017@demo",
+   "gi-roster-2026-10-17-n": {
+    "uid": "gi-roster-2026-10-17-n",
     "s": 1792274400000,
     "e": 1792328400000,
-    "so": "Day Fellow (HSC) + Day Fellow (St B)",
     "hsc": {
-     "att": "Okafor",
+     "att": "Birch",
+     "res": "Resident K"
+    },
+    "stb": {
+     "att": "Frost",
+     "res": ""
+    },
+    "so": ""
+   },
+   "gi-roster-2026-10-18-d": {
+    "uid": "gi-roster-2026-10-18-d",
+    "s": 1792328400000,
+    "e": 1792360800000,
+    "hsc": {
+     "att": "Birch",
      "res": "Resident G"
     },
     "stb": {
-     "att": "Lindqvist",
-     "res": "none"
-    }
+     "att": "Frost",
+     "res": "Resident M"
+    },
+    "so": ""
    },
-   "gi-call-20261018@demo": {
-    "uid": "gi-call-20261018@demo",
+   "gi-roster-2026-10-18-n": {
+    "uid": "gi-roster-2026-10-18-n",
     "s": 1792360800000,
     "e": 1792414800000,
-    "so": "Day Fellow (HSC) + Day Fellow (St B)",
     "hsc": {
-     "att": "Okafor",
-     "res": "Resident G"
+     "att": "Birch",
+     "res": "Resident K"
     },
     "stb": {
-     "att": "Lindqvist",
-     "res": "none"
-    }
+     "att": "Frost",
+     "res": ""
+    },
+    "so": ""
    },
-   "gi-call-20261021@demo": {
-    "uid": "gi-call-20261021@demo",
+   "gi-roster-2026-10-21-n": {
+    "uid": "gi-roster-2026-10-21-n",
     "s": 1792620000000,
     "e": 1792674000000,
-    "so": "Day Fellow (HSC) + Day Fellow (St B)",
     "hsc": {
-     "att": "Okafor",
-     "res": "Resident G"
+     "att": "Birch",
+     "res": "Resident K"
     },
     "stb": {
-     "att": "Lindqvist",
-     "res": "none"
-    }
+     "att": "Frost",
+     "res": ""
+    },
+    "so": "Rowan (HSC) + Quill (HSC) + Tamsin (St B)"
    }
   },
   "nums": {
    "hsc": "204-555-0101",
    "stb": "204-555-0202"
   },
-  "last": "2026-10-09"
+  "last": {
+   "at": "2026-09-20T17:00:00.000Z",
+   "file": "Shared sheets",
+   "n": 9
+  }
+ },
+ "roster": {
+  "v": 1,
+  "me": "Casey",
+  "days": {
+   "2026-09-24": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-25": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-26": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Brook"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Brook"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-27": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Brook"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Brook"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-28": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-29": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-09-30": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-01": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-02": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-03": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Rowan"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis"
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-04": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Rowan"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis"
+     },
+     "night": {
+      "fellow": "Rowan",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-05": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-06": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-07": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Ames"
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Ames"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Ellis",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [],
+      "att": "Ellis"
+     }
+    }
+   },
+   "2026-10-08": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-09": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-10": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-11": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-12": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Quill"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost"
+     },
+     "night": {
+      "fellow": "Quill",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-13": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Cole"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-14": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-15": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-16": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-17": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Casey"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Casey"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-18": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Casey"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Casey"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-19": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Sage",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-20": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Brook",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   },
+   "2026-10-21": {
+    "hsc": {
+     "day": {
+      "fellows": [
+       "Rowan",
+       "Quill"
+      ],
+      "res": [
+       "Resident G"
+      ],
+      "att": "Birch"
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [
+       "Resident K"
+      ],
+      "att": "Birch"
+     }
+    },
+    "stb": {
+     "day": {
+      "fellows": [
+       "Tamsin"
+      ],
+      "res": [
+       "Resident M"
+      ],
+      "att": "Frost",
+      "tpn": [
+       "Dunn"
+      ]
+     },
+     "night": {
+      "fellow": "Casey",
+      "res": [],
+      "att": "Frost"
+     }
+    }
+   }
+  },
+  "notes": [
+   {
+    "d": "2026-10-09",
+    "site": "hsc",
+    "who": "Rowan",
+    "t": "Off from 13:00"
+   }
+  ],
+  "people": [
+   {
+    "n": "Ames",
+    "full": "Avery Ames"
+   },
+   {
+    "n": "Birch",
+    "full": "Blair Birch"
+   },
+   {
+    "n": "Cole",
+    "full": "Corey Cole"
+   },
+   {
+    "n": "Dunn",
+    "full": "Drew Dunn"
+   },
+   {
+    "n": "Ellis",
+    "full": "Emery Ellis"
+   },
+   {
+    "n": "Frost",
+    "full": "Finley Frost"
+   }
+  ],
+  "rules": [
+   {
+    "site": "stb",
+    "t": "No fellow listed overnight: page the St. Boniface attending."
+   }
+  ],
+  "sheets": [
+   {
+    "site": "hsc",
+    "from": "2026-09-24",
+    "to": "2026-10-21",
+    "pic": "idemohsc004",
+    "at": 1789923600000
+   },
+   {
+    "site": "stb",
+    "from": "2026-09-24",
+    "to": "2026-10-21",
+    "pic": "idemostb004",
+    "at": 1789923600000
+   }
+  ],
+  "swaps": [
+   {
+    "d": "2026-10-14",
+    "site": "both",
+    "slot": "night",
+    "at": 1790863200000
+   }
+  ],
+  "pend": {
+   "acall000005": {
+    "r": {
+     "kind": "call",
+     "sheets": [
+      {
+       "site": "hsc",
+       "from": "2026-10-22",
+       "to": "2026-11-18",
+       "file": "idemohsc005"
+      },
+      {
+       "site": "stb",
+       "from": "2026-10-22",
+       "to": "2026-11-18",
+       "file": "idemostb005"
+      }
+     ],
+     "days": [
+      {
+       "d": "2026-10-22",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-23",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-24",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Sage"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Sage"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-25",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Sage"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Sage"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-26",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-27",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-28",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-29",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-30",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-10-31",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Casey"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Casey"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-11-01",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Casey"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Casey"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-11-02",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-11-03",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-11-04",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Birch"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Birch"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Frost",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Frost"
+        }
+       }
+      },
+      {
+       "d": "2026-11-05",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-06",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-07",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Brook"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Brook"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-08",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Brook"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Brook"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-09",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-10",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-11",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-12",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-13",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-14",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Rowan"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis"
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-15",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Rowan"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis"
+        },
+        "night": {
+         "fellow": "Rowan",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-16",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Brook",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-17",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Sage",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      },
+      {
+       "d": "2026-11-18",
+       "hsc": {
+        "day": {
+         "fellows": [
+          "Rowan",
+          "Quill"
+         ],
+         "res": [
+          "Resident G"
+         ],
+         "att": "Cole"
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [
+          "Resident K"
+         ],
+         "att": "Cole"
+        }
+       },
+       "stb": {
+        "day": {
+         "fellows": [
+          "Tamsin"
+         ],
+         "res": [
+          "Resident M"
+         ],
+         "att": "Ellis",
+         "tpn": [
+          "Dunn"
+         ]
+        },
+        "night": {
+         "fellow": "Casey",
+         "res": [],
+         "att": "Ellis"
+        }
+       }
+      }
+     ],
+     "notes": [],
+     "people": [
+      {
+       "n": "Ames",
+       "full": "Avery Ames"
+      },
+      {
+       "n": "Birch",
+       "full": "Blair Birch"
+      },
+      {
+       "n": "Cole",
+       "full": "Corey Cole"
+      },
+      {
+       "n": "Dunn",
+       "full": "Drew Dunn"
+      },
+      {
+       "n": "Ellis",
+       "full": "Emery Ellis"
+      },
+      {
+       "n": "Frost",
+       "full": "Finley Frost"
+      }
+     ],
+     "rules": [
+      {
+       "site": "stb",
+       "t": "No fellow listed overnight: page the St. Boniface attending."
+      }
+     ],
+     "look": []
+    },
+    "at": 1791553200000
+   }
+  },
+  "undo": {},
+  "types": {
+   "idemohsc004": "image/png",
+   "idemostb004": "image/png",
+   "idemohsc005": "image/png",
+   "idemostb005": "image/png"
+  }
+ },
+ "tell": {
+  "on": false,
+  "keys": null,
+  "added": [
+   {
+    "id": "acall000005",
+    "kind": "call",
+    "line": "",
+    "at": 1791553200000,
+    "call": "acall000005"
+   }
+  ],
+  "seen": [],
+  "ack": [],
+  "wait": null
  }
 }

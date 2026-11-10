@@ -62,6 +62,8 @@ fill = "" if fellows else f"""
     if (!localStorage.getItem("epa-state-v1")) {{
       localStorage.setItem("epa-state-v1", {json.dumps(json.dumps(demo["state"]))});
       localStorage.setItem("gi-call-v1", {json.dumps(json.dumps(demo["call"]))});
+      localStorage.setItem("gi-roster-v1", {json.dumps(json.dumps(demo["roster"]))});
+      localStorage.setItem("gi-tell-v1", {json.dumps(json.dumps(demo["tell"]))});
     }}"""
 seed = f"""<script>
 // Preview only: example data with fictional names, kept in this page's own storage.
@@ -94,6 +96,9 @@ felFinish = function () {
 setTimeout(function () { try { showToast("Preview of the fellows' version, with example names."); route.keepScroll = true; render(); } catch (e) {} }, 2600);
 </script>""") if fellows else """<script>
 setTimeout(function () { try { showToast("Preview with example names. Your own GI Hub is unchanged."); route.keepScroll = true; render(); } catch (e) {} }, 2600);
+</script>
+<script>
+""" + (HERE / "demo-pics.js").read_text(encoding="utf-8") + """
 </script>"""
 
 # No <html>, <head> or <body>: the Artifact publisher wraps the page in its own.

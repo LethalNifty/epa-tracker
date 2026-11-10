@@ -4,9 +4,10 @@
 //
 // url defaults to http://localhost:8742/index.html (the "epa" preview server);
 // point it at a worktree's own server, or at a bundle.py page (file:///...).
-// A scenario: {name, demo?, today?, state?, call?, pre?, url?, width?, height?,
-// dpr?, reducedMotion?, settle?, steps: [...]}. "demo": true seeds demo.json
-// (fictional names) unless the scenario brings its own state and call; no
+// A scenario: {name, demo?, today?, state?, call?, roster?, tell?, pre?, url?,
+// width?, height?, dpr?, reducedMotion?, settle?, steps: [...]}. "demo": true
+// seeds demo.json (fictional names, a call roster whose sheets demo-pics.js
+// draws) unless the scenario brings its own state and call; no
 // state at all is the empty first-run app. Steps run in order, each with any of
 // (applied in this order): eval (JS in the page; "log" prints its value), click
 // (a CSS selector, an error if nothing matches), wait (ms), shot (file name) and
@@ -28,6 +29,7 @@ if (!scenFile || !outDir) { console.error("usage: node tools/preview/shot.mjs <s
 if (!CHROME) { console.error("Chrome not found; set CHROME to its path"); process.exit(1); }
 const scenarios = JSON.parse(fs.readFileSync(scenFile, "utf8"));
 const demo = JSON.parse(fs.readFileSync(path.join(HERE, "demo.json"), "utf8"));
+const demoPics = fs.readFileSync(path.join(HERE, "demo-pics.js"), "utf8");
 fs.mkdirSync(outDir, {recursive: true});
 const PORT = 9333 + Math.floor(Math.random() * 500);
 const prof = fs.mkdtempSync(path.join(os.tmpdir(), "gi-hub-shot-"));
@@ -95,9 +97,12 @@ try {
         localStorage.clear();
         ${sc.state ? `localStorage.setItem("epa-state-v1", ${JSON.stringify(JSON.stringify(sc.state))});` : ""}
         ${sc.call ? `localStorage.setItem("gi-call-v1", ${JSON.stringify(JSON.stringify(sc.call))});` : ""}
+        ${sc.roster ? `localStorage.setItem("gi-roster-v1", ${JSON.stringify(JSON.stringify(sc.roster))});` : ""}
+        ${sc.tell ? `localStorage.setItem("gi-tell-v1", ${JSON.stringify(JSON.stringify(sc.tell))});` : ""}
       }
     })();`;
     await c.send("Page.addScriptToEvaluateOnNewDocument", {source: seed});
+    if (sc.roster) await c.send("Page.addScriptToEvaluateOnNewDocument", {source: demoPics});
     if (sc.pre) await c.send("Page.addScriptToEvaluateOnNewDocument", {source: sc.pre});
     const loaded = c.once("Page.loadEventFired");
     await c.send("Page.navigate", {url: sc.url || baseUrl});
