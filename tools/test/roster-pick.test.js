@@ -136,6 +136,8 @@ test("a call result is held for a check with its two pictures, and confirmed", a
   assert.deepEqual((await got(h, `rosterPics.keys()`)).sort(), [hsc, stb].sort());
   const pic = await h.run(`rosterPics.get("${hsc}")`);
   assert.deepEqual([pic.type, Array.from(new Uint8Array(pic.bytes))], ["image/png", Array.from(PNG)]);
+  // What kind of file each is, so the screen knows a PDF before it has the bytes.
+  assert.deepEqual(h.val(`RosterStore.state.types`), {[hsc]: "image/png", [stb]: "image/jpeg"});
   // On the Claude added card, and nothing goes into Call until it's checked.
   assert.deepEqual(kept(h).added.map(e => [e.id, e.kind, e.line, e.call]), [[rid, "call", line, rid]]);
   assert.deepEqual(h.val(`CallStore.list()`), []);
@@ -188,15 +190,17 @@ test("a swap is held for a check, with no pictures to fetch", async () => {
 
 test("the Claude added row waits until the check is done", async () => {
   const {c, h} = await tellPhone();
-  const {rid, line} = await sheets(c);
+  const {rid} = await sheets(c);
   await pick(h, "2026-11-09T14:05");
   // Two days on, still waiting for its check.
   h.setNow("2026-11-11T15:00");
   h.click("tab", {page: "week"});
-  assert.ok(h.html().includes(line));
+  const check = `data-action="rostcheck" data-id="${rid}"`;
+  assert.ok(h.html().includes(check));
   assert.equal(h.val(`tellWaits(tellLoad().added[0])`), true);
-  // Checked: an ordinary row, gone after its day.
+  // Its check gone: an ordinary row, gone after its day.
   h.run(`delete RosterStore.state.pend["${rid}"]`);
+  assert.equal(h.val(`tellWaits(tellLoad().added[0])`), false);
   h.click("tab", {page: "plan"}); h.click("tab", {page: "week"});
-  assert.ok(!h.html().includes(line));
+  assert.ok(!h.html().includes(check));
 });

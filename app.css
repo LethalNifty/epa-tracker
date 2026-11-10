@@ -1442,6 +1442,36 @@ a.src:active { background: var(--wall-3); }
 /* The new-sheet switch between an event and a to-do. */
 .ag-kind { margin: 0 0 14px; }
 
+/* Call roster (roster-view.js, the full app only): the check before Call changes, the sheets and a sheet full screen. */
+.rost-note { margin: 10px 2px 0; font-size: 13px; line-height: 1.4; color: var(--dim); }
+.card .rost-note:first-child { margin: 0 0 4px; }
+.rost-me { display: block; margin: 2px 0 0; color: var(--dim); }
+.rost-look p { margin: 0; font-size: 14.5px; line-height: 1.4; }
+.rost-look p + p { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--fold); }
+.rost-grid { display: grid; grid-template-columns: 52px minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); column-gap: 8px; font-size: 13.5px; line-height: 1.3; }
+.rost-grid > span { min-width: 0; overflow-wrap: anywhere; padding: 7px 0; border-top: 1px solid var(--fold); }
+.rost-grid > .h { border-top: 0; padding-top: 0; font: 500 10px/1.2 var(--mono); letter-spacing: .11em; text-transform: uppercase; color: var(--wli); }
+.rost-grid > .rost-d { font: 500 11px/1.6 var(--mono); color: var(--dim); }
+.rost-gap { display: block; margin-top: 2px; font-size: 10px; font-style: normal; color: var(--flu); }
+.rost-more { margin-top: 10px; }
+.rost-chg { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; padding: 8px 0; font-size: 14px; line-height: 1.35; }
+.rost-chg + .rost-chg { border-top: 1px solid var(--fold); }
+.rost-chg .mono { padding-top: 2px; font-size: 10px; color: var(--dim); }
+.rost-sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rost-sheet { display: grid; gap: 4px; padding: 8px 8px 10px; text-align: left; background: var(--wall); border: 1px solid var(--fold); border-radius: var(--r-lg); }
+.rost-thumb, .rost-pdf { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top; border-radius: 12px; background: var(--wall-2); }
+.rost-pdf { display: grid; place-items: center; color: var(--dim); }
+.rost-thumb.gone { opacity: 0; }
+.rost-site { margin-top: 4px; font-size: 14px; font-weight: 520; }
+.rost-dates { font-size: 9.5px; color: var(--dim); }
+.rostview { position: fixed; z-index: 45; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; background: #05040d; padding-bottom: env(safe-area-inset-bottom); }
+.rostview-top { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 8px; background: rgba(5, 4, 13, .86); }
+.rostview-top .mono { min-width: 0; font-size: 10px; color: var(--dim); }
+.rostview-top .btn { flex: 0 0 auto; width: auto; min-height: 40px; margin: 0; padding: 0 16px; }
+img.rostview-pic { display: block; width: 100%; height: auto; }
+iframe.rostview-pic { display: block; width: 100%; height: calc(100vh - 64px); border: 0; background: #fff; }
+
 /* Backup */
 .bnote { margin-top: 12px; text-align: center; color: var(--faint); }
 .err { margin-top: 10px; text-align: center; font-size: 13px; color: var(--mucosa); }

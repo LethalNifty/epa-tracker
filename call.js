@@ -442,9 +442,12 @@ function callScheduleHTML(withImport) {
     (CallStore.isEmpty() ? "" : `<button class="btn danger" data-action="callclear">Clear call data</button>`) +
     `<p class="bnote mono">Names and numbers stay on this phone</p></div></section>`;
 }
+const callBackLabel = () => ({week: "This week", epas: "EPAs", plan: "Plan", biopsy: "Biopsy", agenda: "Agenda"}[route.from] || "This week");
 function viewCall() {
+  // A shared call schedule or swap waiting for its check (the full app only).
+  if (route.rost && typeof rosterCheckView === "function") { const page = rosterCheckView(route.rost); if (page) return page; }
   const now = callNow(), list = CallStore.list(), cs = callStatus(list, now), all = callStretches(list);
-  const back = {week: "This week", epas: "EPAs", plan: "Plan", biopsy: "Biopsy", agenda: "Agenda"}[route.from] || "This week";
+  const back = callBackLabel();
   const left = (cs.cur ? [cs.cur] : []).concat(cs.up);
   const hrs = left.reduce((a, st) => a + st.e - Math.max(st.s, now), 0) / HOUR_MS;
   let h = `<header class="ph"><button class="back" data-action="back">${ic("back")}${back}</button>` +

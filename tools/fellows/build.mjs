@@ -21,8 +21,8 @@ const OUT = path.resolve(process.argv[2] || path.join(ROOT, "dist"));
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\r\n/g, "\n");
 // The owner's watch on the fellows' codes (watch.js), daily backup to
 // Cloudflare (backup.js), reminder sender (alerts.js), Tell GI Hub (tell.js)
-// and the call roster from the shared sheets (roster.js) never reach the fellows.
-const OWNER_ONLY = ["watch.js", "backup.js", "alerts.js", "tell.js", "roster.js"];
+// and the call roster from the shared sheets (roster.js, roster-view.js) never reach the fellows.
+const OWNER_ONLY = ["watch.js", "backup.js", "alerts.js", "tell.js", "roster.js", "roster-view.js"];
 const LEFT_OUT = new Set(["./", "studyq.json", ...OWNER_ONLY]);
 const DESCRIPTION = "EPA tracker, procedure log and guideline library for GI fellows.";
 
@@ -51,10 +51,10 @@ html = must(html, /<meta name="description" content="[^"]*">/.exec(html)?.[0] ??
   `<meta name="description" content="${DESCRIPTION}">\n<meta name="robots" content="noindex, nofollow">`, "the description");
 fs.writeFileSync(path.join(OUT, "index.html"), html);
 
-// Nothing of the owner's list of codes, backup card or Tell GI Hub reaches the
+// Nothing of the owner's list of codes, backup card, Tell GI Hub or call roster reaches the
 // fellows, not even its styles: each block from its heading comment to the next blank line.
 let css = read("app.css");
-for (const head of ["Fellows' codes", "Cloud backup", "Tell GI Hub"]) {
+for (const head of ["Fellows' codes", "Cloud backup", "Tell GI Hub", "Call roster"]) {
   const block = new RegExp(`/\\* ${head} [^*]*\\*/\\n[\\s\\S]*?\\n\\n`).exec(css);
   css = must(css, block ? block[0] : "/* " + head, "", `the ${head} styles in app.css`);
 }

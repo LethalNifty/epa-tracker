@@ -8,7 +8,7 @@ const {ROOT} = require("./harness");
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8");
 // Everything we wrote: the page minus the verbatim Royal College EPA_DATA, plus the scripts and styles.
 const ownText = () => read("index.html").replace(/\/\*EPA_DATA_START\*\/[\s\S]*?\/\*EPA_DATA_END\*\//, "") +
-  ["search.js", "coach.js", "call.js", "study.js", "studyq.js", "guides.js", "guides-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "agenda.js", "agenda-view.js", "notify.js", "remind.js", "alerts.js", "tell.js", "roster.js", "settings.js", "watch.js", "study-view.js", "fellows.js", "app.js", "app.css", "sw.js", "guides.json", "tools/fellows/access.mjs"].map(f => "\n" + read(f)).join("");
+  ["search.js", "coach.js", "call.js", "study.js", "studyq.js", "guides.js", "guides-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "agenda.js", "agenda-view.js", "roster-view.js", "notify.js", "remind.js", "alerts.js", "tell.js", "roster.js", "settings.js", "watch.js", "study-view.js", "fellows.js", "app.js", "app.css", "sw.js", "guides.json", "tools/fellows/access.mjs"].map(f => "\n" + read(f)).join("");
 
 test("no em-dashes in anything we wrote", () => {
   assert.deepEqual(ownText().split("\n").filter(l => l.includes("\u2014")).map(l => l.trim().slice(0, 80)), []);
@@ -76,7 +76,7 @@ test("the service worker caches every file the app needs, under a new cache name
   // The page shows the same version the service worker caches.
   assert.match(read("app.js"), /const APP_VERSION = "epa-v75";/);
   for (const f of ["index.html", "app.css", "search.js", "coach.js", "call.js", "study.js", "scope.js", "notify.js", "remind.js", "alerts.js", "tell.js", "roster.js", "settings.js", "watch.js", "study-view.js", "scope-chart.js",
-    "scope-view.js", "scope-report.js", "review.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "agenda.js", "agenda-view.js", "fellows.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
+    "scope-view.js", "scope-report.js", "review.js", "guides.js", "guides-view.js", "guides.json", "ibd.js", "ibd-view.js", "trials.js", "trials-view.js", "pearls.js", "pearls-view.js", "agenda.js", "agenda-view.js", "roster-view.js", "fellows.js", "app.js", "icon.svg", "fonts/outfit-var.woff2"]) {
     assert.ok(sw.includes(`"${f}"`), f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), "missing file " + f);
   }
@@ -95,6 +95,7 @@ test("the page loads the stylesheet, the coach, the call card and the app, in or
   assert.ok(html.indexOf('src="alerts.js"') < html.indexOf('src="app.js"'));
   assert.ok(html.indexOf('src="alerts.js"') < html.indexOf('src="tell.js"') && html.indexOf('src="tell.js"') < html.indexOf('src="settings.js"'));
   assert.ok(html.indexOf('src="tell.js"') < html.indexOf('src="roster.js"') && html.indexOf('src="roster.js"') < html.indexOf('src="settings.js"'));
+  assert.ok(html.indexOf('src="agenda-view.js"') < html.indexOf('src="roster-view.js"') && html.indexOf('src="roster-view.js"') < html.indexOf('src="scope-chart.js"'));
   assert.ok(html.indexOf('src="study-view.js"') < html.indexOf('src="app.js"'));
   assert.ok(html.indexOf('src="study.js"') < html.indexOf('src="scope.js"'));
   assert.ok(html.indexOf('src="scope.js"') < html.indexOf('src="scope-chart.js"'));

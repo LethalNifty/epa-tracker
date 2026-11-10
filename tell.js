@@ -244,11 +244,12 @@ function tellRowHTML(e) {
 }
 function tellCardHTML() {
   const k = tellLoad(), now = callNow();
-  const rows = k.added.map((e, i) => [e, i]).filter(([e]) => e.at > now - TELL_SHOW || tellWaits(e)).sort((x, y) => y[0].at - x[0].at || x[1] - y[1]).map(([e]) => e);
+  const rows = k.added.map((e, i) => [e, i]).filter(([e]) => e.at > now - TELL_SHOW || tellWaits(e)).sort((x, y) => y[0].at - x[0].at || x[1] - y[1])
+    .map(([e]) => tellRowHTML(e)).filter(Boolean);
   const w = tellOn() && k.wait;
   if (!rows.length && !w) return "";
   const why = w && w.err === "setup" ? ": the task isn't set up yet" : w && w.err ? `: it couldn't start (error ${esc(String(w.err))})` : "";
-  return `<section class="sec tellsec">` + (rows.length ? `<div class="card tellcard"><p class="tellhead mono">Claude added</p>${rows.map(tellRowHTML).join("")}</div>` : "") +
+  return `<section class="sec tellsec">` + (rows.length ? `<div class="card tellcard"><p class="tellhead mono">Claude added</p>${rows.join("")}</div>` : "") +
     (w ? `<p class="tellwait mono">Waiting for Claude${why}</p>` : "") + `</section>`;
 }
 // Undo: an event or to-do goes; a change puts back what it was (a cancelled

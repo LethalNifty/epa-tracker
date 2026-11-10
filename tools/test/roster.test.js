@@ -157,6 +157,22 @@ test("a swap moves the night and your shift with it, and Undo puts both back", (
   assert.equal(h.val(`rosterUndo("aswap000001")`), false);
 });
 
+test("Undo keeps the paging numbers typed since, and ends the Undo of every change after it", () => {
+  const h = phone();
+  add(h, call([day("2026-11-30", team(["Brook"], "Casey"), team(["Rowan"], "Casey"))]));
+  h.run(`CallStore.setNum("hsc", "204-555-0100")`);
+  swap(h, swapOf([{d: "2026-11-30", site: "both", slot: "night", from: "me", to: "Sage"}]));
+  assert.deepEqual(h.val(`Object.keys(RosterStore.state.undo)`), ["acall000001", "aswap000001"]);
+  assert.equal(h.val(`rosterUndo("acall000001")`), true);
+  assert.deepEqual(shifts(h), []);
+  assert.deepEqual(h.val(`RosterStore.state.days`), {});
+  assert.equal(h.val(`CallStore.state.nums.hsc`), "204-555-0100");
+  // The swap was made on top of the block: its Undo would bring the block back.
+  assert.deepEqual(h.val(`RosterStore.state.undo`), {});
+  assert.equal(h.val(`rosterUndo("aswap000001")`), false);
+  assert.deepEqual(shifts(h), []);
+});
+
 test("a day swap changes only the site where that person has the day", () => {
   const h = phone();
   add(h, call([day("2026-12-05", team(["Casey"], "Brook"), team(["Rowan"], "Brook"))]));
@@ -237,9 +253,11 @@ test("tidy drops a picture after the last night and the roster 4 weeks later", a
   // A check still waiting holds its own picture.
   h.run(`RosterStore.state.pend.acall000009 = {r: {kind: "call", sheets: [{site: "hsc", from: "2026-12-17", to: "2027-01-13", file: "iwaiting001"}], days: []}, at: callNow()}`);
   await h.run(`Promise.all(["${H1}", "${S1}", "iwaiting001", "iorphan0001"].map(id => rosterPics.put(id, {type: "image/png", bytes: new ArrayBuffer(4)})))`);
+  h.run(`RosterStore.state.types = {iorphan0001: "image/png", iwaiting001: "application/pdf"}`);
   const keys = async () => (await got(h, `rosterPics.keys()`)).sort();
   await h.run(`rosterTidy(${at(2026, 12, 17, 7, 59)})`);
   assert.deepEqual(await keys(), ["ihscsheet01", "istbsheet01", "iwaiting001"], "only the picture nothing points to goes");
+  assert.deepEqual(h.val(`RosterStore.state.types`), {iwaiting001: "application/pdf"}, "and what kind of file it was");
   await h.run(`rosterTidy(${at(2026, 12, 17, 8, 0)})`);
   assert.deepEqual(await keys(), ["iwaiting001"]);
   assert.deepEqual(h.val(`RosterStore.state.sheets.map(x => x.pic)`), ["", ""]);

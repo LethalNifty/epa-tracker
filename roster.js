@@ -24,8 +24,9 @@ const ROSTER_DATA = ["days", "notes", "people", "rules", "sheets", "swaps"];
 // each site {day: {fellows, res, att, tpn?}, night: {fellow, res, att}}.
 // sheets: each sheet's site, dates, picture and when it came. swaps: each
 // slot a swap moved, without names. pend: results waiting for a check.
-// undo: what each change replaced.
-const rosterBlank = () => ({v: 1, me: "", days: {}, notes: [], people: [], rules: [], sheets: [], swaps: [], pend: {}, undo: {}});
+// undo: what each change replaced. types: each picture's kind of file, so a
+// screen knows a PDF before it has the bytes.
+const rosterBlank = () => ({v: 1, me: "", days: {}, notes: [], people: [], rules: [], sheets: [], swaps: [], pend: {}, undo: {}, types: {}});
 const RosterStore = {
   state: rosterBlank(),
   load() {
@@ -75,6 +76,9 @@ const rosterDay = iso => callDay(agDate(iso).getTime());   // "Fri 20 Nov"
 const rosterWeekend = iso => { const g = agDate(iso).getDay(); return g === 0 || g === 6 || !!agStat(iso); };
 const rosterWords = v => Array.isArray(v) ? v.join(", ") : v || "";
 const rosterCopy = v => JSON.parse(JSON.stringify(v));
+const ROSTER_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+// Sheets by their first day, HSC before St. Boniface.
+const rosterSortSheets = list => list.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : ROSTER_SITES.indexOf(a.site) - ROSTER_SITES.indexOf(b.site));
 function rosterDates(from, to) { const out = []; for (let d = from; d <= to && out.length < 400; d = agAddDays(d, 1)) out.push(d); return out; }
 // Whether you have that slot: a night at either site; a day only on a weekend or stat.
 function rosterMine(x, d, slot, me) {
@@ -258,7 +262,7 @@ function rosterAddCall(id, r, now) {
   }
   for (const site of new Set(r.sheets.map(x => x.site))) st.rules = st.rules.filter(x => x.site !== site).concat(r.rules.filter(x => x.site === site).map(x => ({...x})));
   for (const p of r.people) { const i = st.people.findIndex(x => x.n === p.n); if (i >= 0) st.people[i] = {...p}; else st.people.push({...p}); }
-  st.sheets.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : ROSTER_SITES.indexOf(a.site) - ROSTER_SITES.indexOf(b.site));
+  rosterSortSheets(st.sheets);
   const lo = r.sheets.map(x => x.from).sort()[0], hi = r.sheets.map(x => x.to).sort().pop();
   const n = rosterApplyShifts(lo, hi);
   if (st.me) CallStore.state.last = {at: new Date(now).toISOString(), file: "Shared sheets", n};
@@ -276,13 +280,44 @@ function rosterSwap(id, r, now) {
   RosterStore.save(); CallStore.save();
   return {n: moved.length};
 }
-// Puts the roster and Call back as they were before that change.
+// Puts the roster and Call's shifts back as they were before that change;
+// the paging numbers stay as they are now. Every change made after it goes
+// with it, and so does its Undo: putting one of those back would bring this
+// change back too.
 function rosterUndo(id) {
   const st = RosterStore.state, u = st.undo[id];
   if (!u) return false;
   Object.assign(st, rosterCopy(u.roster));
-  delete st.undo[id];
-  CallStore.restore(rosterCopy(u.call));
+  const ks = Object.keys(st.undo);
+  for (const k of ks.slice(ks.indexOf(id))) delete st.undo[k];
+  CallStore.restore({...rosterCopy(u.call), nums: {...CallStore.state.nums}});
+  RosterStore.save();
+  return true;
+}
+// Which fellow is you, as the sheets write it ("" to ask again). Your shifts
+// come into Call from every block already here, as if it had just come.
+function rosterSetMe(name, now) {
+  const st = RosterStore.state, spans = new Map();
+  st.me = rosterName(name);
+  for (const sh of st.sheets) if (!sh.unread) spans.set(sh.from + "|" + sh.to, sh);
+  if (st.me && spans.size) {
+    let n = 0;
+    for (const sh of spans.values()) n += rosterApplyShifts(sh.from, sh.to);
+    CallStore.state.last = {at: new Date(now).toISOString(), file: "Shared sheets", n};
+    CallStore.save();
+  }
+  RosterStore.save();
+}
+// Not right: what Claude read goes and nothing in the roster or Call changes;
+// a call schedule's pictures stay as sheets nobody read, on Call until their
+// last night is over.
+function rosterThrow(id, now) {
+  const st = RosterStore.state, p = st.pend[id];
+  if (!p) return false;
+  if (p.r.kind === "call") for (const sh of p.r.sheets) if (sh.file && !st.sheets.some(x => x.pic === sh.file))
+    st.sheets.push({site: sh.site, from: sh.from, to: sh.to, pic: sh.file, at: now, unread: true});
+  rosterSortSheets(st.sheets);
+  delete st.pend[id];
   RosterStore.save();
   return true;
 }
@@ -370,6 +405,8 @@ async function rosterTake(res, now) {
     if (b.status === 404) { lost++; continue; }
     if (b.status !== 200 || !b.bytes) return undefined;
     try { await rosterPics.put(id, {type: b.type, bytes: b.bytes}); } catch (e) { return undefined; }
+    const type = String(b.type).split(";")[0].trim();
+    if (ROSTER_TYPES.includes(type)) st.types[id] = type;
   }
   st.pend[res.id] = lost ? {r, at: now, lost} : {r, at: now};
   RosterStore.save();
@@ -398,9 +435,10 @@ async function rosterTidy(now) {
   const swaps = st.swaps.filter(x => st.days[x.d]);
   if (swaps.length !== st.swaps.length) { st.swaps = swaps; changed = true; }
   for (const sh of st.sheets) if (sh.pic && now >= rosterAt(agAddDays(sh.to, 1), 8)) { sh.pic = ""; changed = true; }
-  if (changed) RosterStore.save();
   const keep = new Set(st.sheets.map(x => x.pic).filter(Boolean));
   for (const p of Object.values(st.pend)) for (const sh of rosterList(p && p.r && p.r.sheets)) if (sh.file) keep.add(sh.file);
+  for (const id of Object.keys(st.types)) if (!keep.has(id)) { delete st.types[id]; changed = true; }
+  if (changed) RosterStore.save();
   for (const id of await rosterPics.keys()) if (!keep.has(id)) await rosterPics.del(id);
 }
 // After Clear call data: once Undo has had its chance, the pictures go too.

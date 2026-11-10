@@ -1108,7 +1108,8 @@ function render() {
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (!FELLOWS && tellSheet && plusShows("t") ? tellSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
-      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") + (toast ? toastHTML() : "");
+      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") +
+      (!FELLOWS && route.rostPic ? rosterPicHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
     html = `<main class="page">${crashHTML()}</main>`;
@@ -1132,7 +1133,7 @@ function render() {
   remindAfterRender();
   guidesAfterRender();
   pearlsAfterRender();
-  if (!FELLOWS) tellAfterRender();
+  if (!FELLOWS) { tellAfterRender(); rosterAfterRender(); }
   setAfterRender();
   reviewAfterRender();
   liveAfterRender(p);
@@ -1150,7 +1151,7 @@ function holdPage(on) {
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
 // Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq || (!FELLOWS && tellSheet));
+const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq || (!FELLOWS && (tellSheet || route.rostPic)));
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1188,6 +1189,7 @@ function dispatch(act, d) {
   if (act.startsWith("fel")) { if (felDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("set")) { if (setDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("tel")) { if (!FELLOWS && tellDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
+  if (act.startsWith("rost")) { if (!FELLOWS && rosterDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("bk")) { if (!FELLOWS && bkDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("watch")) { if (watchDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
   if (act.startsWith("review")) { if (reviewDispatch(act, d || {}) !== false) { route.keepScroll = true; render(); } return; }
