@@ -49,7 +49,7 @@ function tellNewKeys() {
       if (r.status === 200) { const k = tellLoad(); k.on = true; k.keys = keys; tellSave(); }
       else { tellErr = alertsNoGo(r.status); if (r.status === 401) alertsGone = true; }
     } finally { tellBusy = false; }
-    if (setSheet) { route.keepScroll = true; render(); }
+    if (setSheet) quietRedraw(true);
   });
 }
 const tellTurnOn = tellNewKeys;
@@ -60,7 +60,7 @@ function tellTurnOff() {
     const r = await alertsAsk("DELETE", "/tell");
     if (r.status === 200 || r.status === 401) { const k = tellLoad(); k.on = false; k.keys = null; k.wait = null; tellSave(); showToast("Tell GI Hub off"); }
     else tellErr = alertsNoGo(r.status);
-    if (setSheet) { route.keepScroll = true; render(); }
+    if (setSheet) quietRedraw(true);
   });
 }
 // Copy: the whole key on the clipboard. A phone that can't copy shows it whole instead.
@@ -107,10 +107,7 @@ function tellPick(force) {
     k.seen = k.seen.slice(-TELL_SEEN_MAX); k.ack = k.ack.slice(-TELL_ACK_MAX); k.added = tellTrim(k.added);
     k.wait = r.data.wait || null;
     tellSave();
-    const a = document.activeElement;
-    if ((fresh || was !== JSON.stringify(k.wait)) && !anySheet() && !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) {
-      route.keepScroll = true; render();
-    }
+    if (fresh || was !== JSON.stringify(k.wait)) quietRedraw();
     alertsSync();
   });
 }
@@ -338,7 +335,7 @@ function tellTestRun() {
     const r = await alertsAsk("POST", "/tell/test");
     if (r.status === 200) { tellResult = null; showToast("Test set sent. Check it in a few minutes."); }
     else tellErr = alertsNoGo(r.status);
-    if (setSheet) { route.keepScroll = true; render(); }
+    if (setSheet) quietRedraw(true);
   });
 }
 function tellTestScore() {
@@ -347,7 +344,7 @@ function tellTestScore() {
     const r = await alertsAsk("GET", "/tell/test");
     if (r.status === 200 && r.data && Number.isFinite(r.data.n)) tellResult = r.data;
     else tellErr = alertsNoGo(r.status);
-    if (setSheet) { route.keepScroll = true; render(); }
+    if (setSheet) quietRedraw(true);
   });
 }
 

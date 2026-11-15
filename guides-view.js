@@ -353,12 +353,7 @@ function guidesCatsAfterRender() {
 }
 // Redraws once the library arrives, unless a sheet is open or a field has
 // the keyboard.
-function guidesRedraw() {
-  const a = typeof document !== "undefined" && document.activeElement;
-  if (anySheet() || (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) return;
-  route.keepScroll = true;
-  render();
-}
+function guidesRedraw() { quietRedraw(); }
 // The bar's dot: guidelines published this month, and trials the weekly watch
 // kept, that this phone hasn't shown.
 function guidesUnseenCount() {

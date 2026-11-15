@@ -510,7 +510,7 @@ function callAfterRender() {
   }
 }
 function callTick() {
-  const now = callNow(), a = document.activeElement, busy = sheet || route.rostPic || (a && a.tagName === "INPUT");
+  const now = callNow(), busy = anySheet() || typingNow();
   if (callKeyAt(now) !== callKey && !busy) { route.keepScroll = true; render(); return; }
   if (document.querySelectorAll) {
     const cs = callStatus(CallStore.list(), now), all = callStretches(CallStore.list());

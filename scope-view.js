@@ -73,10 +73,39 @@ function scopeCardsFrom(drafts, today = getToday()) {
   const s = scopeData();
   const carried = scopeCarry(drafts, s.cases, today);
   const stretches = typeof callStretches === "function" ? callStretches(CallStore.list()) : [];
-  return carried.map(d => {
+  return carried.map((d, i) => {
     const c = scopeInfer(d, {now: callNow(), stretches, staff: s.staff});
-    return {...c, key: scopeNewKey(), note: "", epa: {}, err: null};
+    const card = {...c, key: scopeNewKey(), note: "", epa: {}, err: null, sig: scopeReadSig(drafts[i])};
+    card.orig = scopeCardSnap(card);
+    return card;
   });
+}
+// What a card was read as, so Read again knows which cases are unchanged (sig:
+// the reader's own words for it) and what was fixed on a card by hand (orig:
+// its fields as read).
+const SCOPE_CARD_FIELDS = ["d", "staff", "staffHeard", "staffAlt", "staffSaid", "site", "loc", "urg", "procs", "reach", "d2", "why", "found", "age",
+  "note", "epa", "n", "otherLabel", "whyOther", "foundOther", "leftover"];
+const scopeCardSnap = c => JSON.stringify(SCOPE_CARD_FIELDS.map(k => (c[k] === undefined ? null : c[k])));
+const scopeReadSig = d => JSON.stringify(["d", "staff", "staffHeard", "staffAlt", "site", "loc", "urg", "procs", "reach", "d2", "why", "found", "age", "n", "leftover"]
+  .map(k => (d && d[k] !== undefined ? d[k] : null)));
+// Fields fixed together on a card: a change to one keeps the group.
+const SCOPE_EDIT_GROUPS = [["d"], ["staff", "staffHeard", "staffAlt", "staffSaid"], ["site"], ["loc"], ["urg"], ["procs", "reach", "otherLabel"], ["d2"],
+  ["why", "whyOther"], ["found", "foundOther"], ["age"], ["note"], ["epa"], ["n"], ["leftover"]];
+// Read again: what was fixed by hand on the old card wins over the fresh reading.
+function scopeKeepHandEdits(old, fresh) {
+  if (!old.orig) return fresh;
+  let was;
+  try { was = JSON.parse(old.orig); } catch (e) { return fresh; }
+  const out = {...fresh, key: old.key, carried: {...(fresh.carried || {})}};
+  const same = k => JSON.stringify(old[k] === undefined ? null : old[k]) === JSON.stringify(was[SCOPE_CARD_FIELDS.indexOf(k)]);
+  for (const g of SCOPE_EDIT_GROUPS) {
+    if (g.every(same)) continue;
+    for (const k of g) {
+      out[k] = old[k] === undefined ? undefined : JSON.parse(JSON.stringify(old[k]));
+      if (k === "staff" || k === "site" || k === "loc") out.carried[k] = false;
+    }
+  }
+  return out;
 }
 // A saved case (or a copy) opened as a card.
 function scopeCardFromCase(c, copy) {
@@ -533,7 +562,17 @@ function scopeRead() {
   // Words kept from another day are read as that day's.
   const s = scopeData(), today = scopeCap.day ? scopeIsoDate(scopeCap.day) : getToday();
   const r = scopeParse(scopeCap.text, {today, staff: s.staff, learned: s.learned, age: !!s.ageOn, d2: !FELLOWS});
-  scopeCap.cards = scopeCardsFrom(r.cases, today);
+  // Read again: a case whose words didn't change keeps what was fixed on its
+  // card by hand, and so does the card in the same place when there are as
+  // many cases as before and it's the same kind of case. The rest is read fresh.
+  const old = scopeCap.cards || [], fresh = scopeCardsFrom(r.cases, today), taken = new Set();
+  scopeCap.cards = fresh.map((f, i) => {
+    let o = old.find(c => !taken.has(c) && c.sig && c.sig === f.sig);
+    if (!o && old.length === fresh.length && old[i] && !taken.has(old[i]) && scopeFams(old[i]).join() === scopeFams(f).join()) o = old[i];
+    if (!o) return f;
+    taken.add(o);
+    return scopeKeepHandEdits(o, f);
+  });
   scopeCap.removed = r.removed;
   // What could identify a patient leaves the box too.
   if (r.removed) scopeCap.text = scopeGuard(scopeCap.text).text;

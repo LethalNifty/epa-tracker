@@ -48,7 +48,9 @@ async function watchAsk(body) {
     else if (body) watchErr = "That didn't go through. Try again.";
     watchSave();
   } catch (e) { if (body) watchErr = "No connection. Try again once you have signal."; }
-  if (body || watchShape(w) !== before) { route.keepScroll = true; render(); }
+  // A button's answer redraws Settings; a check on launch only when nothing's open or being typed.
+  if (body) { route.keepScroll = true; render(); }
+  else if (watchShape(w) !== before) quietRedraw(true);
   return j;
 }
 async function watchCheck() {

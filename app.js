@@ -1115,9 +1115,10 @@ function render() {
     html = `<main class="page">${crashHTML()}</main>`;
   }
   scopeBeforeRender();
-  const app = document.getElementById("app");
+  const app = document.getElementById("app"), sheetY = sheetScrolls(app);
   liveBeforeSwap(app);
   app.innerHTML = html;
+  sheetScrollsBack(app, sheetY);
   liveAfterSwap();
   enterNext = false; sheetFresh = false; toastFresh = false; agSheetFresh = false;
   const up = anySheet();
@@ -1150,8 +1151,45 @@ function holdPage(on) {
   if (on && heldY === null) { heldY = window.scrollY || 0; b.style.top = -heldY + "px"; root.classList.add("held"); }
   else if (!on && heldY !== null) { const y = heldY; heldY = null; root.classList.remove("held"); b.style.top = ""; window.scrollTo(0, y); }
 }
-// Any sheet up: no redraw from outside (an update, coming back to the app, the library arriving) while one is open.
-const anySheet = () => !!(sheet || studySheet || scopeSheet || scopePick || pearlSheet || setSheet || reviewSheet || agSheet || agUsual || agReq || (!FELLOWS && (tellSheet || route.rostPic)));
+// Every sheet that can be up. No redraw from outside (an update, coming back to
+// the app, the library or the questions arriving, the call clock) while one is
+// open: see quietRedraw.
+const sheetsUp = () => [sheet, studySheet, scopeSheet, scopePick, pearlSheet, setSheet, reviewSheet, agSheet, agUsual, agReq,
+  !FELLOWS && tellSheet, !FELLOWS && route.rostPic].filter(Boolean).length;
+const anySheet = () => sheetsUp() > 0;
+// A field has the keyboard: a redraw rebuilds the field, which drops the
+// keyboard and stops dictation mid-sentence.
+const typingNow = () => { const a = document.activeElement; return !!(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")); };
+// A redraw nobody tapped for (a timer, the network, a file arriving) waits while
+// a field has the keyboard or a sheet is up, and what changed shows with the
+// next redraw. setOk: Settings, alone, may redraw for its own rows.
+function quietRedraw(setOk) {
+  if (typingNow() || (anySheet() && !(setOk && setSheet && sheetsUp() === 1))) return false;
+  route.keepScroll = true; render(); return true;
+}
+// A tapped reminder opening its screen closes whatever was up.
+function closeSheets() {
+  sheet = null; sheetError = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null;
+  agSheet = null; agUsual = null; agReq = null;
+  if (!FELLOWS) { tellSheet = null; route.rostPic = null; }
+}
+// Redrawing replaces every sheet, so each keeps where it was scrolled to; one
+// just opened (fresh) starts at its top, and a different sheet in the same
+// place (another label) does too.
+const sheetKey = el => [...el.classList].filter(c => c !== "fresh").slice(0, 2).join(" ") + "|" + (el.getAttribute("aria-label") || "");
+function sheetScrolls(app) {
+  if (!app || typeof app.querySelectorAll !== "function") return null;
+  const kept = {};
+  for (const el of app.querySelectorAll(":scope > .sheet")) if (el.scrollTop) kept[sheetKey(el)] = el.scrollTop;
+  return kept;
+}
+function sheetScrollsBack(app, kept) {
+  if (!kept || !app || typeof app.querySelectorAll !== "function") return;
+  for (const el of app.querySelectorAll(":scope > .sheet")) {
+    const y = kept[sheetKey(el)];
+    if (y && !el.classList.contains("fresh")) el.scrollTop = y;
+  }
+}
 // The dial's number counts up once, the first time Week is drawn.
 function countUpDial() {
   if (typeof requestAnimationFrame !== "function") return;
@@ -1409,7 +1447,7 @@ const APP_LINKS = {call: {page: "call", from: "week"}, study: {page: "study"}, p
 function appOpenFromLink(name) {
   if (!APP_LINKS[name]) return;
   if (name === "study") studyTab = "t";
-  sheet = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null;
+  closeSheets();
   go({...APP_LINKS[name]});
 }
 let openedFromLink = false;
@@ -1471,7 +1509,7 @@ if ("serviceWorker" in navigator) {
     if (Date.now() - openedAt < 15000 && !anySheet() &&
         !(a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA"))) updateNow();
     // Settings open: its version row now offers the restart.
-    else if (setSheet) { route.keepScroll = true; render(); }
+    else if (setSheet) quietRedraw(true);
   });
 }
 try {

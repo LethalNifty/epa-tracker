@@ -156,7 +156,7 @@ function alertsSync() {
   alertsSyncing = true;
   alertsRun(async () => {
     try { await alertsSend(); } finally { alertsSyncing = false; }
-    if (alertsGone && ((route.page === "week" && !anySheet()) || setSheet)) { route.keepScroll = true; render(); }
+    if (alertsGone && (route.page === "week" || setSheet)) quietRedraw(true);
     else alertsSync();
   });
 }

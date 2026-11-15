@@ -22,7 +22,7 @@ async function updateLook() {
     updateInfo.latest = m ? m[1] : null; updateInfo.failed = !m;
   } catch (e) { updateInfo.failed = true; }
   updateInfo.busy = false; updateInfo.at = Date.now();
-  if (setSheet) { route.keepScroll = true; render(); }
+  if (setSheet) quietRedraw(true);
 }
 // Update now: the service worker fetches the new version; when it takes over,
 // updateReady is set (app.js) and the row offers a restart.
@@ -33,7 +33,7 @@ function updatePull() {
   setTimeout(() => {
     if (updateReady || !updateInfo.pulling) return;
     updateInfo.pulling = false; updateInfo.stuck = true;
-    if (setSheet) { route.keepScroll = true; render(); }
+    if (setSheet) quietRedraw(true);
   }, 20000);
 }
 function updateState() {

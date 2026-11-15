@@ -63,7 +63,7 @@ async function remindInit() {
   remindLast = await remindRead("__gi-push.json");
   if (remindSub) await alertsCheck();
   remindReady = true;
-  if (remindState() !== before && ((route.page === "week" && !anySheet()) || setSheet)) { route.keepScroll = true; render(); }
+  if (remindState() !== before && (route.page === "week" || setSheet)) quietRedraw(true);
 }
 
 // ---- The brief the service worker reads -----------------------------------------

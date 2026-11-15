@@ -139,7 +139,7 @@ const SCOPE_FOUND = [
   ["angio", "Angiodysplasia", "angiodysplasias?|angioectasias?|avms?|ectasias?"],
   ["gave", "GAVE", "gave|watermelon stomach"],
   ["dieulafoy", "Dieulafoy", "dieulafoy'?s?|dulafoy|delafoy|dieulafoi"],
-  ["mass", "Mass or cancer", "mass|cancer|tumou?r|malignancy|carcinoma|adenocarcinoma|neoplasm"],
+  ["mass", "Mass or cancer", "mass(?:es)?|cancer|tumou?rs?|malignancy|carcinoma|adenocarcinoma|neoplasm"],
   ["polyp", "Polyp", "polyps?|adenomas?"],
   ["divertic", "Diverticulosis", "diverticulosis|diverticula|diverticulum|tics"],
   ["hemorrhoids", "Hemorrhoids", "ha?emorrhoids|piles"],
@@ -182,7 +182,14 @@ function scopeGuard(text) {
   const dateish = "(?:\\d[\\d/.-]*|" + SCOPE_MONTHS_GUARD + ")(?:st|nd|rd|th)?";
   t = t.replace(new RegExp("\\b(?:mrn|phin|dob|d\\.o\\.b\\.?|date of birth|health (?:card )?number|chart number|hospital number|born on)\\b" +
     "\\s*(?:is|was|:|#|number|no\\.?|of)?\\s*(?:" + dateish + "[\\s,]*){0,4}", "gi"), () => { removed++; return " "; });
-  t = t.replace(/\d[\d\s-]*\d/g, m => (m.replace(/\D/g, "").length >= 6 ? (removed++, " ") : m));
+  t = t.replace(/\d[\d\s-]*\d/g, (m, at, all) => {
+    if (m.replace(/\D/g, "").length < 6) return m;
+    // A day said with its year ("November 12 2026") and distances ("at 25 30 35 cm") are not identifiers.
+    if (/^\d{1,2}\s+(?:19|20)\d\d$/.test(m) && new RegExp("(?:" + SCOPE_MONTHS_GUARD + ")\\.?\\s*$", "i").test(all.slice(Math.max(0, at - 12), at))) return m;
+    if (/^\d{1,2}(?:\s+\d{1,2})+$/.test(m) && /^\s*(?:cm|mm|centimet|millimet)/i.test(all.slice(at + m.length))) return m;
+    removed++;
+    return " ";
+  });
   return {text: t.replace(/[ \t]{2,}/g, " ").trim(), removed};
 }
 
@@ -224,6 +231,9 @@ const SCOPE_FAM_PLURAL = phrase("(two|three|four|five|six|seven|eight|nine|ten|[
 const SCOPE_ENTERO_DEPTH = phrase("(?:(?:past|beyond|to|into) (?:the )?)?(?:(?:proximal|mid|distal) )?jejun\\w*|(?:(?:past|beyond) (?:the )?)?ligament of treitz|treitz|small bowel");
 const SCOPE_SEP = phrase("and then|then|next|after that|followed by|another one|another|next case|second case|third case|fourth case|fifth case|also did");
 const SCOPE_AGAIN = phrase("another one|another like that|same again|same thing|one more like that");
+// Breaks that can fall inside one patient's story; and words that start the next patient.
+const SCOPE_SEP_SOFT = /^(?:and then|then|after that|followed by)$/;
+const SCOPE_NEW_PATIENT = phrase("(?:next|another|new|second|third|fourth|fifth|other) (?:patient|case|pt)|patient|pt");
 
 const SCOPE_LM = [
   ["ti", "neo-?terminal ileum|terminal ileum|neo-?ti|ti|ileum|ileal"],
@@ -271,7 +281,9 @@ const SCOPE_TX = [
     (fam, m) => fam === "ercp" ? [/pancreatic|\bpd\b/.test(m) ? "ercp.panc" : /metal|sems|covered|wallstent/.test(m) ? "ercp.metal" : "ercp.plastic"]
       : [fam === "colo" ? "colo.stent" : fam === "fs" ? "fs.stent" : "egd.stent"]],
   // Savary is often heard as "savory"; a dilation with no type said is saved untyped, never guessed.
+  // The type can come after it too: "dilated with a balloon", "dilation using a Savary".
   [phrase("(?:balloon |cre |tts |bougie |savary |savory |savoury |maloney |wire[- ]guided |pneumatic |rigiflex |achalasia )*(?:dilat(?:ed|ion|ions|e|ing|or|ors)|dilatation|stretched)" +
+    "(?: (?:with|using|by|via) (?:a |an |the |\\d+(?:\\.\\d+)? ?mm |\\d+ millimet\\w* |cre |tts |through the scope )*(?:balloon|bougies?|savary|savory|savoury|maloney|pneumatic balloon|rigiflex)(?: balloon| bougies?| dilators?)?)?" +
     "|sav(?:a|o|ou)ry(?: bougies?)?|bougies?|maloney(?: bougies?)?|pneumatic dilation|rigiflex"),
     (fam, m) => fam === "colo" ? ["colo.dil"] : fam === "fs" ? ["fs.dil"] :
       [/pneumatic|rigiflex|achalasia/.test(m) ? "egd.dil.pneum" : /sav(?:a|o|ou)ry|wire[- ]guided/.test(m) ? "egd.dil.savary" : /maloney/.test(m) ? "egd.dil.maloney" :
@@ -426,6 +438,18 @@ function scopeVocabWords() {
   return set;
 }
 const SCOPE_STAFF_CUE = /(?:^|[^a-z])(?:with|dr\.?|doctor|staff|attending|supervised by|under)\s+(?:dr\.?\s+|doctor\s+)?$/;
+// After "with", a tool, a drug or a manner is not a person: "with cold snare",
+// "with epi", "with propofol", "with ease". Also anything a therapy reads.
+const SCOPE_NOT_NAME = new Set(("cold hot snare snares forceps jumbo biopsy biopsies clip clips hemoclip hemoclips epi epinephrine adrenaline " +
+  "saline lift injection needle knife apc argon bipolar probe gold heater powder hemospray glue stent stents balloon balloons bougie bougies " +
+  "dilator dilators savary savory maloney band bands bander loop endoloop net basket roth wire guidewire sphincterotome cap hood tattoo ink " +
+  "spot dye indigo carmine chromo nbi propofol sedation anesthesia anaesthesia anesthetic midazolam versed fentanyl ketamine ease difficulty " +
+  "help assistance good poor adequate excellent fair prep water air suction lavage irrigation retroflexion photos pictures " +
+  "cautery coagulation polypectomy resection emr esd").split(/\s+/));
+function scopeNotName(w) {
+  if (SCOPE_NOT_NAME.has(w)) return true;
+  return SCOPE_TX.some(([rx]) => { rx.lastIndex = 0; const m = rx.exec(w); rx.lastIndex = 0; return !!m && m.index === 0; });
+}
 
 function scopeDateFrom(lower, today) {
   const day = (y, m, d) => new Date(y, m, d, 12);
@@ -457,6 +481,55 @@ function scopeDateFrom(lower, today) {
     return {d, m};
   }
   return null;
+}
+
+// ---- Words taken back ---------------------------------------------------------------------------
+// "No polyps", "without varices", "negative for celiac": what follows is not
+// there. Up to four words on ("no evidence of active bleeding", "no large
+// polyps"), in the same clause: a full stop, "but" or "however" ends it, and a
+// comma or "and" does too unless the list goes on with "or" ("no polyps,
+// masses or diverticula"). "Polyps not seen", "varices: none" take it back from
+// after. For findings (look) also what was looked for or was there before:
+// "rule out EoE", "query", "biopsies for celiac", "history of polyps",
+// "family history of colon cancer", "cancer screening". "No change in" and
+// "no doubt" take nothing back.
+const SCOPE_NEG_NOT = phrase("no evidence of|no signs? of|no further|no more|negative for|free of|absence of|without|denies|denied|never had|absent|not|nor|no");
+const SCOPE_NEG_LOOK = phrase("to rule out|rule out|ruled out|r/o|to exclude|exclude|query|biops(?:y|ies|ied) (?:for|to (?:check|look) for)|" +
+  "(?:family |personal |past |prior )?history of|hx of|previous|prior|risk of");
+const SCOPE_NEG_HARD = /[.;:!?]|(?<![a-z'])(?:but|however|although|though|except|otherwise|whereas)(?![a-z'])/g;
+const SCOPE_NEG_PSEUDO = /^\s+(?:(?:significant|interval|obvious|real)\s+)?(?:change|changes|changed|increase|decrease|doubt|question|longer|only)(?![a-z])/;
+const SCOPE_NEG_AFTER = /^[\s,]*(?:[a-z'-]+\s+){0,2}?(?:absent|not (?:seen|identified|found|present|visuali[sz]ed)|ruled out|excluded|none(?:\s+(?:seen|found|noted|identified))?(?=\s*(?:,|$)))/;
+const SCOPE_NEG_AFTER_LOOK = /^\s+(?:screening|surveillance)(?![a-z])/;
+// The words at [a, b) taken back: the spans that say so (to leave the text
+// with them), else null.
+function scopeNegated(lower, a, b, look) {
+  let start = 0, end = lower.length, m;
+  SCOPE_NEG_HARD.lastIndex = 0;
+  while ((m = SCOPE_NEG_HARD.exec(lower)) && m.index < a) start = m.index + m[0].length;
+  SCOPE_NEG_HARD.lastIndex = b;
+  if ((m = SCOPE_NEG_HARD.exec(lower))) end = m.index;
+  const after = lower.slice(b, end), am = SCOPE_NEG_AFTER.exec(after) || (look && SCOPE_NEG_AFTER_LOOK.exec(after));
+  if (am) return [[b, b + am[0].length]];
+  const before = lower.slice(start, a);
+  let trig = null;
+  for (const rx of look ? [SCOPE_NEG_NOT, SCOPE_NEG_LOOK] : [SCOPE_NEG_NOT]) {
+    rx.lastIndex = 0;
+    let t;
+    while ((t = rx.exec(before))) if (!trig || t.index + t[0].length > trig.e) trig = {s: t.index, e: t.index + t[0].length};
+  }
+  if (!trig || SCOPE_NEG_PSEUDO.test(before.slice(trig.e))) return null;
+  const between = before.slice(trig.e), words = (between.match(/[a-z0-9'-]+/g) || []).length;
+  // A list goes on to its "or" and the word after; a comma or "and" past that ends it.
+  const brk = /,|(?<![a-z'])and(?![a-z'])/, orM = /(?<![a-z'])n?or\s+[a-z'-]+/.exec(lower.slice(start + trig.e, end));
+  if (orM ? brk.test(between.slice(orM.index + orM[0].length)) : brk.test(between)) return null;
+  return words <= (orM ? 8 : 4) ? [[start + trig.s, start + trig.e]] : null;
+}
+// Whether any of these words is said and not taken back.
+function scopeSaidPlain(lower, rx) {
+  rx.lastIndex = 0;
+  let m;
+  while ((m = rx.exec(lower))) { if (!scopeNegated(lower, m.index, m.index + m[0].length, false)) return true; if (!m[0].length) rx.lastIndex++; }
+  return false;
 }
 
 // Reads one case's words. text: the case's segments joined with commas.
@@ -512,7 +585,8 @@ function scopeReadCase(text, ctx) {
   SCOPE_FAM_PLURAL.lastIndex = 0;
   if (pl) { draft.n = SCOPE_NUMS[pl[1]] || +pl[1] || 1; mark(pl.index, pl.index + pl[0].length); }
 
-  const bleed = /bleed|melena|melaena|hematochezia|haematochezia|hematemesis|brbpr|blood|ha?emostasis|oozing|spurting/.test(lower);
+  // A bleed said, not taken back ("no active bleeding" after a polypectomy is no bleed).
+  const bleed = scopeSaidPlain(lower, /bleed\w*|bled|melena|melaena|hematochezia|haematochezia|hematemesis|brbpr|blood|ha?emostasis|oozing|spurting/g);
   const sizeCm = /(\d+(?:\.\d+)?)\s*(?:cm|centimet\w*)/.exec(lower), sizeMm = /(\d+)\s*(?:mm|millimet\w*)/.exec(lower);
   const bigPolyp = /\b(?:large|big|giant|lifted|lift)\b/.test(lower) || /(?:over|more than|bigger than|greater than) (?:a|one) centimet/.test(lower) ||
     (sizeCm && +sizeCm[1] >= 1) || (sizeMm && +sizeMm[1] >= 10);
@@ -617,8 +691,8 @@ function scopeReadCase(text, ctx) {
     // An unknown name after a cue becomes "New staff: ..." for the card.
     const cm = /(?:^|[^a-z])(?:with|dr\.?|doctor|attending|supervised by)\s+(?:dr\.?\s+|doctor\s+)?([a-z][a-z'-]+)(?:\s+([a-z][a-z'-]+))?/.exec(lower);
     if (cm) {
-      const ok = w => w && !SCOPE_STOP.has(w) && !vocabWords.has(w) && !scopeFamsIn(w).length && w.length > 1;
-      const w1 = ok(cm[1]) ? cm[1] : null, w2 = w1 && ok(cm[2]) && !scopeLmCode(cm[2]) ? cm[2] : null;
+      const ok = w => w && !SCOPE_STOP.has(w) && !vocabWords.has(w) && !scopeFamsIn(w).length && w.length > 1 && !scopeNotName(w);
+      const w1 = ok(cm[1]) && !(cm[2] && scopeNotName(cm[1] + " " + cm[2])) ? cm[1] : null, w2 = w1 && ok(cm[2]) && !scopeLmCode(cm[2]) ? cm[2] : null;
       if (w1) {
         const at = lower.indexOf(w1, cm.index);
         const orig = text.slice(at, at + w1.length + (w2 ? 1 + w2.length : 0));
@@ -629,25 +703,34 @@ function scopeReadCase(text, ctx) {
   }
   for (const x of words) if (SCOPE_STAFF_CUE.test(lower.slice(0, x.b + 1)) && /^(?:with|dr|doctor|staff|attending)$/.test(x.w)) mark(x.a, x.b);
 
-  // Why and found, longest phrases first within each list.
-  const vocab = (list, into) => {
+  // Why and found, longest phrases first within each list. Words taken back
+  // ("no varices", "rule out EoE") add nothing; a finding taken back stays
+  // free until the last reasons have looked ("history of polyps" is surveillance).
+  const negSpans = [];
+  const vocab = (list, into, look) => {
     for (const x of list) {
       if (!x.words) continue;
       for (const m of all(phrase(x.words))) {
         if (used[m.index] || used[m.index + m[0].length - 1]) continue;
+        const neg = scopeNegated(lower, m.index, m.index + m[0].length, look);
+        if (neg) { negSpans.push([m.index, m.index + m[0].length], ...neg); if (!look) mark(m.index, m.index + m[0].length); continue; }
         mark(m.index, m.index + m[0].length);
         add(into, x.code);
       }
     }
   };
-  vocab(SCOPE_WHY.filter(x => !["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why);
-  vocab(SCOPE_FOUND, draft.found);
-  vocab(SCOPE_WHY.filter(x => ["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why);
+  vocab(SCOPE_WHY.filter(x => !["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why, false);
+  // EoE first, so "eosinophilic esophagitis" is EoE and not esophagitis.
+  vocab([...SCOPE_FOUND.filter(x => x.code === "eoe"), ...SCOPE_FOUND.filter(x => x.code !== "eoe")], draft.found, true);
+  vocab(SCOPE_WHY.filter(x => ["ida", "anemia", "crc", "surv", "fb"].includes(x.code)), draft.why, false);
+  for (const [a, b] of negSpans) mark(a, b);
   if (draft.procs.includes("egd.fb")) add(draft.why, "fb");
   // "Dilated with bougies": the named type is the dilation.
   if (draft.procs.some(c => c.startsWith("egd.dil."))) draft.procs = draft.procs.filter(c => c !== "egd.dil");
-  // Screening words already made this a screening colonoscopy; say why only when it is one.
+  // Screening words already made this a screening colonoscopy; say why only when it is one
+  // (and say it when nothing else is: "colon cancer screening" is read as one phrase).
   if (draft.why.includes("crc") && !draft.procs.includes("colo.screen")) draft.why = draft.why.filter(c => c !== "crc");
+  if (draft.procs.includes("colo.screen") && !draft.why.length) add(draft.why, "crc");
   // An ulcer named by where it is.
   if (draft.found.includes("pud")) {
     if (/duoden|bulb/.test(lower)) { draft.found = draft.found.filter(c => c !== "pud"); add(draft.found, "du"); }
@@ -658,12 +741,13 @@ function scopeReadCase(text, ctx) {
   if (draft.found.length > 1) draft.found = draft.found.filter(c => c !== "normal");
   if (draft.procs.some(c => /\.(?:big)?poly$/.test(c))) add(draft.found, "polyp");
   // A bleed with no more specific reason: upper or lower by the procedure.
-  const bleedWord = all(phrase("gi bleed(?:ing)?|bleed(?:ing|s)?|bled"));
-  if (bleedWord.length) {
-    for (const m of bleedWord) mark(m.index, m.index + m[0].length);
-    if (!draft.why.some(c => ["hematemesis", "melena", "hematochezia", "ugib", "lgib", "ogib"].includes(c)))
-      add(draft.why, draft.procs.some(c => c.startsWith("colo.") || c.startsWith("fs.")) ? "lgib" : "ugib");
+  let bledSaid = false;
+  for (const m of all(phrase("gi bleed(?:ing)?|bleed(?:ing|s)?|bled"))) {
+    mark(m.index, m.index + m[0].length);
+    if (!scopeNegated(lower, m.index, m.index + m[0].length, false)) bledSaid = true;
   }
+  if (bledSaid && !draft.why.some(c => ["hematemesis", "melena", "hematochezia", "ugib", "lgib", "ogib"].includes(c)))
+    add(draft.why, draft.procs.some(c => c.startsWith("colo.") || c.startsWith("fs.")) ? "lgib" : "ugib");
   // How far a push enteroscopy went is part of saying it, not something missed.
   if (draft.procs.includes("egd.entero")) for (const m of all(SCOPE_ENTERO_DEPTH)) mark(m.index, m.index + m[0].length);
 
@@ -673,7 +757,7 @@ function scopeReadCase(text, ctx) {
     for (let i = x.a; i < x.b; i++) cover += used[i];
     if (cover >= (x.b - x.a) / 2) continue;
     if (SCOPE_STOP.has(x.w) || x.w.length < 3 || SCOPE_NUMS[x.w]) continue;
-    if (/^(?:cold|hot|snare|lesion|lesions|seen|mild|moderate|severe|grade|la|vessel|vessels|visible|clean|base|stigmata|extraction|extracted|sweep|swept|litres?|liters?|prep|retroflex\w*|photos?|pictures?|withdrawal|intubation|using|used|via)$/.test(x.w)) continue;
+    if (/^(?:cold|hot|snare|lesion|lesions|seen|mild|moderate|severe|grade|la|vessel|vessels|visible|clean|base|based|stigmata|extraction|extracted|sweep|swept|litres?|liters?|prep|retroflex\w*|photos?|pictures?|withdrawal|intubation|using|used|via)$/.test(x.w)) continue;
     draft.leftover.push(x.w);
   }
   return draft;
@@ -786,7 +870,13 @@ function scopeParse(text, ctx = {}) {
     const cur = groups[groups.length - 1];
     const again = SCOPE_AGAIN.test(lower);
     SCOPE_AGAIN.lastIndex = 0;
-    const startNew = !cur || (s.sep && (cur.fams.length || cur.texts.length)) || (s.newSentence && fams.length && cur.fams.length);
+    // "Then" inside one patient's story ("and then staff took over and removed a
+    // polyp") goes on with the same case: it starts a new one only with a
+    // procedure word or a new patient ("then a 60 year old").
+    SCOPE_NEW_PATIENT.lastIndex = 0; SCOPE_AGE_RX.lastIndex = 0;
+    const goesOn = s.sep && SCOPE_SEP_SOFT.test(s.sep) && !fams.length && !SCOPE_NEW_PATIENT.test(lower) && !SCOPE_AGE_RX.test(lower);
+    SCOPE_NEW_PATIENT.lastIndex = 0; SCOPE_AGE_RX.lastIndex = 0;
+    const startNew = !cur || (s.sep && !goesOn && (cur.fams.length || cur.texts.length)) || (s.newSentence && fams.length && cur.fams.length);
     if (startNew) groups.push({texts: [s.text], fams: fams.slice(), again: again && !fams.length});
     else { cur.texts.push(s.text); for (const f of fams) if (!cur.fams.includes(f)) cur.fams.push(f); }
   }

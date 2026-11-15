@@ -93,7 +93,8 @@ function bkRun(fn, quiet) {
   bkWork = (async () => {
     try { await fn(); } catch (e) { if (!quiet) bkMsg = "That didn't work. Try again."; }
     bkBusy = false;
-    if (!quiet || setSheet) { route.keepScroll = true; render(); }
+    if (!quiet) { route.keepScroll = true; render(); }
+    else if (setSheet) quietRedraw(true);
   })();
   return bkWork;
 }

@@ -64,7 +64,7 @@ async function studyqInit() {
   else if (!StudyQ.pw) StudyQ.status = "locked";
   else await studyqOpen(studyqEnc, StudyQ.pw);
   if (StudyQ.status + StudyQ.list.length !== before && typeof route !== "undefined" &&
-      (route.page === "study" || route.page === "week") && !sheet && !studySheet) { route.keepScroll = true; render(); }
+      (route.page === "study" || route.page === "week")) quietRedraw();
 }
 async function studyqUnlock(pw) {
   pw = String(pw || "").trim();
