@@ -8,6 +8,99 @@
 const REVIEW_YEAR = {n: 1, from: "2026-07-01", to: "2027-06-30", span: "July 2026 to June 2027"};
 let reviewSheet = null, reviewFresh = false, reviewErr = null;
 
+// ---- For your CV -------------------------------------------------------------------------------
+// Your own talks, abstracts and posters, papers and teaching, kept as they
+// happen so the CV has a list to copy from. Each: {id, k (kind), t (what),
+// d (day), w (where or for whom), n (a note: submitted, first author), ts}.
+// In the saved state, so it goes in the backup. Full app only.
+const WORK_KINDS = [["talk", "Talk", "Talks"], ["abstract", "Abstract or poster", "Abstracts and posters"], ["paper", "Paper", "Papers"],
+  ["teach", "Teaching", "Teaching"], ["other", "Other", "Other"]];
+const WORK_T_MAX = 200, WORK_W_MAX = 120, WORK_N_MAX = 200;
+let workSheet = null, workFresh = false, workShow = null;
+function workClean(raw) {
+  const out = [], taken = new Set();
+  for (const x of Array.isArray(raw) ? raw : []) {
+    const t = x && typeof x.t === "string" ? x.t.trim().slice(0, WORK_T_MAX) : "";
+    if (!t || typeof x.d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(x.d)) continue;
+    let id = typeof x.id === "string" && /^w[a-z0-9]{1,24}$/.test(x.id) ? x.id : "";
+    if (!id || taken.has(id)) id = workNewId(taken);
+    taken.add(id);
+    out.push({id, k: WORK_KINDS.some(w => w[0] === x.k) ? x.k : "other", t, d: x.d,
+      w: typeof x.w === "string" ? x.w.trim().slice(0, WORK_W_MAX) : "", n: typeof x.n === "string" ? x.n.trim().slice(0, WORK_N_MAX) : "",
+      ts: typeof x.ts === "string" ? x.ts : ""});
+  }
+  return out;
+}
+function workNewId(taken) {
+  let id;
+  do id = "w" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));
+  return id;
+}
+const workList = () => (Store.state.work || []).slice().sort((a, b) => b.d.localeCompare(a.d) || b.ts.localeCompare(a.ts));
+const workKindName = k => (WORK_KINDS.find(w => w[0] === k) || WORK_KINDS[4])[1];
+const workDay = iso => { const [y, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1]} ${y}`; };
+// The list as text for a CV: by kind, newest first, one line each.
+function workText(list = workList()) {
+  return WORK_KINDS.map(([k, , head]) => {
+    const xs = list.filter(x => x.k === k);
+    return xs.length ? head + "\n" + xs.map(x => "- " + [x.t, x.w, workDay(x.d), x.n].filter(Boolean).join(". ") + ".").join("\n") : "";
+  }).filter(Boolean).join("\n\n");
+}
+function workSectionHTML() {
+  const list = workList();
+  const rows = list.map(x => `<button class="cv-row" data-action="reviewworkopen" data-id="${x.id}"><span class="cv-t"><b>${esc(x.t)}</b>` +
+    `<span>${esc([workKindName(x.k), x.w, x.n].filter(Boolean).join(" · "))}</span></span><span class="mono cv-d">${esc(workDay(x.d))}</span></button>`).join("");
+  return `<div class="yrv-g"><div class="mono yrv-gh cv-gh"><span>For your CV</span>${list.length ? `<span>${list.length}</span>` : ""}</div>` +
+    `<div class="card list yrv-list cv-list">${rows || `<p class="cv-empty">Talks, abstracts and posters, papers and teaching you've done. Add each one as it happens, and Copy gives you the list to paste into your CV.</p>`}</div>` +
+    `<div class="cv-acts"><button class="btn" data-action="reviewworknew">${ic("plus")}Add</button>` +
+    (list.length ? `<button class="btn" data-action="reviewworkcopy">${ic("copy")}Copy for your CV</button>` : "") + `</div>` +
+    (workShow ? `<textarea class="cv-show mono" readonly rows="6" aria-label="Your CV list">${esc(workShow)}</textarea>` : "") + `</div>`;
+}
+function workOpen(id) {
+  const x = id ? (Store.state.work || []).find(w => w.id === id) : null;
+  workSheet = x ? {mode: "edit", id, k: x.k, t: x.t, d: x.d, w: x.w, n: x.n, err: null}
+    : {mode: "new", k: "talk", t: "", d: fmtDate(getToday()), w: "", n: "", err: null};
+  workFresh = true;
+}
+function workSheetHTML() {
+  const s = workSheet, edit = s.mode === "edit", fresh = workFresh ? " fresh" : "", title = edit ? "Edit" : "Add to your CV list";
+  const chip = ([k, label]) => `<button class="pick ghost${s.k === k ? " on" : ""}" data-action="reviewworkkind" data-k="${k}" aria-pressed="${s.k === k}">${label}</button>`;
+  return `<div class="scrim top${fresh}" data-action="reviewworkclose"></div><div class="sheet worksheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
+    `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="reviewworkclose" aria-label="Close">${ic("x")}</button></div>` +
+    `<div class="pickrow">${WORK_KINDS.map(chip).join("")}</div>` +
+    `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-work="t" placeholder="Title of the talk, abstract or paper" autocapitalize="sentences"></label>` +
+    `<label class="lbl mono">Day<input type="date" value="${esc(s.d)}" data-work="d"></label>` +
+    `<label class="lbl mono">Where or for whom<input type="text" value="${esc(s.w)}" data-work="w" placeholder="GI rounds, CDDW 2027, the journal, med students" autocapitalize="sentences"></label>` +
+    `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" data-work="n" placeholder="Submitted, accepted as a poster, first author" autocapitalize="sentences"></label>` +
+    (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
+    `<div class="sactions">${edit ? `<button class="btn danger" data-action="reviewworkdel">Delete</button>` : ""}` +
+    `<button class="btn primary" data-action="reviewworksave">${edit ? "Save" : "Add"}</button></div></div>`;
+}
+// Typing keeps the words; nothing redraws.
+function workField(t) {
+  const f = t && t.dataset && t.dataset.work;
+  if (!f || !workSheet) return false;
+  workSheet[f] = t.value;
+  return true;
+}
+function workSave() {
+  const s = workSheet, t = s.t.trim();
+  if (!t) { s.err = "Give it a title first."; return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s.d || "")) { s.err = "Pick a day."; return; }
+  const before = JSON.parse(JSON.stringify(Store.state.work || [])), list = Store.state.work || (Store.state.work = []);
+  if (s.mode === "edit") { const x = list.find(w => w.id === s.id); if (x) Object.assign(x, {k: s.k, t, d: s.d, w: s.w.trim(), n: s.n.trim()}); }
+  else list.push({id: workNewId(new Set(list.map(w => w.id))), k: s.k, t, d: s.d, w: s.w.trim(), n: s.n.trim(), ts: new Date().toISOString()});
+  Store.state.work = workClean(list); Store.save();
+  showToast(s.mode === "edit" ? "Changes saved" : "Added to your CV list", () => { Store.state.work = before; Store.save(); });
+  workSheet = null; workShow = null;
+}
+function workCopy() {
+  const text = workText(), redraw = () => { route.keepScroll = true; render(); };
+  try {
+    navigator.clipboard.writeText(text).then(() => { workShow = null; showToast("Copied: paste it into your CV"); redraw(); }, () => { workShow = text; redraw(); });
+  } catch (e) { workShow = text; }
+}
+
 // ---- The numbers ----------------------------------------------------------------------------
 function reviewYear(st, today) {
   const Y = REVIEW_YEAR, t = fmtDate(today), over = t >= Y.to, to = over ? Y.to : t;
@@ -93,7 +186,7 @@ function reviewSheetHTML() {
     `<p class="yrv-span mono">${esc(y.span)}${y.over ? "" : ` · day ${y.day} of 365`}</p>` +
     `<div class="yrv-hero">${hero}</div>` +
     `<div class="card pad yrv-months"><div class="mono yrv-gh">Procedures by month</div><div class="yrv-bars" aria-hidden="true">${bars}</div></div>` +
-    groups + (notes ? `<p class="yrv-note">${esc(notes)}</p>` : "") +
+    groups + workSectionHTML() + (notes ? `<p class="yrv-note">${esc(notes)}</p>` : "") +
     `<button class="btn primary" data-action="reviewsave">${ic("share")}Save as image</button>` +
     `<p class="bnote">A picture of this page for your phone's photos. Staff names stay off it.</p>` +
     (reviewErr ? `<div class="err">${esc(reviewErr)}</div>` : "") + `</div>`;
@@ -169,9 +262,21 @@ async function reviewSave() {
 
 // ---- Taps --------------------------------------------------------------------------------------------
 // Returns false when it redraws by itself.
-function reviewDispatch(act) {
+function reviewDispatch(act, d = {}) {
   if (act === "reviewopen") reviewOpen();
-  else if (act === "reviewclose") { reviewSheet = null; reviewErr = null; }
+  else if (act === "reviewclose") { reviewSheet = null; reviewErr = null; workShow = null; }
   else if (act === "reviewsave") { reviewSave(); return false; }
+  else if (act === "reviewworknew") workOpen(null);
+  else if (act === "reviewworkopen") workOpen(d.id);
+  else if (act === "reviewworkkind" && workSheet && WORK_KINDS.some(w => w[0] === d.k)) workSheet.k = d.k;
+  else if (act === "reviewworksave" && workSheet) workSave();
+  else if (act === "reviewworkclose") workSheet = null;
+  else if (act === "reviewworkdel" && workSheet) {
+    const before = JSON.parse(JSON.stringify(Store.state.work || []));
+    Store.state.work = (Store.state.work || []).filter(w => w.id !== workSheet.id); Store.save();
+    workSheet = null; workShow = null;
+    showToast("Deleted from your CV list", () => { Store.state.work = before; Store.save(); });
+  }
+  else if (act === "reviewworkcopy") { workCopy(); return false; }
 }
-function reviewAfterRender() { reviewFresh = false; }
+function reviewAfterRender() { reviewFresh = false; workFresh = false; }

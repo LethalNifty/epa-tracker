@@ -47,6 +47,7 @@ const Store = {
     const gd = this.state.guides;
     this.state.guides = {pins: arr(gd && gd.pins).filter(x => typeof x === "string"), seen: arr(gd && gd.seen).filter(x => typeof x === "string")};
     this.state.pearls = pearlsClean(this.state.pearls);
+    this.state.work = workClean(this.state.work);
     scopeLinkEpas(this.state.scopes.cases, this.state.obs, this.state.scopes.staff); },
   logObs(p) { (this.state.obs[p] ||= []).push({status:"pending", ts:new Date().toISOString()});
     this.save(); return this.state.obs[p].length - 1; },
@@ -157,7 +158,7 @@ const Store = {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
-      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}, agenda:s.agenda, retired:s.retired};
+      this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}, agenda:s.agenda, retired:s.retired, work:s.work};
       this.migrate();
     } catch(e) { this.state = before; return {ok:false, error:"Could not read that file."}; }
     this.save(); return {ok:true, before};
@@ -167,7 +168,7 @@ const Store = {
   hasData() {
     return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
       Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0 || this.state.scopes.cases.length > 0 ||
-      this.state.pearls.length > 0;
+      this.state.pearls.length > 0 || (this.state.work || []).length > 0;
   },
   // Study: the bookmark is saved against the day it was set.
   setStudyCursor(c, day) {
@@ -1170,7 +1171,7 @@ function render() {
     html = `<main class="page${enterNext ? " enter" : ""}${liveStackClass()}${setup ? " felsetup" : ""}">${body}</main>` + (setup ? "" : navHTML(p === "epa" || p === "call" ? route.from : p)) +
       (sheet && plusShows("e") ? sheetHTML() : "") + (studySheet ? studySheetHTML() : "") + (scopeSheet && plusShows("c") ? scopeSheetHTML() : "") +
       (scopePick ? scopePickHTML() : "") + (pearlSheet && plusShows("p") ? pearlSheetHTML() : "") + (!FELLOWS && tellSheet && plusShows("t") ? tellSheetHTML() : "") + (setSheet ? setSheetHTML() : "") +
-      (reviewSheet ? reviewSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") +
+      (reviewSheet ? reviewSheetHTML() : "") + (workSheet ? workSheetHTML() : "") + (agSheet ? agSheetHTML() : "") + (agUsual ? agUsualHTML() : "") + (agReq ? agReqHTML() : "") +
       (!FELLOWS && route.rostPic ? rosterPicHTML() : "") + (toast ? toastHTML() : "");
   } catch (err) {
     console.error(err);
@@ -1216,7 +1217,7 @@ function holdPage(on) {
 // Every sheet that can be up. No redraw from outside (an update, coming back to
 // the app, the library or the questions arriving, the call clock) while one is
 // open: see quietRedraw.
-const sheetsUp = () => [sheet, studySheet, scopeSheet, scopePick, pearlSheet, setSheet, reviewSheet, agSheet, agUsual, agReq,
+const sheetsUp = () => [sheet, studySheet, scopeSheet, scopePick, pearlSheet, setSheet, reviewSheet, workSheet, agSheet, agUsual, agReq,
   !FELLOWS && tellSheet, !FELLOWS && route.rostPic].filter(Boolean).length;
 const anySheet = () => sheetsUp() > 0;
 // A field has the keyboard: a redraw rebuilds the field, which drops the
@@ -1231,7 +1232,7 @@ function quietRedraw(setOk) {
 }
 // A tapped reminder opening its screen closes whatever was up.
 function closeSheets() {
-  sheet = null; sheetError = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null;
+  sheet = null; sheetError = null; studySheet = null; scopeSheet = null; scopePick = null; pearlSheet = null; setSheet = null; reviewSheet = null; workSheet = null;
   agSheet = null; agUsual = null; agReq = null;
   if (!FELLOWS) { tellSheet = null; route.rostPic = null; }
 }
@@ -1402,7 +1403,7 @@ document.getElementById("app").addEventListener("submit", ev => {
 document.getElementById("app").addEventListener("input", ev => {
   // The backup passphrase stays in memory, out of every draft.
   if (!FELLOWS && bkField(ev.target)) return;
-  if (agField(ev.target) || felField(ev.target) || (!FELLOWS && (watchField(ev.target) || tellField(ev.target) || rosterField(ev.target))) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
+  if (agField(ev.target) || workField(ev.target) || felField(ev.target) || (!FELLOWS && (watchField(ev.target) || tellField(ev.target) || rosterField(ev.target))) || sheetField(ev.target) || callField(ev.target) || studyField(ev.target) || scopeField(ev.target) || guidesField(ev.target) || pearlField(ev.target)) { draftsKeep(); return; }
   if (ev.target.id !== "biopsyq") return;
   const caret = ev.target.selectionStart;
   biopsyTerm = ev.target.value;
@@ -1414,7 +1415,7 @@ document.getElementById("app").addEventListener("input", ev => {
 document.getElementById("app").addEventListener("change", ev => {
   const t = ev.target, d = t.dataset || {};
   if (agReqField(t)) return;
-  if (agField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) { draftsKeep(); return; }
+  if (agField(t) || workField(t) || sheetFieldChange(t) || studyField(t) || scopeFieldChange(t) || pearlFieldChange(t)) { draftsKeep(); return; }
   if (t.id === "callfile") { callReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (t.id === "agfile") { agReadFile(t.files && t.files[0]); t.value = ""; return; }
   if (d.callnum) { callNumDone(t); return; }
