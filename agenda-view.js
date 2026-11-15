@@ -82,7 +82,7 @@ function viewAgenda() {
   if (!agMonth) agMonth = agSel.slice(0, 7);
   const blk = blockFor(getToday()), ctx = agCtx(), seg = (v, label) =>
     `<button class="${agView === v ? "on" : ""}" data-action="agview" data-view="${v}"${agView === v ? ` aria-current="page"` : ""}>${label}</button>`;
-  return `<header class="ph has-gear"><button class="iconbtn phgear" data-action="agnew" aria-label="Add an event">${ic("plus")}</button>` +
+  return `<header class="ph has-gear"><button class="iconbtn phgear phadd" data-action="agnew">${ic("plus")}Event</button>` +
     `<p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
     `<div class="segtabs ag-seg" role="group" aria-label="Agenda views">${seg("d", "Days")}${seg("m", "Month")}</div>` +
     (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) + agNotesHTML() +

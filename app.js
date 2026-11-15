@@ -656,6 +656,35 @@ function lineEditorHTML(id) {
     `<label class="lbl mono">Note<input type="text" value="${esc(meta.n || "")}" placeholder="Assessor, case details" data-field="n" data-line="${id}"></label>` +
     `<div class="erow"><button class="textbtn" data-action="closeedit">Done</button></div></div>`;
 }
+// ---- Different assessors ------------------------------------------------------------
+// A part that asks for "at least N different assessors" (its "N Assessor"
+// checklist lines) counts them from its forms: approved ones only, by surname.
+// A form marked Not achieved leaves the observations, and a deleted one is
+// gone, so either drops out of the count at once; a pending one shows as
+// pending. One surname counts once, however it was spelled ("Dr. Brook",
+// "brook"), and two staff who share one count once too, so the count never
+// says more than is true. Full app only.
+const assessorKey = a => scopeBare(a).toLowerCase().replace(/[^a-z\s'-]/g, " ").trim().split(/\s+/).pop() || "";
+const assessorLines = pid => (PART_BY_ID[pid] ? PART_BY_ID[pid].items : []).filter(it => it.id && /^\d+ Assessor$/i.test(it.label));
+function assessorCount(pid) {
+  const ok = new Map(), pend = new Map();
+  // Each surname shown as first written, unless that was all lower case.
+  const put = (m, k, name) => { const was = m.get(k); if (!was || (was === was.toLowerCase() && name !== name.toLowerCase())) m.set(k, name); };
+  for (const o of Store.state.obs[pid] || []) {
+    const k = o.a && assessorKey(o.a);
+    if (k) put(o.status === "approved" ? ok : pend, k, scopeBare(o.a));
+  }
+  for (const k of ok.keys()) pend.delete(k);
+  return {ok: [...ok.values()], pend: [...pend.values()], need: assessorLines(pid).length};
+}
+// What the log sheet says about the assessor typed, for a part that counts them.
+function assessorHint(pid, a, mode) {
+  if (FELLOWS || mode !== "new" || !pid || !String(a || "").trim() || !assessorLines(pid).length) return "";
+  const ac = assessorCount(pid), k = assessorKey(a), left = ac.need - ac.ok.length;
+  if (!k || left <= 0) return "";
+  if (ac.ok.map(assessorKey).includes(k)) return `${scopeBare(a)} already counts here. This EPA needs ${left} more different assessor${left === 1 ? "" : "s"}.`;
+  return `A new assessor here: ${ac.ok.length + 1} of ${ac.need} different once it's approved.`;
+}
 function partBlock(p, st) {
   const t = tally([PART_BY_ID[p.id]]), list = Store.state.obs[p.id] || [];
   const m = p.name ? /^(Part [A-Z]):\s*(.*)$/.exec(p.name) : null;
@@ -685,14 +714,20 @@ function partBlock(p, st) {
   h += `<button class="logbtn" data-action="sheet" data-part="${p.id}">${ic("plus")}Log observation</button>`;
   if (p.items.length) {
     h += `<div class="ctx"><span class="mono">Context checklist</span>`;
+    const ac = !FELLOWS && assessorLines(p.id).length ? assessorCount(p.id) : null;
     for (const it of p.items) {
       if (it.h) { h += `<div class="ihead">${esc(it.h)}</div>`; continue; }
       // A tick whose form is still pending shows as pending, and counts once it's approved.
-      const v = Store.lineVal(it.id), pend = Store.linePend(it.id), ok = v - pend, ldone = ok >= it.target, lp = pend && !ldone;
-      const box = it.target === 1 ? (ok ? ic("check") : pend ? ic("clock") : "") : `${v}/2`;
+      const v = Store.lineVal(it.id), pend = Store.linePend(it.id), ok = v - pend;
+      // "2 Assessor" is also done by two different assessors on approved forms, and named.
+      const am = ac && /^(\d+) Assessor$/i.exec(it.label), an = am ? +am[1] : 0;
+      const autoOk = !!an && ac.ok.length >= an, autoPend = !!an && !autoOk && ac.ok.length + ac.pend.length >= an;
+      const who = an ? (ac.ok[an - 1] || ac.pend[an - 1 - ac.ok.length] || "") : "";
+      const ldone = ok >= it.target || autoOk, lp = (!!pend || autoPend) && !ldone;
+      const box = it.target === 1 ? (ldone ? ic("check") : lp ? ic("clock") : "") : `${v}/2`;
       h += `<div class="line${ldone ? " ldone" : lp ? " lpend" : ""}" data-action="cycleline" data-line="${it.id}" data-target="${it.target}">` +
         `<span class="lbox${lp ? " pend" : !ldone && v ? " half" : ""}">${box}</span>` +
-        `<span class="llab">${esc(it.label)}${lp ? `<span class="lpn mono">Pending</span>` : ""}</span>` +
+        `<span class="llab">${esc(it.label)}${who ? `<span class="lwho"> · ${esc(who)}</span>` : ""}${lp ? `<span class="lpn mono">Pending</span>` : ""}</span>` +
         `<button class="lmeta" data-action="linemeta" data-line="${it.id}" aria-label="Date and note">${ic("more")}</button></div>`;
       if (route.editLine === it.id) h += lineEditorHTML(it.id);
     }
@@ -980,6 +1015,7 @@ function sheetHTML() {
     `<div class="datechips">${dchip(iso, "Today")}${dchip(yest, "Yesterday")}</div>` +
     `<label class="lbl mono">Assessor<input type="text" value="${esc(s.a)}" placeholder="Surname" data-sheet="a" autocomplete="off" autocapitalize="words"></label>` +
     `<div class="pickrow sugg" id="sugg">${suggHTML(s.a)}</div>` +
+    `<p class="ahint" id="ahint" aria-live="polite">${esc(assessorHint(s.pid, s.a, s.mode))}</p>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" placeholder="Case details" data-sheet="n"></label>` + ticks +
     `<div class="seg three" role="group" aria-label="Status"><button class="pending${s.status === "pending" ? " on" : ""}" data-action="sheetstatus" data-status="pending">${ic("clock")}Pending</button>` +
     `<button class="approved${s.status === "approved" ? " on" : ""}" data-action="sheetstatus" data-status="approved">${ic("check")}Approved</button>` +
@@ -994,7 +1030,10 @@ function sheetField(t) {
   const f = t.dataset && t.dataset.sheet;
   if (!f || !sheet) return false;
   sheet[f] = t.value;
-  if (f === "a") { const box = document.getElementById("sugg"); if (box) box.innerHTML = suggHTML(t.value); }
+  if (f === "a") {
+    const box = document.getElementById("sugg"); if (box) box.innerHTML = suggHTML(t.value);
+    const hint = document.getElementById("ahint"); if (hint) hint.textContent = assessorHint(sheet.pid, t.value, sheet.mode);
+  }
   return true;
 }
 // The change event fires as a field loses focus, often to a suggestion being
