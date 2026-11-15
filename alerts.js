@@ -45,12 +45,14 @@ const alertAt = (day, hm) => new Date(day.getFullYear(), day.getMonth(), day.get
 function alertPlan(now) {
   const d0 = alertMidnight(now), from = d0.getTime(), to = alertDay(d0, ALERT_DAYS).getTime(), out = [];
   const str = callStretches(CallStore.list());
+  // Paused and "Not tonight" nights have no reading, so no 20:00 reminder either.
+  const pauses = (Store.state.study && Store.state.study.pauses) || [];
   for (let k = 0; k < ALERT_DAYS; k++) {
     const day = alertDay(d0, k), wd = day.getDay();
     if (wd === 1) out.push({t: alertDay(d0, k, 8).getTime(), kind: "week"});
     if (wd === 3) out.push({t: alertDay(d0, k, 8).getTime(), kind: "ask"});
     if (wd === 0) out.push({t: alertDay(d0, k, 17).getTime(), kind: "pearls"});
-    if (fmtDate(day) <= fmtDate(STUDY_END) && studyNightKind(day, str, []) === "read") out.push({t: studyEveningMs(day), kind: "study"});
+    if (fmtDate(day) <= fmtDate(STUDY_END) && studyNightKind(day, str, pauses) === "read") out.push({t: studyEveningMs(day), kind: "study"});
   }
   for (const st of str) out.push({t: st.s - HOUR_MS, kind: "call", s: st.s});
   const eves = new Set();

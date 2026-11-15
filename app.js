@@ -55,8 +55,13 @@ const Store = {
   // A pending form coming back (approved, or not achieved) keeps the day it did
   // (ok), for its assessor's usual turnaround; a form just being logged (no date
   // yet), or one going back to pending, keeps none.
-  statusTo(o, s) { const back = s === "approved" || s === "missed";
-    if (back && o.status === "pending" && o.d) o.ok = fmtDate(getToday()); if (!back) delete o.ok; o.status = s; },
+  // An approved form put back to pending by mistake and approved again the same
+  // day gets its own day back (okWas), not today.
+  statusTo(o, s) { const back = s === "approved" || s === "missed", today = fmtDate(getToday());
+    if (back && o.status === "pending" && o.d) o.ok = o.okWas && o.okWas.on === today ? o.okWas.d : today;
+    if (!back) { if (o.ok && o.status === "approved") o.okWas = {d: o.ok, on: today}; delete o.ok; }
+    else delete o.okWas;
+    o.status = s; },
   // Not achieved (below the entrustment mark): the form leaves the observations
   // for state.missed, so it never counts, and its checklist lines go back.
   // Returns where it landed there.
@@ -143,15 +148,22 @@ const Store = {
   partDone(p) { return (this.state.obs[p]||[]).length; },
   exportJSON() { return JSON.stringify(this.state, null, 1); },
   markBackup() { this.state.lastBackup = new Date().toISOString(); this.save(); },
+  // A file that can't be read leaves the phone's data as it was: nothing is
+  // kept until the whole file has been taken in. before: the data it replaced,
+  // for Undo.
   importJSON(text) {
+    const before = this.state;
     try {
       const s = JSON.parse(text);
       if (!s || s.v !== 1 || typeof s.obs !== "object" || !s.obs || typeof s.lines !== "object" || !s.lines)
         return {ok:false, error:"Not a valid EPA backup file."};
       this.state = {v:1, obs:s.obs, lines:s.lines, lastBackup:s.lastBackup || null, recapSeen:s.recapSeen || null, ask:s.ask || null, askOn:s.askOn || null, askDays:s.askDays || {}, study:s.study, scopes:s.scopes, guides:s.guides, pearls:s.pearls, setup:s.setup || null, goal:s.goal || null, missed:s.missed || {}, agenda:s.agenda, retired:s.retired};
-      this.migrate(); this.save(); return {ok:true};
-    } catch(e) { return {ok:false, error:"Could not read that file."}; }
+      this.migrate();
+    } catch(e) { this.state = before; return {ok:false, error:"Could not read that file."}; }
+    this.save(); return {ok:true, before};
   },
+  // Undo for a restore: the data as it was just before.
+  undoImport(before) { if (before) { this.state = before; this.save(); } },
   hasData() {
     return Object.keys(this.state.obs).some(k => this.state.obs[k].length > 0) ||
       Object.keys(this.state.lines).length > 0 || Object.keys(this.state.study.log).length > 0 || this.state.scopes.cases.length > 0 ||
@@ -1283,7 +1295,14 @@ function dispatch(act, d) {
     Store.removeObs(pid, i); if (tk.length) Store.bumpLines(tk, -1); sheet = null;
     showToast("Observation deleted", () => { Store.restoreObs(pid, i, removed); if (tk.length) Store.bumpLines(tk, 1); });
     route.keepScroll = true; render(); }
-  else if (act === "togglestatus") { Store.toggleObsStatus(d.part, +d.obs); route.keepScroll = true; render(); }
+  else if (act === "togglestatus") {
+    // The pill is easy to tap by mistake: say what changed, with Undo.
+    const o = (Store.state.obs[d.part] || [])[+d.obs];
+    if (o) {
+      const was = JSON.parse(JSON.stringify(o)), s = Store.toggleObsStatus(d.part, +d.obs);
+      showToast(s === "approved" ? "Marked approved" : "Back to pending", () => { for (const k of Object.keys(o)) delete o[k]; Object.assign(o, was); Store.save(); });
+    }
+    route.keepScroll = true; render(); }
   else if (act === "dismissrecap") { Store.setRecapSeen(d.key); route.keepScroll = true; render(); }
   else if (act === "chaseok") {
     const pid = d.part, i = +d.obs;
@@ -1359,7 +1378,7 @@ document.getElementById("app").addEventListener("change", ev => {
         const res = Store.importJSON(rd.result);
         if (!res.ok) backupError = res.error;
         else {
-          showToast("Backup imported");
+          showToast("Backup imported", () => Store.undoImport(res.before));
           // A fellow restoring onto a new phone skips setup.
           if (FELLOWS) { felSetup = null; if (!Store.state.setup) { Store.state.setup = {d: fmtDate(getToday())}; Store.save(); } }
         }

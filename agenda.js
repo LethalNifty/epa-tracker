@@ -8,7 +8,11 @@
 
 const AG_ISO = /^\d{4}-\d{2}-\d{2}$/, AG_HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const AG_T_MAX = 120, AG_N_MAX = 500;
-const AG_REPS = ["w", "m", "y"];
+// Repeats: daily, weekly, monthly, yearly; with every (every 2 weeks), until
+// (the last day it can start), days (weekly on these weekdays, 0 Sunday),
+// nth (monthly on the nth weekday, -1 the last) and skip (days left out).
+const AG_REPS = ["d", "w", "m", "y"];
+const AG_WD = {SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6};
 // An event's alerts: at 19:00 the evening before, and 30 minutes before it starts.
 const AG_ALERTS = ["eve", "30"];
 
@@ -55,12 +59,29 @@ function agItemClean(x) {
   let e = !todo && s && typeof x.e === "string" && AG_HM.test(x.e) ? x.e : null;
   let d2 = !todo && agValidIso(x.d2) && x.d2 > x.d ? x.d2 : null;
   if (s && e && !d2 && e <= s) { if (e === s) e = null; else d2 = agAddDays(x.d, 1); }
+  const rep = !todo && AG_REPS.includes(x.rep) ? x.rep : null;
   const it = {id: typeof x.id === "string" && /^a[a-z0-9]{1,24}$/.test(x.id) ? x.id : "", t: x.t.trim().slice(0, AG_T_MAX), d: x.d, d2, s, e,
-    rep: !todo && AG_REPS.includes(x.rep) ? x.rep : null, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
+    rep, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
     uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : "",
     al: !todo && Array.isArray(x.al) ? AG_ALERTS.filter(k => x.al.includes(k)) : null};
+  if (rep) Object.assign(it, agRepClean(x, rep));
   if (todo) it.todo = todo;
   return it;
+}
+// A repeat's extras, only those that say something.
+function agRepClean(x, rep) {
+  const out = {};
+  if (Number.isInteger(x.every) && x.every > 1 && x.every <= 99) out.every = x.every;
+  if (agValidIso(x.until) && x.until >= x.d) out.until = x.until;
+  if (rep === "w" && Array.isArray(x.days)) {
+    const ds = [...new Set(x.days.filter(n => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+    if (ds.length && !(ds.length === 1 && ds[0] === agDate(x.d).getDay())) out.days = ds;
+  }
+  const nth = x.nth;
+  if (rep === "m" && nth && Number.isInteger(nth.wd) && nth.wd >= 0 && nth.wd <= 6 && (nth.n === -1 || (Number.isInteger(nth.n) && nth.n >= 1 && nth.n <= 5)))
+    out.nth = {n: nth.n, wd: nth.wd};
+  if (Array.isArray(x.skip)) { const sk = [...new Set(x.skip.filter(agValidIso))].sort().slice(-200); if (sk.length) out.skip = sk; }
+  return out;
 }
 // A to-do's part: the question it asks at its time (or none), how many times
 // Tomorrow moved it (after two it asks no more), and when it was done.
@@ -115,13 +136,43 @@ function agNotesClean(raw) {
   }
   return out.slice(-AG_NOTES_MAX);
 }
-// Whether an occurrence of the event starts on day o.
+// Whether an occurrence of the event starts on day o. Every 2 weeks counts
+// weeks Monday to Sunday from the first one; a month without the day (the
+// 31st) has none, as calendars do.
 function agStartsOn(it, o) {
+  if (it.skip && it.skip.includes(o)) return false;
   if (o === it.d) return true;
-  if (!it.rep || o < it.d) return false;
-  if (it.rep === "w") return agDiff(it.d, o) % 7 === 0;
-  if (it.rep === "m") return o.slice(8) === it.d.slice(8);
-  return o.slice(5) === it.d.slice(5);
+  if (!it.rep || o < it.d || (it.until && o > it.until)) return false;
+  const k = it.every || 1;
+  if (it.rep === "d") return agDiff(it.d, o) % k === 0;
+  if (it.rep === "w") {
+    if (!(it.days || [agDate(it.d).getDay()]).includes(agDate(o).getDay())) return false;
+    return Math.round(agDiff(agMonday(it.d), agMonday(o)) / 7) % k === 0;
+  }
+  if (it.rep === "m") {
+    const months = (+o.slice(0, 4) - +it.d.slice(0, 4)) * 12 + (+o.slice(5, 7) - +it.d.slice(5, 7));
+    if (months % k) return false;
+    return it.nth ? agNthWeekday(o, it.nth) : o.slice(8) === it.d.slice(8);
+  }
+  return (+o.slice(0, 4) - +it.d.slice(0, 4)) % k === 0 && o.slice(5) === it.d.slice(5);
+}
+// Whether a day is the nth weekday of its month ("the 2nd Tuesday"; n -1: the last).
+function agNthWeekday(iso, nth) {
+  const d = agDate(iso);
+  if (d.getDay() !== nth.wd) return false;
+  if (nth.n > 0) return Math.ceil(d.getDate() / 7) === nth.n;
+  return d.getDate() > new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - 7;
+}
+const AG_ORD = ["", "1st", "2nd", "3rd", "4th", "5th"];
+// A repeat in words: "Weekly", "Every 2 weeks", "Mon, Wed and Fri", "2nd Tuesday monthly".
+function agRepWords(it) {
+  if (!it || !it.rep) return "Never";
+  const k = it.every || 1, unit = {d: "day", w: "week", m: "month", y: "year"}[it.rep];
+  let w = k > 1 ? `Every ${k} ${unit}s` : {d: "Daily", w: "Weekly", m: "Monthly", y: "Yearly"}[it.rep];
+  const DAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  if (it.rep === "w" && it.days) w = agOr(it.days.map(n => DAY[n].slice(0, 3))).replace(/ or /, " and ") + (k > 1 ? `, every ${k} weeks` : "");
+  if (it.rep === "m" && it.nth) w = `${it.nth.n === -1 ? "Last" : AG_ORD[it.nth.n]} ${DAY[it.nth.wd]} ${k > 1 ? `every ${k} months` : "monthly"}`;
+  return w;
 }
 // How the event covers a day, or null: from and to ("24:00" when it runs on
 // past midnight), cont when it started on an earlier day, more when it goes on.
@@ -342,6 +393,8 @@ function agEventRows(iso) {
     if (!sp) continue;
     const r = {k: it.todo ? "todo" : sp.allDay ? "all" : "ev", t: it.t, sub: it.n, id: it.id, from: sp.from, to: sp.to === "24:00" ? null : sp.to,
       cont: sp.cont, more: sp.more, allDay: sp.allDay};
+    // A repeating event's row knows its day, so its sheet can skip just that one.
+    if (it.rep && !sp.cont) r.on = iso;
     if (it.todo) r.done = !!it.todo.done;
     out.push(r);
   }
@@ -402,17 +455,59 @@ function agIcsWhen(p) {
   const t = m[7] ? Date.UTC(y, mo - 1, d, h, mi) : p.params.TZID ? agZonedMs(y, mo, d, h, mi, p.params.TZID) : null;
   return t === null ? {d: day, hm: `${m[4]}:${m[5]}`} : {d: fmtDate(new Date(t)), hm: agHM(t)};
 }
-const AG_FREQ = {WEEKLY: "w", MONTHLY: "m", YEARLY: "y"};
+const AG_FREQ = {DAILY: "d", WEEKLY: "w", MONTHLY: "m", YEARLY: "y"};
+// An RRULE as GI Hub keeps a repeat ({rep, every, until, days, nth}), null for
+// none, or {odd: true} for one it can't follow (hourly, a list of month days,
+// "the last weekday"). COUNT becomes the day of the last time. d: its first day.
+function agRrule(rule, d) {
+  if (!rule) return null;
+  const p = {};
+  for (const part of rule.split(";")) { const i = part.indexOf("="); if (i > 0) p[part.slice(0, i).trim().toUpperCase()] = part.slice(i + 1).trim().toUpperCase(); }
+  const rep = AG_FREQ[p.FREQ], every = p.INTERVAL ? +p.INTERVAL : 1;
+  if (!rep || Object.keys(p).some(k => !["FREQ", "INTERVAL", "UNTIL", "COUNT", "BYDAY", "WKST", "BYMONTHDAY", "BYMONTH"].includes(k)) ||
+      !Number.isInteger(every) || every < 1 || every > 99) return {odd: true};
+  const out = {rep};
+  if (p.BYDAY) {
+    const parts = p.BYDAY.split(",").map(s => /^([+-]?\d{1,2})?(SU|MO|TU|WE|TH|FR|SA)$/.exec(s.trim()));
+    if (parts.some(m => !m)) return {odd: true};
+    if (rep === "m") {
+      const n = parts.length === 1 && parts[0][1] ? +parts[0][1] : 0;
+      if (!(n === -1 || (n >= 1 && n <= 5))) return {odd: true};
+      out.nth = {n, wd: AG_WD[parts[0][2]]};
+    } else if ((rep === "w" || (rep === "d" && every === 1)) && !parts.some(m => m[1])) {
+      // Daily on weekdays is weekly on those days.
+      out.rep = "w"; out.days = [...new Set(parts.map(m => AG_WD[m[2]]))].sort();
+    } else return {odd: true};
+  }
+  if (p.BYMONTHDAY && !(rep === "m" && !out.nth && +p.BYMONTHDAY === +d.slice(8))) return {odd: true};
+  if (p.BYMONTH && !(rep === "y" && +p.BYMONTH === +d.slice(5, 7))) return {odd: true};
+  if (every > 1) out.every = every;
+  if (p.UNTIL) { const u = agIcsWhen({value: p.UNTIL, params: {}}); if (!u) return {odd: true}; out.until = u.d; }
+  if (p.COUNT) {
+    const n = +p.COUNT;
+    if (!Number.isInteger(n) || n < 1) return {odd: true};
+    for (let k = 0, seen = 0; k < 4000; k++) {
+      const day = agAddDays(d, k);
+      if (out.until && day > out.until) break;
+      if (agStartsOn({d, ...out}, day) && ++seen === n) { out.until = day; break; }
+    }
+  }
+  return out;
+}
 // A calendar file's events, or a call file (handed to Call), or why not.
+// moved: one time of a repeating event changed or cancelled on its own
+// (RECURRENCE-ID), which the series then leaves out. odd: titles of repeats
+// GI Hub can't follow, kept to their first day.
 function agParseICS(text) {
   const cal = parseICS(text);
   if (!cal.calendar) return {ok: false, error: "That file isn't a calendar. Pick an .ics file."};
-  if (cal.events.some(ev => Object.keys(ev).some(k => k.startsWith("X-GI-CALL-")))) return {ok: true, call: true, items: [], cancelled: []};
-  const items = [], cancelled = [];
+  if (cal.events.some(ev => Object.keys(ev).some(k => k.startsWith("X-GI-CALL-")))) return {ok: true, call: true, items: [], cancelled: [], moved: [], odd: []};
+  const items = [], cancelled = [], moved = [], odd = [];
   for (const ev of cal.events) {
     const txt = k => ev[k] ? icsUnescape(ev[k].value).replace(/\s+/g, " ").trim() : "";
-    const uid = txt("UID") || null;
-    if (/^cancel/i.test(txt("STATUS"))) { if (uid) cancelled.push(uid); continue; }
+    const uid = txt("UID") || null, rid = ev["RECURRENCE-ID"] ? agIcsWhen(ev["RECURRENCE-ID"]) : null;
+    if (rid && uid) moved.push({uid, d: rid.d});
+    if (/^cancel/i.test(txt("STATUS"))) { if (uid && !rid) cancelled.push(uid); continue; }
     const a = agIcsWhen(ev.DTSTART);
     if (!a) continue;
     let z = ev.DTEND ? agIcsWhen(ev.DTEND) : null;
@@ -424,12 +519,16 @@ function agParseICS(text) {
     let d2 = null, e = null;
     if (!a.hm) { const last = z && !z.hm ? agAddDays(z.d, -1) : a.d; d2 = last > a.d ? last : null; }
     else if (z && z.hm) { e = z.hm; d2 = z.d > a.d ? z.d : null; }
-    const fq = /FREQ=(WEEKLY|MONTHLY|YEARLY)/i.exec(txt("RRULE"));
-    items.push({t: txt("SUMMARY") || "Event", d: a.d, d2, s: a.hm, e, rep: fq ? AG_FREQ[fq[1].toUpperCase()] : null,
-      n: [txt("LOCATION"), txt("DESCRIPTION")].filter(Boolean).join(" · "), uid});
+    const t = txt("SUMMARY") || "Event";
+    let rr = rid ? null : agRrule(ev.RRULE ? String(ev.RRULE.value).trim() : "", a.d);
+    if (rr && rr.odd) { odd.push(t); rr = null; }
+    const skip = [];
+    for (const x of ev.EXDATES || []) for (const v of String(x.value).split(",")) { const w = agIcsWhen({value: v, params: x.params}); if (w) skip.push(w.d); }
+    items.push({t, d: a.d, d2, s: a.hm, e, rep: rr ? rr.rep : null, ...(rr || {}), ...(skip.length ? {skip} : {}),
+      n: [txt("LOCATION"), txt("DESCRIPTION")].filter(Boolean).join(" · "), uid: rid && uid ? uid + "@" + rid.d : uid});
   }
-  if (!items.length && !cancelled.length) return {ok: false, error: "No events in that file."};
-  return {ok: true, call: false, items, cancelled};
+  if (!items.length && !cancelled.length && !moved.length) return {ok: false, error: "No events in that file."};
+  return {ok: true, call: false, items, cancelled, moved, odd};
 }
 // Adds a file's events, matched by UID so a second import updates them; a
 // cancelled one goes. before: the agenda as it was, for Undo.
@@ -442,7 +541,9 @@ function agImport(text, name) {
   for (const x of p.items) {
     const i = x.uid ? a.items.findIndex(it => it.uid === x.uid) : -1;
     if (i >= 0) {
-      const it = agItemClean({...a.items[i], ...x, id: a.items[i].id});
+      // The file's repeat replaces the old one; days left out (by the file or by hand) stay left out.
+      const old = a.items[i], skip = [...(old.skip || []), ...(x.skip || [])];
+      const it = agItemClean({...old, every: undefined, until: undefined, days: undefined, nth: undefined, ...x, skip, id: old.id});
       if (it && JSON.stringify(it) !== JSON.stringify(a.items[i])) { a.items[i] = it; changed++; }
     } else {
       const it = agItemClean({...x, id: agNewId(taken), ts});
@@ -450,6 +551,13 @@ function agImport(text, name) {
     }
   }
   for (const uid of p.cancelled) { const n = a.items.length; a.items = a.items.filter(it => it.uid !== uid); removed += n - a.items.length; }
+  // A time moved or cancelled on its own: the series leaves that day out.
+  for (const m of p.moved) {
+    const i = a.items.findIndex(it => it.uid === m.uid && it.rep);
+    if (i < 0 || (a.items[i].skip || []).includes(m.d)) continue;
+    const it = agItemClean({...a.items[i], skip: [...(a.items[i].skip || []), m.d]});
+    if (it) { a.items[i] = it; changed++; }
+  }
   Store.save();
-  return {ok: true, call: false, added, changed, removed, before};
+  return {ok: true, call: false, added, changed, removed, before, ...(p.odd.length ? {odd: p.odd} : {})};
 }

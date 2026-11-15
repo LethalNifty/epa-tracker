@@ -146,7 +146,7 @@ async function bkPick(day) {
   const res = Store.importJSON(text);
   if (!res.ok) { bkMsg = res.error; return; }
   bk = {key: k.key, tok: k.tok, last: callNow(), err: null}; bkSave();
-  bkClose(); showToast("Restored the backup from " + dayLabel(day));
+  bkClose(); showToast("Restored the backup from " + dayLabel(day), () => Store.undoImport(res.before));
 }
 async function bkDelete() {
   const r = await bkAsk("DELETE", "/backups", bk.tok);

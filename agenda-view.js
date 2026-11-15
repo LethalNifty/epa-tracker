@@ -17,7 +17,7 @@ function agRowHTML(r) {
     : r.k === "todo" ? [r.done ? "Done" : "To-do", r.sub].filter(Boolean).join(" · ") : r.sub;
   const inner = `<span class="ct mono">${time}</span><i class="cdot"></i><span class="cm"><b>${esc(r.t)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</span>`;
   const cls = `ag-row k-${r.k}${r.off ? " off" : ""}${r.done ? " done" : ""}`;
-  if (r.k === "ev" || r.k === "all" || r.k === "todo") return `<button class="${cls}" data-action="agopen" data-id="${esc(r.id)}">${inner}</button>`;
+  if (r.k === "ev" || r.k === "all" || r.k === "todo") return `<button class="${cls}" data-action="agopen" data-id="${esc(r.id)}"${r.on ? ` data-on="${r.on}"` : ""}>${inner}</button>`;
   if (r.k === "call") return `<button class="${cls}" data-action="agcall">${inner}</button>`;
   if (r.k === "read") return `<button class="${cls}" data-action="agstudy">${inner}</button>`;
   return `<div class="${cls}">${inner}</div>`;
@@ -118,12 +118,24 @@ function agNoteUsed(id) {
 }
 
 // ---- The event sheet -----------------------------------------------------------------------------
-function agOpen(id) {
+// on: the day of the time tapped, for a repeating event.
+function agOpen(id, on) {
   const it = id ? agState().items.find(x => x.id === id) : null;
   agSheet = it && it.todo ? {mode: "edit", kind: "todo", id, t: it.t, d: it.d, s: it.s, n: it.n, err: null}
-    : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null}
-    : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null};
+    : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null,
+      every: it.every || 1, until: it.until || "", days: it.days || null, nth: it.nth || null, skip: it.skip || [], on: it.rep && agValidIso(on) ? on : null}
+    : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null,
+      every: 1, until: "", days: null, nth: null, skip: [], on: null};
   agSheetFresh = true;
+}
+// The repeat chips: Never, Weekly, Every 2 weeks, Monthly, Yearly; a repeat
+// from a calendar file that none of them is ("Mon, Wed and Fri") shows as its own.
+const AG_REP_CHIPS = [["", "Never"], ["w", "Weekly"], ["w2", "Every 2 weeks"], ["m", "Monthly"], ["y", "Yearly"]];
+function agRepChip(s) {
+  if (!s.rep) return "";
+  if (s.days || s.nth || s.rep === "d") return "keep";
+  if (s.rep === "w" && (s.every || 1) === 2) return "w2";
+  return (s.every || 1) === 1 ? s.rep : "keep";
 }
 // A new sheet makes an event or a to-do; an open one stays what it is.
 function agKindHTML(s) {
@@ -161,8 +173,14 @@ function agSheetHTML() {
     `<div class="pickrow">${chip("agallday", s.allDay, "All day")}${chip("agmulti", s.multi, "Ends another day")}</div>` +
     (s.allDay ? "" : `<div class="ag-times"><label class="lbl mono">Starts<input type="time" value="${esc(s.s)}" data-ag="s"></label>` +
       `<label class="lbl mono">Ends<input type="time" value="${esc(s.e)}" data-ag="e"></label></div>`) +
-    `<div class="lbl mono">Repeats</div><div class="pickrow">` + [["", "Never"], ["w", "Weekly"], ["m", "Monthly"], ["y", "Yearly"]]
-      .map(([r, label]) => chip("agrep", (s.rep || "") === r, label, ` data-rep="${r}"`)).join("") + `</div>` +
+    `<div class="lbl mono">Repeats</div><div class="pickrow">` +
+      (agRepChip(s) === "keep" ? [["keep", agRepWords(s)]] : []).concat(AG_REP_CHIPS)
+      .map(([r, label]) => chip("agrep", agRepChip(s) === r, esc(label), ` data-rep="${r}"`)).join("") + `</div>` +
+    (s.rep ? `<label class="lbl mono">Until<input type="date" value="${esc(s.until || "")}" data-ag="until"></label>` +
+      (s.until ? "" : `<p class="ssub">Blank keeps it repeating.</p>`) : "") +
+    (edit && s.rep && s.on ? `<button class="btn" data-action="agskip">Skip ${esc(agDayWords(s.on))} only</button>` : "") +
+    (s.rep && s.skip && s.skip.length ? `<p class="ssub">${s.skip.length === 1 ? "One day" : s.skip.length + " days"} left out ` +
+      `<button class="textbtn sm" data-action="agunskip">Bring back</button></p>` : "") +
     `<div class="lbl mono">Alerts</div><div class="pickrow">` + [["eve", "Evening before"], ["30", "30 min before"]]
       .filter(([k]) => k !== "30" || !s.allDay)
       .map(([k, label]) => chip("agalert", agAlerts({s: s.allDay ? null : s.s, al: s.al}).includes(k), label, ` data-al="${k}"`)).join("") + `</div>` +
@@ -176,9 +194,12 @@ function agSave() {
   if (agSheet.kind === "todo") return agTodoSave();
   const s = agSheet, t = s.t.trim(), timed = !s.allDay;
   const err = !t ? "Give it a name first." : !agValidIso(s.d) ? "Pick a day." : s.multi && !(agValidIso(s.d2) && s.d2 > s.d) ? "The last day is before the first." :
-    timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." : null;
+    timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." :
+    s.rep && s.until && agValidIso(s.until) && s.until < s.d ? "It stops repeating before it starts." : null;
   if (err) { s.err = err; return; }
-  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al};
+  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al,
+    every: s.rep ? s.every || 1 : undefined, until: s.rep && agValidIso(s.until) ? s.until : undefined,
+    days: s.rep ? s.days || undefined : undefined, nth: s.rep ? s.nth || undefined : undefined, skip: s.rep ? s.skip : undefined};
   const before = agSnapshot();
   if (s.mode === "new") { if (agAdd(f)) agNoteUsed(s.from); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
@@ -242,9 +263,12 @@ function agImportText(text, name) {
   if (!r.ok) { agError = r.error || "Couldn't read that file. Try again."; return r; }
   agError = null;
   if (r.call) return r;
-  const n = r.added + r.changed + r.removed;
-  showToast(!n ? "Already up to date" : r.added && !r.changed && !r.removed ? `Added ${r.added} event${r.added === 1 ? "" : "s"}` :
-    "Updated: " + [r.added && `${r.added} new`, r.changed && `${r.changed} changed`, r.removed && `${r.removed} removed`].filter(Boolean).join(", "),
+  const n = r.added + r.changed + r.removed, odd = r.odd || [];
+  // A repeat GI Hub can't follow is said, never imported wrong without a word.
+  const oddWords = !odd.length ? "" : odd.length === 1 ? `. “${odd[0]}” has only its first day: its repeat is one GI Hub can't follow`
+    : `. ${odd.length} have only their first day: their repeats are ones GI Hub can't follow`;
+  showToast((!n ? "Already up to date" : r.added && !r.changed && !r.removed ? `Added ${r.added} event${r.added === 1 ? "" : "s"}` :
+    "Updated: " + [r.added && `${r.added} new`, r.changed && `${r.changed} changed`, r.removed && `${r.removed} removed`].filter(Boolean).join(", ")) + oddWords,
     n ? () => agRestore(r.before) : null);
   return r;
 }
@@ -341,7 +365,7 @@ function agDispatch(act, d) {
   else if (act === "agcall") { go({page: "call", from: "agenda"}); return false; }
   else if (act === "agstudy") { studyTab = "t"; go({page: "study"}); return false; }
   else if (act === "agnew") agOpen(null);
-  else if (act === "agopen") agOpen(d.id);
+  else if (act === "agopen") agOpen(d.id, d.on);
   else if (act === "agkind" && agSheet && agSheet.mode === "new") { agSheet.kind = d.kind === "todo" ? "todo" : "event"; agSheet.err = null; }
   // A to-do answered, from Week or its sheet: a toast with Undo.
   else if (act === "agtodo") {
@@ -365,7 +389,18 @@ function agDispatch(act, d) {
     showToast("Event deleted", () => agRestore(before)); }
   else if (act === "agallday" && agSheet) agSheet.allDay = !agSheet.allDay;
   else if (act === "agmulti" && agSheet) { agSheet.multi = !agSheet.multi; if (agSheet.multi && !(agSheet.d2 > agSheet.d)) agSheet.d2 = agAddDays(agSheet.d, 1); }
-  else if (act === "agrep" && agSheet) agSheet.rep = d.rep || null;
+  // A chip sets a plain repeat; the calendar file's own pattern stays only on its own chip.
+  else if (act === "agrep" && agSheet && d.rep !== "keep") {
+    const r = d.rep || "";
+    Object.assign(agSheet, {rep: r === "w2" ? "w" : r || null, every: r === "w2" ? 2 : 1, days: null, nth: null});
+  }
+  // Skip one time of a repeating event: saved at once, with Undo.
+  else if (act === "agskip" && agSheet && agSheet.on) {
+    const before = agSnapshot(), it = agState().items.find(x => x.id === agSheet.id), on = agSheet.on;
+    if (it) { agUpdate(it.id, {skip: [...(it.skip || []), on]}); showToast(`${agDayWords(on)} skipped`, () => agRestore(before)); }
+    agSheet = null;
+  }
+  else if (act === "agunskip" && agSheet) agSheet.skip = [];
   // One alert on or off; the other stays as it was (both, when none was chosen).
   else if (act === "agalert" && agSheet && AG_ALERTS.includes(d.al)) {
     const cur = Array.isArray(agSheet.al) ? agSheet.al : AG_ALERTS;

@@ -104,6 +104,8 @@ function parseICS(src) {
       }
     } else if (stack.length) {
       const props = stack[stack.length - 1].props;
+      // A repeat can leave out many days, one EXDATE line each.
+      if (p.name === "EXDATE") (props.EXDATES ||= []).push(p);
       if (!(p.name in props)) props[p.name] = p;
     }
   }
