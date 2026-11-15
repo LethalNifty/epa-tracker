@@ -2233,6 +2233,22 @@ button.chip.on { padding-right: 12px; }
 .qm.got.on { background: var(--flu); color: #3a2600; }
 .qm.missed.on { background: var(--capillary-wash); color: var(--capillary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--capillary) 45%, transparent); }
 .qi.miss .qi-n { color: var(--capillary); }
+/* A question worth several marks: the marks won, 0 to all, as the exam marks it. */
+.qi-mark.marks { flex-wrap: wrap; align-items: center; gap: 6px; }
+.qm-l, .qm-of { font-size: 11px; color: var(--dim); }
+.qm.qn { min-width: 44px; min-height: 44px; justify-content: center; padding: 0 10px; font: 600 15px/1 var(--mono); }
+.qm.part.on { background: var(--wall-3); color: var(--light); box-shadow: inset 0 0 0 1px var(--fold-2); }
+/* Marks by section, against the 70% line. */
+.marklist { margin-top: 10px; }
+.mk-head { display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px 4px; font-size: 11px; color: var(--dim); }
+.mk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px 14px; border-top: 1px solid var(--fold); font-size: 14px; }
+.mk-row .mono { font-size: 12px; color: var(--dim); }
+.mk-row .mono b { color: var(--light); font-weight: 600; }
+.mk-row.low .mono b { color: var(--capillary); }
+.mk-bar { grid-column: 1 / -1; position: relative; height: 6px; border-radius: 3px; background: var(--wall-2); }
+.mk-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--flu); }
+.mk-row.low .mk-bar i { background: var(--capillary); }
+.mk-bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--light); opacity: .55; }
 .qc-start { margin-top: 12px; }
 .banklist { padding: 2px 0; }
 .bankrow { display: grid; grid-template-columns: 40px 1fr auto 16px; gap: 10px; align-items: center; width: 100%; min-height: 52px;

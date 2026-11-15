@@ -167,8 +167,42 @@ function studyQiHTML(x, n, s) {
     `<p>${esc(x.q)}</p></div><div class="qi-meta">${marks}<span class="qi-p mono">p. ${x.page}</span></div>`;
   if (!open) return h + `<button class="textbtn qi-show" data-action="studyreveal" data-id="${esc(x.id)}">Show answer</button></li>`;
   h += `<ul class="qi-a">${x.a.map(a => `<li>${esc(a)}</li>`).join("")}</ul>`;
+  // Worth several marks: the marks you'd have won, as the exam marks it.
+  if (x.marks > 1) {
+    const got = mk ? studyGot(mk, x) : null;
+    const n = g => `<button class="pillbtn qm qn${got === g ? " on" : ""}${g === x.marks ? " got" : g === 0 ? " missed" : " part"}" data-action="studymark" ` +
+      `data-id="${esc(x.id)}" data-got="${g}" aria-label="${g} of ${x.marks} marks" aria-pressed="${got === g}">${g}</button>`;
+    return h + `<div class="qi-mark marks"><span class="mono qm-l">Marks</span>${Array.from({length: x.marks + 1}, (_, g) => n(g)).join("")}` +
+      `<span class="mono qm-of">of ${x.marks}</span></div></li>`;
+  }
   const b = (ok, label, icn) => `<button class="pillbtn qm${mk && mk.ok === ok ? " on" : ""}${ok ? " got" : " missed"}" data-action="studymark" data-id="${esc(x.id)}" data-ok="${ok ? 1 : 0}">${ic(icn)}${label}</button>`;
   return h + `<div class="qi-mark">${b(true, "Got it", "check")}${b(false, "Missed", "x")}</div></li>`;
+}
+// Marks won on a question: as marked, or all or none from Got it and Missed.
+const studyGot = (mk, x) => Number.isInteger(mk.got) ? mk.got : mk.ok ? ((x && x.marks) || 1) : 0;
+// Marks won out of marks asked, by section of the book, for the questions
+// answered so far; the exam's pass mark sits near 70%.
+const STUDY_MARK_LINE = 70;
+function studyMarksBySection(bank, qa) {
+  const by = new Map();
+  for (const {item, qs} of bank) for (const x of qs) {
+    const mk = qa[x.id];
+    if (!mk || !item) continue;
+    const b = by.get(item.sec) || {sec: item.sec, got: 0, of: 0, n: 0};
+    b.got += studyGot(mk, x); b.of += x.marks || 1; b.n++;
+    by.set(item.sec, b);
+  }
+  return [...by.values()].sort((a, b) => a.sec - b.sec);
+}
+function studyMarksHTML(rows) {
+  if (!rows.length) return "";
+  const all = rows.reduce((a, r) => ({got: a.got + r.got, of: a.of + r.of, n: a.n + r.n}), {got: 0, of: 0, n: 0});
+  const row = (name, r) => { const p = Math.round(r.got / r.of * 100);
+    return `<div class="mk-row${p < STUDY_MARK_LINE ? " low" : ""}"><span>${esc(name)}</span><span class="mono"><b>${p}%</b> · ${r.got} of ${r.of} marks</span>` +
+      `<span class="mk-bar" aria-hidden="true"><i style="width:${Math.min(100, p)}%"></i><b style="left:${STUDY_MARK_LINE}%"></b></span></div>`; };
+  return `<div class="card list marklist"><div class="mk-head mono"><span>Marks by section</span><span>Line at ${STUDY_MARK_LINE}%</span></div>` +
+    (rows.length > 1 ? row("All sections", all) : "") +
+    rows.map(r => row((STUDY_SECTIONS[r.sec - 1] || {name: "Section " + r.sec}).name, r)).join("") + `</div>`;
 }
 // The range tonight's questions come from, and what to call them.
 function studyQRange(t) {
@@ -213,7 +247,8 @@ function studyBankHTML(st) {
       `<span class="bk-t">${esc(item.title)}</span><span class="mono bk-n">${qs.length}${m ? ` · <b>${m} missed</b>` : ""}</span>${ic("chev", "chev")}</button>`;
   }).join("");
   return `<section class="sec"><div class="sec-head"><h2>Question bank</h2><span class="mono"><b>${done}</b>/${all.length} answered · ${miss} missed</span></div>` +
-    `<div class="card list banklist">${rows}</div><p class="goal">Every question on pages you've read, for practice now and in Year 2.</p></section>`;
+    `<div class="card list banklist">${rows}</div>` + studyMarksHTML(studyMarksBySection(bank, qa)) +
+    `<p class="goal">Every question on pages you've read, for practice now and in Year 2.</p></section>`;
 }
 
 // ---- A finished question set asks for its score ----------------------------------------
@@ -545,8 +580,16 @@ function studyDispatch(act, d) {
   else if (act === "studyquiz") studyQuizOpen = d.key;
   else if (act === "studyreveal") studyRevealed.add(d.id);
   else if (act === "studymark") {
-    const cur = (Store.state.study.qa || {})[d.id], ok = d.ok === "1";
-    Store.setQMark(d.id, cur && cur.ok === ok ? null : ok);
+    const cur = (Store.state.study.qa || {})[d.id];
+    if (d.got !== undefined) {
+      // A mark count: tapping the one already there clears it.
+      const x = StudyQ.list.find(q => q.id === d.id), of = (x && x.marks) || 1, got = Math.max(0, Math.min(of, parseInt(d.got, 10) || 0));
+      if (cur && studyGot(cur, x) === got) Store.setQMark(d.id, null);
+      else Store.setQMark(d.id, got === of, got);
+    } else {
+      const ok = d.ok === "1";
+      Store.setQMark(d.id, cur && cur.ok === ok ? null : ok);
+    }
   }
   else if (act === "studybank") { studySheet = {kind: "bank", id: d.id, filter: "all"}; studySheetFresh = true; }
   else if (act === "studybankfilter") { studySheet.filter = d.f; }

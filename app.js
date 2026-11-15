@@ -179,9 +179,10 @@ const Store = {
     this.state.study.pauses.sort((x, y) => x.a < y.a ? -1 : x.a > y.a ? 1 : 0); this.save(); },
   removePause(i) { this.state.study.pauses.splice(i, 1); this.save(); },
   // A question marked right (true) or missed (false); null clears the mark.
-  setQMark(id, ok) {
+  // got: the marks won on a question worth several (ok only with all of them).
+  setQMark(id, ok, got) {
     if (ok === null) delete this.state.study.qa[id];
-    else this.state.study.qa[id] = {ok: !!ok, d: fmtDate(getToday())};
+    else this.state.study.qa[id] = {ok: !!ok, d: fmtDate(getToday()), ...(Number.isInteger(got) ? {got} : {})};
     this.save(); },
   studySnapshot() { return JSON.parse(JSON.stringify(this.state.study)); },
   restoreStudy(snap) { this.state.study = snap; this.save(); },
