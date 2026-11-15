@@ -149,7 +149,7 @@ function agTodoSheetHTML() {
   const how = (h, label) => `<button class="pick ghost" data-action="agtodo" data-id="${esc(s.id)}" data-how="${h}">${label}</button>`;
   return `<div class="scrim${fresh}" data-action="agclose"></div><div class="sheet agsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
     `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="agclose" aria-label="Close">${ic("x")}</button></div>` +
-    agKindHTML(s) +
+    agKindHTML(s) + (s.restored ? draftStripHTML("ag", s.restored) : "") +
     `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Reply to the email, renew the pass" autocapitalize="sentences"></label>` +
     `<div class="ag-times"><label class="lbl mono">Day<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
     `<label class="lbl mono">Time<input type="time" value="${esc(s.s)}" data-ag="s"></label></div>` +
@@ -165,7 +165,7 @@ function agSheetHTML() {
   const chip = (act, on, label, extra = "") => `<button class="pick ghost${on ? " on" : ""}" data-action="${act}"${extra} aria-pressed="${on}">${label}</button>`;
   return `<div class="scrim${fresh}" data-action="agclose"></div><div class="sheet agsheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
     `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="agclose" aria-label="Close">${ic("x")}</button></div>` +
-    agKindHTML(s) +
+    agKindHTML(s) + (s.restored ? draftStripHTML("ag", s.restored) : "") +
     (edit && s.uid ? `<p class="ssub">From a calendar file. Adding that file again updates it.</p>` : "") +
     `<label class="lbl mono">What<input type="text" value="${esc(s.t)}" data-ag="t" placeholder="Dentist, soccer, a flight" autocapitalize="sentences"></label>` +
     `<label class="lbl mono">${s.multi ? "First day" : "Day"}<input type="date" value="${esc(s.d)}" data-ag="d"></label>` +
@@ -201,7 +201,7 @@ function agSave() {
     every: s.rep ? s.every || 1 : undefined, until: s.rep && agValidIso(s.until) ? s.until : undefined,
     days: s.rep ? s.days || undefined : undefined, nth: s.rep ? s.nth || undefined : undefined, skip: s.rep ? s.skip : undefined};
   const before = agSnapshot();
-  if (s.mode === "new") { if (agAdd(f)) agNoteUsed(s.from); showToast(`${t} added`, () => agRestore(before)); }
+  if (s.mode === "new") { if (agAdd(f)) agNoteUsed(s.from); draftsLetGo("ag", s); showToast(`${t} added`, () => agRestore(before)); }
   else { agUpdate(s.id, f); showToast("Changes saved", () => agRestore(before)); }
   agSheet = null;
 }
@@ -213,6 +213,7 @@ function agTodoSave() {
   const before = agSnapshot();
   if (s.mode === "new") {
     if (agAdd({t, d: s.d, s: s.s, n: s.n || "", todo: {q: "", tom: 0, done: null}})) agNoteUsed(s.from);
+    draftsLetGo("ag", s);
     showToast(`${t} added`, () => agRestore(before));
   } else {
     const it = agState().items.find(x => x.id === s.id), moved = it && it.todo && (it.d !== s.d || it.s !== s.s);
@@ -364,7 +365,7 @@ function agDispatch(act, d) {
   else if (act === "agshow") { agSel = d.day; agView = "d"; go({page: "agenda"}); return false; }
   else if (act === "agcall") { go({page: "call", from: "agenda"}); return false; }
   else if (act === "agstudy") { studyTab = "t"; go({page: "study"}); return false; }
-  else if (act === "agnew") agOpen(null);
+  else if (act === "agnew") { agOpen(null); draftsInto("ag", agSheet); }
   else if (act === "agopen") agOpen(d.id, d.on);
   else if (act === "agkind" && agSheet && agSheet.mode === "new") { agSheet.kind = d.kind === "todo" ? "todo" : "event"; agSheet.err = null; }
   // A to-do answered, from Week or its sheet: a toast with Undo.
@@ -381,7 +382,7 @@ function agDispatch(act, d) {
     const before = agSnapshot();
     if (agRemoveNote(d.id)) showToast("Note deleted", () => agRestore(before));
   }
-  else if (act === "agclose") agSheet = null;
+  else if (act === "agclose") { draftsLetGo("ag", agSheet); agSheet = null; }
   else if (act === "agsave" && agSheet) agSave();
   else if (act === "agdelete" && agSheet) {
     const before = agSnapshot();

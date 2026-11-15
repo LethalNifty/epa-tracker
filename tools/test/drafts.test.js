@@ -43,6 +43,27 @@ test("a new pearl comes back", () => {
   assert.match(h2.html(), /Restored from 16:40, not saved yet/);
 });
 
+test("a new Agenda event or to-do comes back, and goes once it's added or closed", () => {
+  const h = load({today: "2026-11-03"});
+  h.setNow("2026-11-03T11:15");
+  h.click("tab", {page: "agenda"});
+  h.click("agnew");
+  typeIn(h, {ag: "t"}, "Dentist");
+  typeIn(h, {ag: "n"}, "Bring the referral");
+  const h2 = reopen(h);
+  assert.deepEqual(h2.val("[agSheet.mode, agSheet.kind, agSheet.t, agSheet.n]"), ["new", "event", "Dentist", "Bring the referral"]);
+  assert.match(h2.html(), /Restored from 11:15, not saved yet/);
+  h2.click("agsave");
+  assert.equal(reopen(h2).val("agSheet"), null, "added: the words go");
+  // A to-do, closed on purpose.
+  const t = load({today: "2026-11-03"});
+  t.click("tab", {page: "agenda"}); t.click("agnew"); t.click("agkind", {kind: "todo"});
+  typeIn(t, {ag: "t"}, "Reply to the email");
+  assert.equal(reopen(t).val("agSheet.kind"), "todo", "kept until then");
+  t.click("agclose");
+  assert.equal(reopen(t).val("agSheet"), null);
+});
+
 test("saving, Clear or closing the sheet lets the words go", () => {
   const p = load({today: "2026-11-03"});
   p.click("pearlnew"); typeIn(p, {pearl: "t"}, "A teaching point");

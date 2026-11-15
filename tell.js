@@ -27,7 +27,8 @@ function tellLoad() {
   try { k = JSON.parse(localStorage.getItem(TELL_STORE) || "null"); } catch (e) {}
   const arr = v => Array.isArray(v) ? v : [], keys = k && k.keys;
   tellKept = {on: !!(k && k.on), keys: keys && typeof keys.shortcut === "string" && typeof keys.claude === "string" ? {shortcut: keys.shortcut, claude: keys.claude} : null,
-    added: arr(k && k.added), seen: arr(k && k.seen), ack: arr(k && k.ack), wait: (k && k.wait) || null};
+    added: arr(k && k.added), seen: arr(k && k.seen), ack: arr(k && k.ack), wait: (k && k.wait) || null,
+    out: arr(k && k.out).filter(x => x && typeof x.text === "string" && typeof x.at === "string")};
   return tellKept;
 }
 function tellSave() { try { localStorage.setItem(TELL_STORE, JSON.stringify(tellKept)); } catch (e) {} }
@@ -81,6 +82,7 @@ function tellCopy(which) {
 // and no field has focus, so a pickup never pulls a sheet or the keyboard away.
 function tellPick(force) {
   if (!tellOn() || alertsGone) return Promise.resolve();
+  tellFlush();
   const now = callNow();
   if (!force && now - tellLast < TELL_EVERY) return Promise.resolve();
   tellLast = now;
@@ -355,8 +357,32 @@ function tellTestScore() {
 // tellSheet: {text, busy, err, focus} while the + flow has it (app.js plusOn "t").
 let tellSheet = null;
 function tellOpen() {
-  if (!tellSheet) tellSheet = {text: "", busy: false, err: null, focus: true};
+  if (!tellSheet) { tellSheet = {text: "", busy: false, err: null, focus: true}; draftsInto("tell", tellSheet); }
 }
+// ---- Waiting for signal -----------------------------------------------------------------------------
+// Said with no signal, it waits here in order, with the time it was said, and
+// goes by itself the next time GI Hub has signal: opening, coming back, or the
+// phone coming online.
+const TELL_OUT_MAX = 20;
+let tellFlushing = false;
+function tellFlush() {
+  const k = tellLoad();
+  if (tellFlushing || !k.out.length || !tellOn() || alertsGone) return Promise.resolve();
+  tellFlushing = true;
+  return alertsRun(async () => {
+    let sent = 0;
+    try {
+      while (k.out.length) {
+        const x = k.out[0], r = await alertsAsk("POST", "/inbox", {text: x.text, at: x.at});
+        if (r.status === 401) { alertsGone = true; break; }
+        if (r.status !== 200) break;
+        k.out.shift(); tellSave(); sent++;
+      }
+    } finally { tellFlushing = false; }
+    if (sent) { showToast(sent === 1 ? "Sent to Claude what you said earlier" : `Sent to Claude the ${sent} things you said earlier`); quietRedraw(); }
+  });
+}
+if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("online", () => { if (!FELLOWS) tellFlush(); });
 // The phone's clock with its offset: 2026-11-09T14:05:00-05:00.
 function tellAt(ms) {
   const d = new Date(ms), off = -d.getTimezoneOffset(), p = n => String(n).padStart(2, "0");
@@ -364,10 +390,12 @@ function tellAt(ms) {
     (off < 0 ? "-" : "+") + p(Math.floor(Math.abs(off) / 60)) + ":" + p(Math.abs(off) % 60);
 }
 function tellSheetHTML() {
-  const s = tellSheet;
+  const s = tellSheet, waiting = tellLoad().out.length;
   return `<div class="scrim" data-action="telclose"></div>` +
     `<div class="sheet tellsheet" role="dialog" aria-modal="true" aria-label="Tell GI Hub">` + plusHeadHTML("telclose") +
+    (s.restored ? draftStripHTML("tell", s.restored) : "") +
     `<p class="ssub">What you'd say to the shortcut. Claude files it in a few minutes. No patient names or numbers.</p>` +
+    (waiting ? `<p class="ssub tellwait">${waiting === 1 ? "One thing" : waiting + " things"} waiting for signal to go to Claude.</p>` : "") +
     `<section class="monitor capmon" aria-label="Tell GI Hub"><div class="monitor-in">` +
     `<div class="ov mono"><span>${tellDay(fmtDate(getToday()))}</span><span>Tell</span></div>` +
     `<textarea id="tellbox" class="capbox" rows="4" maxlength="4000" data-tel="text" placeholder="Dentist Friday at 3" ` +
@@ -389,8 +417,9 @@ function tellAfterRender() {
   const box = document.getElementById("tellbox");
   if (box && box.focus) try { box.focus({preventScroll: true}); } catch (e) {}
 }
-// Sent: the + closes and says so. Not sent: the box keeps the words and says
-// why (a toast does, if the box was closed meanwhile).
+// Sent: the + closes and says so. No signal: it waits to go by itself, and the
+// + closes too. Not taken: the box keeps the words and says why (a toast does,
+// if the box was closed meanwhile).
 function tellSay() {
   const s = tellSheet;
   if (!s || s.busy) return;
@@ -398,12 +427,16 @@ function tellSay() {
   if (!text) { s.err = "Type or say something first."; return; }
   s.busy = true; s.err = null;
   alertsRun(async () => {
-    const r = await alertsAsk("POST", "/inbox", {text, at: tellAt(callNow())});
+    const at = tellAt(callNow()), r = await alertsAsk("POST", "/inbox", {text, at});
     if (r.status === 401) alertsGone = true;
-    const err = r.status === 200 ? null : r.status === 0 ? "Not sent. Try again when you have signal." : "Not sent. " + alertsNoGo(r.status);
+    const waits = r.status === 0;
+    if (waits) { const k = tellLoad(); k.out = [...k.out, {text, at}].slice(-TELL_OUT_MAX); tellSave(); }
+    const err = r.status === 200 || waits ? null : "Not sent. " + alertsNoGo(r.status);
     s.busy = false;
+    if (!err) draftsLetGo("tell", s);
     if (tellSheet === s) { if (err) s.err = err; else tellSheet = null; }
-    if (!err) showToast("Sent to Claude. It files it in a few minutes.");
+    if (waits) showToast("No signal. It goes to Claude by itself once you have signal.");
+    else if (!err) showToast("Sent to Claude. It files it in a few minutes.");
     else if (tellSheet !== s) showToast(err);
     // Not over someone typing on another part of the +.
     const a = document.activeElement;
@@ -424,6 +457,6 @@ function tellDispatch(act, d) {
   else if (act === "telpick") tellChoose(d.id, d.item);
   else if (act === "telscope") tellScope(d.id);
   else if (act === "telsay") tellSay();
-  else if (act === "telclose") tellSheet = null;
+  else if (act === "telclose") { draftsLetGo("tell", tellSheet); tellSheet = null; }
   return true;
 }

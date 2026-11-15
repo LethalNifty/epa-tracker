@@ -507,19 +507,45 @@ test("what you type goes to the inbox with the phone's clock and offset", async 
   assert.match(h.html(), /Type or say something first\./);
 });
 
-test("with no signal the words stay and say Not sent", async () => {
+test("with no signal it waits, and goes by itself once there's signal, at the time it was said", async () => {
   const {c, h} = await tellPhone();
   h.click("setclose");
+  h.setNow("2026-11-09T14:05");
   typeTell(h, "Flight on the 11th at 9:35");
   c.block = /^POST \/inbox$/;
   h.click("telsay"); await settle(h);
-  assert.match(h.html(), /Not sent\. Try again when you have signal\./);
-  assert.match(h.html(), />Flight on the 11th at 9:35<\/textarea>/);
-  assert.equal(h.val("plusOn"), "t");
+  assert.match(h.html(), /No signal\. It goes to Claude by itself once you have signal\./);
+  assert.equal(h.val("plusOn"), null);
   assert.equal(await c.env.TELL.storage.get("inbox"), undefined);
-  // With signal again, the same words go.
+  assert.deepEqual(JSON.parse(h.store.get("gi-tell-v1")).out, [{text: "Flight on the 11th at 9:35", at: "2026-11-09T14:05:00-05:00"}]);
+  // The Tell box says one is waiting.
+  h.click("scopeopen"); h.click("plusto", {to: "t"});
+  assert.match(h.html(), /One thing waiting for signal to go to Claude\./);
+  h.click("telclose");
+  // Still no signal: it keeps waiting.
+  await h.run("tellPick(true)"); await settle(h);
+  assert.equal(JSON.parse(h.store.get("gi-tell-v1")).out.length, 1);
+  // Signal again: the next pickup sends it, as it was said.
   c.block = null;
-  h.click("telsay"); await settle(h);
+  h.setNow("2026-11-09T15:30");
+  await h.run("tellPick(true)"); await settle(h);
+  assert.deepEqual(c.sent.filter(x => x.what === "POST /inbox").map(x => x.body).slice(-1), [{text: "Flight on the 11th at 9:35", at: "2026-11-09T14:05:00-05:00"}]);
   assert.deepEqual((await c.env.TELL.storage.get("inbox")).map(x => x.text), ["Flight on the 11th at 9:35"]);
-  assert.match(h.html(), /Sent to Claude\. It files it in a few minutes\./);
+  assert.equal(JSON.parse(h.store.get("gi-tell-v1")).out.length, 0);
+  assert.match(h.html(), /Sent to Claude what you said earlier/);
+});
+
+test("words typed for Tell come back after iOS closes the app, until sent or closed", async () => {
+  const {c, h} = await tellPhone();
+  h.click("setclose");
+  h.setNow("2026-11-09T10:20");
+  typeTell(h, "Renew the parking pass Monday");
+  // The same phone, opened again: the Tell box opens by itself with the words.
+  const h2 = load({today: "2026-11-09", store: h.store, fetch: c.fetch});
+  assert.equal(h2.val("plusOn"), "t");
+  assert.match(h2.html(), />Renew the parking pass Monday<\/textarea>/);
+  assert.match(h2.html(), /Restored from 10:20, not saved yet/);
+  h2.click("telclose");
+  assert.equal(h2.val("drafts.tell"), undefined);
+  assert.equal(load({today: "2026-11-09", store: h.store, fetch: c.fetch}).val("plusOn"), null, "closed on purpose: they go");
 });

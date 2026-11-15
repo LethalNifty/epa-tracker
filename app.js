@@ -1009,10 +1009,11 @@ function sheetFieldChange(t) {
 
 // ---- Unsent words ----------------------------------------------------------------
 // iOS closes an app it hasn't shown for a while, and words said into a sheet
-// went with it. A new case, observation or pearl is kept on this phone as it's
-// typed (apart from the saved state and the backup) and comes back the next
-// time the app opens, for a week, marked as not saved. The newest opens by
-// itself once, unless a reminder opened the app; the rest wait for their sheet.
+// went with it. A new case, observation, pearl, Agenda event or to-do, or what's
+// typed for Tell GI Hub is kept on this phone as it's typed (apart from the
+// saved state and the backup) and comes back the next time the app opens, for
+// a week, marked as not saved. The newest opens by itself once, unless a
+// reminder opened the app; the rest wait for their sheet.
 const DRAFTS_KEY = "gi-drafts-v1", DRAFTS_KEEP = 7 * DAY_MS;
 let drafts = {};
 // What each kind keeps; nothing when it holds no words. Cards are kept without their keys.
@@ -1020,8 +1021,11 @@ const DRAFT_OF = {
   scope: c => (c.text.trim() || c.cards.length ? {text: c.text, cards: c.cards.map(({key, ...rest}) => rest), removed: c.removed, day: c.day || null} : null),
   epa: s => (s && s.mode === "new" && (s.a.trim() || s.n.trim()) ? {pid: s.pid, d: s.d, a: s.a, n: s.n, status: s.status, tick: s.tick || []} : null),
   pearl: s => (s && s.mode === "new" && (s.t.trim() || s.who.trim()) ? {t: s.t, who: s.who, topic: s.topic, d: s.d} : null),
+  ag: s => (s && s.mode === "new" && (s.t.trim() || String(s.n || "").trim()) ? {kind: s.kind, t: s.t, d: s.d, d2: s.d2 || null, s: s.s, e: s.e || "",
+    allDay: !!s.allDay, multi: !!s.multi, rep: s.rep || null, every: s.every || 1, until: s.until || "", n: s.n || "", al: s.al || null} : null),
+  tell: s => (s && String(s.text || "").trim() ? {text: s.text} : null),
 };
-const draftHolder = k => (k === "scope" ? scopeCap : k === "epa" ? sheet : pearlSheet);
+const draftHolder = k => (k === "scope" ? scopeCap : k === "epa" ? sheet : k === "pearl" ? pearlSheet : k === "ag" ? agSheet : FELLOWS ? null : tellSheet);
 function draftsWrite() { try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)); } catch (e) {} }
 // After each change, what a sheet holds replaces what was kept. A sheet that
 // closed keeps its words (a tapped reminder may have closed it); the case box
@@ -1048,12 +1052,16 @@ function draftsBoot(quiet) {
     sc.v.day = sc.v.day || fmtDate(new Date(sc.at));
     scopeCap = {text: String(sc.v.text || ""), cards: (sc.v.cards || []).map(c => ({...c, key: scopeNewKey()})), removed: sc.v.removed || 0, day: sc.v.day, restored: sc.at};
   }
-  const k = quiet ? null : Object.keys(drafts).filter(x => !drafts[x].shown).sort((a, b) => drafts[b].at - drafts[a].at)[0];
+  // Words for Tell wait while Tell GI Hub is off.
+  const k = quiet ? null : Object.keys(drafts).filter(x => !drafts[x].shown && (x !== "tell" || (typeof tellOn === "function" && tellOn())))
+    .sort((a, b) => drafts[b].at - drafts[a].at)[0];
   if (k) drafts[k].shown = true;
   draftsWrite();
   if (k === "scope") scopeOpenCapture();
   else if (k === "epa") openSheet(drafts.epa.v.pid || undefined);
   else if (k === "pearl") pearlOpen(null);
+  else if (k === "ag") { agOpen(null); draftsInto("ag", agSheet); }
+  else if (k === "tell") { scopeOpenCapture(); plusTo("t"); }
 }
 // A new sheet takes the words kept for its kind: an observation's only for the
 // same EPA, or when either has none picked.
@@ -1072,6 +1080,8 @@ function draftsClear(k) {
   if (k === "scope") { scopeCap = {text: "", cards: [], removed: 0}; scopeErr = null; }
   else if (k === "epa" && sheet) Object.assign(sheet, {d: fmtDate(getToday()), a: "", n: "", status: "pending", tick: [], restored: null});
   else if (k === "pearl" && pearlSheet) Object.assign(pearlSheet, {t: "", who: "", topic: "", d: fmtDate(getToday()), restored: null});
+  else if (k === "ag" && agSheet) Object.assign(agSheet, {t: "", n: "", restored: null});
+  else if (k === "tell" && !FELLOWS && tellSheet) Object.assign(tellSheet, {text: "", restored: null});
 }
 // "Restored from 14:12, not saved yet", with the day when it's another one.
 function draftStripHTML(k, at) {
