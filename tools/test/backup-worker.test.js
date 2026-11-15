@@ -100,13 +100,18 @@ test("it turns away what isn't a locked backup for about today", async () => {
   assert.equal(e.BACKUPS.m.size, 0, "none of it set the token or kept anything");
 });
 
-test("delete clears every backup and the token, for a fresh start", async () => {
+test("delete clears every backup; the token stays, so a stranger can't take the store", async () => {
   const w = await load(), e = env();
   await call(w, e, "PUT", "/backups/2026-11-03", {body: sealed()});
   assert.equal((await call(w, e, "DELETE", "/backups", {tok: OTHER})).status, 401);
   assert.equal((await call(w, e, "DELETE", "/backups")).status, 204);
-  assert.equal(e.BACKUPS.m.size, 0);
-  assert.equal((await call(w, e, "PUT", "/backups/2026-11-03", {tok: OTHER, body: sealed()})).status, 200, "a new passphrase can start over");
+  assert.deepEqual([...e.BACKUPS.m.keys()], ["auth"]);
+  assert.equal((await call(w, e, "PUT", "/backups/2026-11-03", {tok: OTHER, body: sealed()})).status, 401, "another passphrase can't");
+  assert.equal((await call(w, e, "PUT", "/backups/2026-11-03", {body: sealed()})).status, 200, "the same passphrase starts again");
+  // Freed by hand for a new passphrase (wrangler kv key delete auth): it can start over.
+  e.BACKUPS.m.delete("auth");
+  await call(w, e, "DELETE", "/backups");
+  assert.equal((await call(w, e, "PUT", "/backups/2026-11-03", {tok: OTHER, body: sealed()})).status, 200);
 });
 
 test("when its storage fails it still answers, so the phone can tell", async () => {

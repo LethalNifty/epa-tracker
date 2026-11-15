@@ -227,16 +227,16 @@ function alertsTest() {
     route.keepScroll = true; render();
   });
 }
-// Turn off: the sender forgets this phone (its subscription, plan and token),
-// and the subscription goes. With no signal the token stays, so this phone can
-// take the sender back later.
+// Turn off: the sender forgets this phone's subscription and plan, and the
+// subscription goes. The sender keeps holding this phone's token, and the phone
+// keeps it too, so only this phone can turn reminders back on.
 function alertsDisconnect() {
   remindErr = null;
   return alertsRun(async () => {
-    const r = alertsOn() ? await alertsAsk("DELETE", "/sub") : {status: 204};
+    if (alertsOn()) await alertsAsk("DELETE", "/sub");
     try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
     try { await (await caches.open(REMIND_CACHE)).delete("__gi-push.json"); } catch (e) {}
-    alertsKept = r.status === 204 || !alertsLoad().tok ? {} : {tok: alertsKept.tok};
+    alertsKept = alertsLoad().tok ? {tok: alertsKept.tok} : {};
     alertsSave();
     remindSub = null; remindLast = null; alertsGone = false;
     showToast("Reminders off on this phone");

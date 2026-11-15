@@ -271,6 +271,8 @@ function paceFinish(obsByPart, today) {
   let n = 0;
   for (const pid in obsByPart) {
     const list = obsByPart[pid] || [], P = PART_BY_ID[pid];
+    // Only the stages the finish date counts (Transition to Discipline isn't in remaining).
+    if (!P || !COACH_STAGES.includes(P.stage)) continue;
     let w = 0;
     for (const o of list) { const d = attrDate(o); if (d && dayIndex(d) <= t && dayIndex(d) > t - weeks * 7) w++; }
     // Forms past an EPA's requirement (a spare sent in case one isn't filled)

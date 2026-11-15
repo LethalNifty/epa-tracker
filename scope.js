@@ -171,7 +171,7 @@ const scopeFoundText = (c, code) => code === "other" && c.foundOther ? "Other: "
 
 // Manitoba statutory holidays through Year 1 (a call shift on one is a weekend shift).
 const SCOPE_STAT_DAYS = ["2026-07-01", "2026-08-03", "2026-09-07", "2026-09-30", "2026-10-12", "2026-11-11",
-  "2026-12-25", "2026-12-26", "2027-01-01", "2027-02-15", "2027-03-26", "2027-05-24", "2027-07-01"];
+  "2026-12-25", "2026-12-26", "2026-12-28", "2027-01-01", "2027-02-15", "2027-03-26", "2027-05-24", "2027-07-01"];
 
 // ---- Number guard ------------------------------------------------------------------------
 const SCOPE_MONTHS_GUARD = "jan\\w*|feb\\w*|mar\\w*|apr\\w*|may|jun\\w*|jul\\w*|aug\\w*|sep\\w*|oct\\w*|nov\\w*|dec\\w*";

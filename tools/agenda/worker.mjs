@@ -30,7 +30,7 @@
 //                    has (their call sheets go from KV: the phone keeps them now)
 //   POST   /test     one test reminder, now
 //   GET    /status   {sub, key, kept, next}
-//   DELETE /sub      forget the phone, its reminders and its token
+//   DELETE /sub      forget the phone and its reminders (its token stays)
 //   PUT    /tell     {shortcut, claude}: the fingerprints of the keys Settings made
 //   DELETE /tell     Tell GI Hub off: neither key opens anything
 //   GET    /results  what Claude filed that the phone hasn't confirmed, and whether anything waits
@@ -355,8 +355,11 @@ async function route(req, env, now, fetchImpl) {
     const list = raw ? JSON.parse(raw).list || [] : [], next = list.find(a => a.t > now);
     return reply(200, {sub: !!subRaw, key: (await vapid(env)).pub, kept: list.length, next: next ? next.t : null});
   }
+  // Turn off: the phone and its reminders go; its token stays, so only this
+  // phone can turn them back on (the repo is public, so anyone could otherwise
+  // take a freed sender). A new phone: `npx wrangler kv key delete auth`.
   if (path === "/sub" && m === "DELETE") {
-    for (const k of ["sub", "alerts", "auth"]) await env.AGENDA.delete(k);
+    for (const k of ["sub", "alerts"]) await env.AGENDA.delete(k);
     return reply(204);
   }
   return reply(405, {error: "not allowed"});

@@ -41,7 +41,7 @@ const Store = {
     if (!FELLOWS) this.state.agenda = agClean(this.state.agenda);
     const sc = this.state.scopes, arr = v => Array.isArray(v) ? v : [];
     this.state.scopes = {cases: arr(sc && sc.cases), staff: arr(sc && sc.staff).map(p => ({aliases: [], hidden: false, ...p})),
-      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled), ageOn: !!(sc && sc.ageOn)};
+      learned: arr(sc && sc.learned), lastReport: (sc && sc.lastReport) || null, lastReportAt: (sc && sc.lastReportAt) || null, reportName: (sc && sc.reportName) || "", hintOff: (sc && sc.hintOff) || null, sitesFilled: !!(sc && sc.sitesFilled), ageOn: !!(sc && sc.ageOn)};
     // Once: cases imported before sites were filled on import take their block's hospital.
     if (!this.state.scopes.sitesFilled) { scopeFillSites(this.state.scopes.cases); this.state.scopes.sitesFilled = true; }
     const gd = this.state.guides;
@@ -204,7 +204,7 @@ const Store = {
     const h = String(heard || "").trim().toLowerCase();
     if (!h) return;
     this.state.scopes.learned = this.state.scopes.learned.filter(l => l.heard !== h).concat({kind, heard: h, code}).slice(-200); this.save(); },
-  markReport(iso) { this.state.scopes.lastReport = iso; this.save(); },
+  markReport(iso) { this.state.scopes.lastReport = iso; this.state.scopes.lastReportAt = new Date().toISOString(); this.save(); },
   // Pearls (pearls.js): who said it lives only here and in backups.
   addPearl(f) { const p = pearlClean({...f, id: pearlId(new Set(this.state.pearls.map(x => x.id))), sent: null, ts: new Date().toISOString()});
     this.state.pearls.push(p); this.save(); return p.id; },

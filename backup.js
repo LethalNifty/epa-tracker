@@ -119,7 +119,7 @@ async function bkDaily(day) {
 async function bkTurnOn(pass) {
   const k = await bkKeys(pass), st = await bkPut(k, fmtDate(getToday()));
   if (st === 200) { bkSent(k); bkClose(); showToast("Daily backup is on"); return; }
-  if (st === 401) { bkTyped = {p1: "", p2: ""}; bkMsg = "The backups on Cloudflare are locked with a different passphrase. Type that one instead."; }
+  if (st === 401) { bkTyped = {p1: "", p2: ""}; bkMsg = "The backups on Cloudflare are locked with a different passphrase. Type that one instead, or ask Claude to free them for a new one."; }
   else bkMsg = bkNoGo(st);
 }
 async function bkNow() {

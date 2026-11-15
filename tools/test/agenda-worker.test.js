@@ -248,15 +248,21 @@ test("Send a test pushes one now", async () => {
   assert.deepEqual(JSON.parse(open(p, push.got[0].body).text), {kind: "test", t: NOW});
 });
 
-test("without its token nothing else answers, and turning off frees it for a new phone", async () => {
+test("without its token nothing else answers; turning off keeps the token, so only that phone comes back", async () => {
   const w = await mod("worker.mjs"), e = env();
   await connected(w, e);
   for (const [m, p] of [["GET", "/status"], ["PUT", "/alerts"], ["POST", "/test"], ["DELETE", "/sub"]])
     assert.equal((await call(w, e, m, p, {tok: OTHER, body: m === "PUT" ? {list: []} : undefined})).status, 401, m + " " + p);
   assert.equal((await call(w, e, "GET", "/nowhere")).status, 404);
   assert.equal((await call(w, e, "DELETE", "/sub")).status, 204);
-  for (const k of ["sub", "alerts", "auth"]) assert.equal(e.AGENDA.m.has(k), false, k);
+  for (const k of ["sub", "alerts"]) assert.equal(e.AGENDA.m.has(k), false, k);
+  assert.ok(e.AGENDA.m.has("auth"), "the phone's token stays");
   assert.ok(e.AGENDA.m.has("vapid"), "the sender keeps its key");
+  const key = (await (await call(w, e, "GET", "/vapid", {tok: null})).json()).key;
+  assert.equal((await call(w, e, "PUT", "/sub", {tok: OTHER, body: {sub: phone().sub, key}})).status, 401, "a stranger can't take a sender turned off");
+  await connected(w, e);
+  // Freed by hand for a new phone (wrangler kv key delete auth): the new phone connects.
+  e.AGENDA.m.delete("auth");
   await connected(w, e, phone(), OTHER);
 });
 

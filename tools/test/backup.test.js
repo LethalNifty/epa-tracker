@@ -218,7 +218,7 @@ test("turning it off forgets the key here; deleting clears Cloudflare too", asyn
   assert.ok(await cf.env.BACKUPS.get("b:2026-11-03"), "the backups stay, to put back later");
   await setUp(h);
   h.click("bkdelete"); await settle(h);
-  assert.equal(cf.env.BACKUPS.m.size, 0);
+  assert.deepEqual([...cf.env.BACKUPS.m.keys()], ["auth"], "every backup goes; the passphrase's token stays, so no one else can take the store");
   assert.equal(h.store.has("gi-backup-v1"), false);
   assert.match(h.html(), /data-action="bkset"/);
 });

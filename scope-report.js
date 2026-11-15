@@ -192,13 +192,17 @@ function pdfScene(doc, sc, ox, oy) {
 
 // ---- The report ---------------------------------------------------------------------------------
 const rpDate = iso => { const d = new Date(iso + "T12:00:00"); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
-function scopeReportRange(period, cases, lastReport, today) {
+// lastReportAt: when the last report was made, so the cases of that day already
+// in it (logged before then) aren't in the next one again (after).
+function scopeReportRange(period, cases, lastReport, today, lastReportAt) {
   const t = fmtDate(today), first = cases.length ? cases.slice().sort(scopeByDate)[0].d : t, blk = blockFor(today);
   if (period === "block" && blk) return {from: fmtDate(blockStart(blk.num)), to: t, label: FELLOWS ? `Block ${blk.num}` : `Block ${blk.num} (${blk.name})`};
   if (period === "year") return {from: "2026-07-01", to: t, label: "Academic year 2026 to 2027"};
-  if (period === "since" && lastReport) return {from: lastReport, to: t, label: "Since the last report"};
+  if (period === "since" && lastReport) return {from: lastReport, to: t, label: "Since the last report", ...(lastReportAt ? {after: lastReportAt} : {})};
   return {from: first < t ? first : t, to: t, label: period === "since" ? "Since logging began" : "All cases"};
 }
+// A case in a report's period; on the last report's own day, only one logged after it was made.
+const scopeInPeriod = (c, o) => c.d >= o.from && c.d <= o.to && !(o.after && c.d === o.from && c.ts && c.ts <= o.after);
 const rpPct = (k, n) => n ? Math.round(k / n * 100) + "%" : "–";
 // One logbook line's procedure, without the reach (it has its own column).
 function scopeReportProc(c) {
@@ -214,7 +218,7 @@ function scopeReportWhy(c) {
 function scopeReportPDF(o) {
   const doc = PdfDoc({title: "Endoscopy procedure log" + (o.name ? " · " + o.name : "")});
   const M = 48, CW = doc.W - 2 * M, FOOT = 742, all = o.cases.slice().sort(scopeByDate);
-  const inP = all.filter(c => c.d >= o.from && c.d <= o.to), upTo = all.filter(c => c.d <= o.to);
+  const inP = all.filter(c => scopeInPeriod(c, o)), upTo = all.filter(c => c.d <= o.to);
   const whole = inP.length === upTo.length;
   const tP = scopeTotals(inP), tA = scopeTotals(upTo);
   const series = scopeReachSeries(upTo), last20 = series.slice(-20);
@@ -483,8 +487,8 @@ async function scopeShareFile(bytesOrText, name, type, title) {
 }
 function scopeReportOpts() {
   const s = Store.state.scopes, today = getToday();
-  const r = scopeReportRange(scopePeriod, s.cases, s.lastReport, today);
-  return {cases: s.cases, staff: s.staff, from: r.from, to: r.to, label: r.label, name: (s.reportName || "").trim(), today,
+  const r = scopeReportRange(scopePeriod, s.cases, s.lastReport, today, s.lastReportAt);
+  return {cases: s.cases, staff: s.staff, from: r.from, to: r.to, after: r.after || null, label: r.label, name: (s.reportName || "").trim(), today,
     items: PART_BY_ID.c8a ? PART_BY_ID.c8a.items : [], lineVal: id => Store.lineOk(id), lastReport: s.lastReport};
 }
 async function scopeExportReport() {

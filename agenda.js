@@ -201,10 +201,33 @@ const agNthMonday = (y, m, n) => { const d = new Date(y, m, 1); d.setDate(1 + (8
 function agHolidays(y) {
   const good = agEaster(y); good.setDate(good.getDate() - 2);
   const vic = new Date(y, 4, 24); vic.setDate(24 - (vic.getDay() + 6) % 7);
-  return [[new Date(y, 0, 1), "New Year's Day"], [agNthMonday(y, 1, 3), "Louis Riel Day"], [good, "Good Friday"], [vic, "Victoria Day"],
+  const list = [[new Date(y, 0, 1), "New Year's Day"], [agNthMonday(y, 1, 3), "Louis Riel Day"], [good, "Good Friday"], [vic, "Victoria Day"],
     [new Date(y, 6, 1), "Canada Day"], [agNthMonday(y, 8, 1), "Labour Day"], [new Date(y, 8, 30), "Truth and Reconciliation Day"],
     [agNthMonday(y, 9, 2), "Thanksgiving"], [new Date(y, 10, 11), "Remembrance Day"], [new Date(y, 11, 25), "Christmas Day"]]
-    .map(([d, name]) => ({d: fmtDate(d), name})).sort((p, q) => p.d < q.d ? -1 : 1);
+    .map(([d, name]) => ({d: fmtDate(d), name}));
+  // One on a Saturday or Sunday is kept on the next free weekday (Christmas on a
+  // Saturday: the Monday). Remembrance Day isn't moved.
+  const taken = new Set(list.map(h => h.d).concat([`${y}-12-26`]));
+  for (const h of list.filter(x => AG_IN_LIEU.includes(x.name))) {
+    if (agDate(h.d).getDay() % 6) continue;
+    const d = agNextWeekday(h.d, taken);
+    taken.add(d); list.push({d, name: h.name + " (observed)"});
+  }
+  return list.sort((p, q) => p.d < q.d ? -1 : 1);
+}
+const AG_IN_LIEU = ["New Year's Day", "Canada Day", "Truth and Reconciliation Day", "Christmas Day"];
+// The first weekday after a day that isn't already taken.
+function agNextWeekday(iso, taken) {
+  let d = iso;
+  do d = agAddDays(d, 1); while (agDate(d).getDay() % 6 === 0 || taken.has(d));
+  return d;
+}
+// Boxing Day on a weekend: the next free weekday after the holidays (Monday Dec 28, 2026).
+function agBoxingObserved(y) {
+  const box = `${y}-12-26`;
+  if (agDate(box).getDay() % 6) return null;
+  const list = agHolidayMemo[y] || (agHolidayMemo[y] = agHolidays(y));
+  return agNextWeekday(box, new Set(list.map(h => h.d)));
 }
 const agHolidayMemo = {};
 function agHoliday(iso) {
@@ -216,7 +239,8 @@ function agHoliday(iso) {
 // and Terry Fox Day (the first Monday in August), which the hospitals keep too.
 function agStat(iso) {
   const d = agDate(iso);
-  return agHoliday(iso) || (iso.slice(5) === "12-26" ? "Boxing Day" : d.getMonth() === 7 && d.getDay() === 1 && d.getDate() <= 7 ? "Terry Fox Day" : null);
+  return agHoliday(iso) || (iso.slice(5) === "12-26" ? "Boxing Day" : iso === agBoxingObserved(+iso.slice(0, 4)) ? "Boxing Day (observed)" :
+    d.getMonth() === 7 && d.getDay() === 1 && d.getDate() <= 7 ? "Terry Fox Day" : null);
 }
 
 // ---- Call requests ------------------------------------------------------------------------------

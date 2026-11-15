@@ -11,7 +11,7 @@
 //   PUT    /backups/YYYY-MM-DD   that day's backup (the same day again replaces it)
 //   GET    /backups              the days kept, newest first
 //   GET    /backups/YYYY-MM-DD   one day's backup
-//   DELETE /backups              every backup and the token: a fresh start
+//   DELETE /backups              every backup (the token stays)
 const ORIGIN = "https://lethalnifty.github.io";
 const KEEP = 14, MAX_BYTES = 5 * 1024 * 1024, DAY_MS = 864e5;
 const HEADERS = {
@@ -73,9 +73,11 @@ async function route(req, env, now) {
   }
   if (req.method === "GET" || (req.method === "DELETE" && !one)) {
     if (!(await allowed(req, env, false))) return reply(401, {error: "locked"});
+    // Every backup goes; the token stays, so only the same passphrase can start
+    // again (the repo is public, so anyone could otherwise take a freed store).
+    // A new passphrase: `npx wrangler kv key delete auth --binding BACKUPS --remote`.
     if (req.method === "DELETE") {
       for (const k of await daysKept(env)) await env.BACKUPS.delete(k.name);
-      await env.BACKUPS.delete("auth");
       return reply(204);
     }
     if (!one) return reply(200, {days: (await daysKept(env)).reverse()

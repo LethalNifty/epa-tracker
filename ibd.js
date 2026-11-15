@@ -1078,18 +1078,28 @@ const IBD_CLASS_BY_ID = Object.fromEntries(IBD_CLASSES.map(c => [c.id, c]));
 
 // Source keys on a line, in order.
 function ibdKeys(line) { return String(line && line[1] || "").split(/\s+/).filter(Boolean); }
+// A shared work-up line on a drug's card cites that drug's own Health Canada
+// monograph, never another drug's (the hepatitis C line came from Omvoh's, the
+// varicella line from Zeposia's); with none left it rests on usual practice.
+function ibdBaseFor(d, id) {
+  const line = IBD_BASE[id], own = new Set();
+  [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra)
+    .forEach(l => { for (const k of ibdKeys(l)) if (k.startsWith("hc")) own.add(k); });
+  const keys = ibdKeys(line).filter(k => !k.startsWith("hc") || own.has(k));
+  return [line[0], keys.join(" ") || "prac"];
+}
 // Every source a drug's card cites, in the order they first appear.
 function ibdRefs(d) {
   const out = [];
   const add = line => { for (const k of ibdKeys(line)) if (!out.includes(k)) out.push(k); };
   [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || []).forEach(add);
-  for (const id of d.before.base) add(IBD_BASE[id]);
+  for (const id of d.before.base) add(ibdBaseFor(d, id));
   d.before.extra.forEach(add);
   return out;
 }
 // The full work-up for a drug: shared items first, then its own.
 function ibdWorkup(d) {
-  return d.before.base.map(id => ({id, line: IBD_BASE[id], own: false}))
+  return d.before.base.map(id => ({id, line: ibdBaseFor(d, id), own: false}))
     .concat(d.before.extra.map((line, i) => ({id: d.id + "-" + i, line, own: true})));
 }
 // Plain text for a clinic note, one line per test.

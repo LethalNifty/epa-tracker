@@ -449,17 +449,23 @@ test("Send a test: one test reminder now; no signal says so; a phone the sender 
   assert.match(h.html(), /<span>Stopped<\/span>[\s\S]*?Reminders stopped reaching this phone/);
 });
 
-test("Turn off frees the sender and this phone; with no signal the phone keeps its token to take the sender back", async () => {
+test("Turn off: the sender forgets the phone's reminders but both keep its token, so only this phone turns them back on; with no signal too", async () => {
   const {c, p, h} = await connected();
+  const tok0 = JSON.parse(h.store.get("gi-alerts-v1")).tok;
   c.calls.length = 0;
   h.click("remindoff");
   await settle(h);
   assert.deepEqual(c.calls, ["DELETE /sub"]);
-  for (const k of ["sub", "alerts", "auth"]) assert.equal(await c.env.AGENDA.get(k), null, k);
+  for (const k of ["sub", "alerts"]) assert.equal(await c.env.AGENDA.get(k), null, k);
+  assert.ok(await c.env.AGENDA.get("auth"), "the sender still holds this phone's token");
   assert.ok(await c.env.AGENDA.get("vapid"), "the sender keeps its own key");
   assert.equal(p.sub, null);
-  assert.equal(h.store.get("gi-alerts-v1"), undefined);
+  assert.deepEqual(JSON.parse(h.store.get("gi-alerts-v1")), {tok: tok0});
   assert.match(h.html(), /<span>Reminders<\/span><span>Off<\/span>/);
+  h.click("remindon");
+  await settle(h);
+  assert.match(h.html(), /<span class="ok">On<\/span>/);
+  assert.equal(JSON.parse(h.store.get("gi-alerts-v1")).tok, tok0, "back on with the same token");
   const again = await connected();
   const tok = JSON.parse(again.h.store.get("gi-alerts-v1")).tok;
   again.c.down = true;

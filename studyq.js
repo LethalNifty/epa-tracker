@@ -39,11 +39,16 @@ function studyqAccept(payload) {
   }
   return out.sort((a, b) => a.i - b.i || String(a.id).localeCompare(String(b.id)));
 }
+// The file and password last opened: coming back to the app with the same
+// file doesn't unlock it again (the key takes a long, deliberate calculation).
+let studyqOpened = null;
 async function studyqOpen(enc, pw) {
+  const sig = enc.ct + "|" + enc.salt + "|" + pw;
+  if (StudyQ.status === "ready" && studyqOpened === sig) return true;
   try {
     const payload = await studyqDecrypt(enc, pw);
-    StudyQ.list = studyqAccept(payload); StudyQ.made = payload.made || null; StudyQ.status = "ready"; return true;
-  } catch (e) { StudyQ.list = []; StudyQ.status = "bad"; return false; }
+    StudyQ.list = studyqAccept(payload); StudyQ.made = payload.made || null; StudyQ.status = "ready"; studyqOpened = sig; return true;
+  } catch (e) { StudyQ.list = []; StudyQ.status = "bad"; studyqOpened = null; return false; }
 }
 let studyqEnc = null;
 async function studyqFetch() {
