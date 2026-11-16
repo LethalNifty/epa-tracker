@@ -54,6 +54,7 @@ function workSectionHTML() {
     `<div class="card list yrv-list cv-list">${rows || `<p class="cv-empty">Talks, abstracts and posters, papers and teaching you've done. Add each one as it happens, and Copy gives you the list to paste into your CV.</p>`}</div>` +
     `<div class="cv-acts"><button class="btn" data-action="reviewworknew">${ic("plus")}Add</button>` +
     (list.length ? `<button class="btn" data-action="reviewworkcopy">${ic("copy")}Copy for your CV</button>` : "") + `</div>` +
+    `<button class="textbtn cv-paste" data-action="reviewworkpaste">Paste a list</button>` +
     (workShow ? `<textarea class="cv-show mono" readonly rows="6" aria-label="Your CV list">${esc(workShow)}</textarea>` : "") + `</div>`;
 }
 function workOpen(id) {
@@ -63,7 +64,16 @@ function workOpen(id) {
   workFresh = true;
 }
 function workSheetHTML() {
-  const s = workSheet, edit = s.mode === "edit", fresh = workFresh ? " fresh" : "", title = edit ? "Edit" : "Add to your CV list";
+  const s = workSheet, edit = s.mode === "edit", fresh = workFresh ? " fresh" : "", title = edit ? "Edit" : s.mode === "paste" ? "Paste a list" : "Add to your CV list";
+  if (s.mode === "paste") {
+    return `<div class="scrim top${fresh}" data-action="reviewworkclose"></div><div class="sheet worksheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
+      `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="reviewworkclose" aria-label="Close">${ic("x")}</button></div>` +
+      `<p class="ssub">One per line, the way Copy writes them: What. Where. 5 Oct 2026. Note. Lines under a heading like Talks or Papers go in that group.</p>` +
+      `<textarea class="cv-paste-box" rows="9" data-work="text" aria-label="Your list" autocapitalize="sentences" placeholder="Talks&#10;- A talk title. GI rounds. 5 Oct 2026.">${esc(s.text)}</textarea>` +
+      `<p class="cv-count mono" id="workcount" aria-live="polite">${esc(s.text.trim() ? workPasteWords(workPasteSummary(s.text)) : "")}</p>` +
+      (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
+      `<div class="sactions"><button class="btn primary" data-action="reviewworkpastesave">Add them</button></div></div>`;
+  }
   const chip = ([k, label]) => `<button class="pick ghost${s.k === k ? " on" : ""}" data-action="reviewworkkind" data-k="${k}" aria-pressed="${s.k === k}">${label}</button>`;
   return `<div class="scrim top${fresh}" data-action="reviewworkclose"></div><div class="sheet worksheet${fresh}" role="dialog" aria-modal="true" aria-label="${title}">` +
     `<div class="grab"></div><div class="shead"><b>${title}</b><button class="iconbtn" data-action="reviewworkclose" aria-label="Close">${ic("x")}</button></div>` +
@@ -81,6 +91,8 @@ function workField(t) {
   const f = t && t.dataset && t.dataset.work;
   if (!f || !workSheet) return false;
   workSheet[f] = t.value;
+  const c = f === "text" && typeof document !== "undefined" && document.getElementById ? document.getElementById("workcount") : null;
+  if (c) c.textContent = t.value.trim() ? workPasteWords(workPasteSummary(t.value)) : "";
   return true;
 }
 function workSave() {
@@ -92,6 +104,67 @@ function workSave() {
   else list.push({id: workNewId(new Set(list.map(w => w.id))), k: s.k, t, d: s.d, w: s.w.trim(), n: s.n.trim(), ts: new Date().toISOString()});
   Store.state.work = workClean(list); Store.save();
   showToast(s.mode === "edit" ? "Changes saved" : "Added to your CV list", () => { Store.state.work = before; Store.save(); });
+  workSheet = null; workShow = null;
+}
+// ---- Paste a list ---------------------------------------------------------------------------------
+// Lines the way Copy writes them ("- What. Where. 5 Oct 2026. Note."), under
+// the kind headings. The day can also be "Oct 5, 2026", 2026-10-05, or "23 Nov"
+// (this year, or last year when that would be months ahead). The bit just
+// before the day is Where, so a title can hold a full stop ("A vs. B"). A line
+// with no day is left out, and so is one already on the list.
+const WORK_MON = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const WORK_HEADS = [["talk", /^(?:talks?|presentations?)$/], ["abstract", /^(?:abstracts?(?: and posters?)?|posters?)$/],
+  ["paper", /^(?:papers?|publications?)$/], ["teach", /^teaching$/], ["other", /^others?$/]];
+const WORK_BULLET = /^(?:[-•*]|\d+[.)])\s+/;
+function workDayOf(s, today) {
+  const t = String(s).trim().replace(/\.$/, "").toLowerCase();
+  let m, d, mo, y = null;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t))) { y = +m[1]; mo = +m[2] - 1; d = +m[3]; }
+  else if ((m = /^(\d{1,2}) ([a-z]{3})[a-z]*,? ?(\d{4})?$/.exec(t))) { d = +m[1]; mo = WORK_MON.indexOf(m[2]); y = m[3] ? +m[3] : null; }
+  else if ((m = /^([a-z]{3})[a-z]* (\d{1,2}),? ?(\d{4})?$/.exec(t))) { d = +m[2]; mo = WORK_MON.indexOf(m[1]); y = m[3] ? +m[3] : null; }
+  else return null;
+  if (mo < 0) return null;
+  if (y === null) { y = today.getFullYear(); if (new Date(y, mo, d) - today > 270 * 864e5) y--; }
+  const at = new Date(y, mo, d);
+  return at.getFullYear() === y && at.getMonth() === mo && at.getDate() === d ? fmtDate(at) : null;
+}
+function workParse(text, today = getToday()) {
+  const items = [], seen = new Set();
+  let k = "other", skipped = 0;
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const bullet = WORK_BULLET.test(line), body = line.replace(WORK_BULLET, "");
+    const head = !bullet && WORK_HEADS.find(([, rx]) => rx.test(body.toLowerCase().replace(/:$/, "")));
+    if (head) { k = head[0]; continue; }
+    const parts = body.split(/\.\s+/).map(p => p.trim().replace(/\.$/, "")).filter(Boolean);
+    const di = parts.findIndex((p, i) => i > 0 && workDayOf(p, today));
+    if (di < 1) { skipped++; continue; }
+    const x = {k, t: (di > 1 ? parts.slice(0, di - 1) : parts.slice(0, 1)).join(". "), d: workDayOf(parts[di], today),
+      w: di > 1 ? parts[di - 1] : "", n: parts.slice(di + 1).join(". ")};
+    const key = x.t.toLowerCase() + "|" + x.d;
+    if (!seen.has(key)) { seen.add(key); items.push(x); }
+  }
+  return {items, skipped};
+}
+function workPasteSummary(text) {
+  const p = workParse(text), have = new Set((Store.state.work || []).map(w => w.t.toLowerCase() + "|" + w.d));
+  const fresh = p.items.filter(x => !have.has(x.t.toLowerCase() + "|" + x.d));
+  return {fresh, skipped: p.skipped, dup: p.items.length - fresh.length};
+}
+function workPasteWords(s) {
+  const bits = [`${s.fresh.length} to add`];
+  if (s.dup) bits.push(`${s.dup} already on the list`);
+  if (s.skipped) bits.push(`${s.skipped} line${s.skipped === 1 ? "" : "s"} with no day, left out`);
+  return bits.join(" · ");
+}
+function workPasteSave() {
+  const s = workPasteSummary(workSheet.text);
+  if (!s.fresh.length) { workSheet.err = "Nothing new to add. Each line needs a day, like 5 Oct 2026."; return; }
+  const before = JSON.parse(JSON.stringify(Store.state.work || [])), list = Store.state.work || (Store.state.work = []), ts = new Date().toISOString();
+  for (const x of s.fresh) list.push({id: workNewId(new Set(list.map(w => w.id))), ...x, ts});
+  Store.state.work = workClean(list); Store.save();
+  showToast(`Added ${s.fresh.length} to your CV list`, () => { Store.state.work = before; Store.save(); });
   workSheet = null; workShow = null;
 }
 function workCopy() {
@@ -267,6 +340,8 @@ function reviewDispatch(act, d = {}) {
   else if (act === "reviewclose") { reviewSheet = null; reviewErr = null; workShow = null; }
   else if (act === "reviewsave") { reviewSave(); return false; }
   else if (act === "reviewworknew") workOpen(null);
+  else if (act === "reviewworkpaste") { workSheet = {mode: "paste", text: "", err: null}; workFresh = true; }
+  else if (act === "reviewworkpastesave" && workSheet && workSheet.mode === "paste") workPasteSave();
   else if (act === "reviewworkopen") workOpen(d.id);
   else if (act === "reviewworkkind" && workSheet && WORK_KINDS.some(w => w[0] === d.k)) workSheet.k = d.k;
   else if (act === "reviewworksave" && workSheet) workSave();

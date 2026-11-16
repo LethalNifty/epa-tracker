@@ -87,3 +87,75 @@ test("the fellows' edition has no Year 1 so far, so no list", () => {
   f.run(`route = {page: "plan"}; render();`);
   assert.doesNotMatch(f.html(), /reviewopen|For your CV/);
 });
+
+// Paste a list: a whole list at once, the way Copy writes it (or close to it).
+const PASTE = [
+  "Talks",
+  "- A guideline discussion. GI rounds. 6 Oct 2026.",
+  "- A talk on one thing vs. another. Motility rounds. 5 Oct 2026.",
+  "",
+  "Abstracts and posters",
+  "- A case report. A national meeting. 15 Oct 2026. Submitted.",
+  "- A line with no day. A meeting.",
+  "Papers:",
+  "\u2022 A cohort study. A journal. Oct 30, 2026. In preparation",
+  "1. A second paper. 2026-11-02.",
+].join("\n");
+const rows = h => h.saved().work.map(x => [x.k, x.t, x.d, x.w, x.n]);
+
+test("Paste a list adds each line under its heading, says first what it will do, and Undo takes them all back", () => {
+  const h = phone();
+  assert.match(h.html(), /data-action="reviewworkpaste">Paste a list</);
+  h.click("reviewworkpaste");
+  assert.match(h.html(), /aria-label="Paste a list"/);
+  assert.match(h.html(), /aria-label="Year 1 so far"/, "Year 1 so far stays under it");
+  typeIn(h, "text", PASTE);
+  h.run("render()");
+  assert.match(h.html(), /5 to add · 1 line with no day, left out/);
+  h.click("reviewworkpastesave");
+  assert.deepEqual(rows(h), [
+    ["talk", "A guideline discussion", "2026-10-06", "GI rounds", ""],
+    ["talk", "A talk on one thing vs. another", "2026-10-05", "Motility rounds", ""],
+    ["abstract", "A case report", "2026-10-15", "A national meeting", "Submitted"],
+    ["paper", "A cohort study", "2026-10-30", "A journal", "In preparation"],
+    ["paper", "A second paper", "2026-11-02", "", ""],
+  ]);
+  assert.doesNotMatch(h.html(), /aria-label="Paste a list"/, "the sheet closes");
+  assert.match(h.html(), /Added 5 to your CV list/);
+  h.click("undo");
+  assert.deepEqual(h.saved().work, []);
+});
+
+test("pasting the same list again adds nothing and says so", () => {
+  const h = phone();
+  h.click("reviewworkpaste"); typeIn(h, "text", PASTE); h.click("reviewworkpastesave");
+  h.click("reviewworkpaste"); typeIn(h, "text", PASTE + "\n- A guideline discussion. GI rounds. 6 Oct 2026.");
+  h.run("render()");
+  assert.match(h.html(), /0 to add · 5 already on the list · 1 line with no day, left out/);
+  h.click("reviewworkpastesave");
+  assert.match(h.html(), /Nothing new to add\. Each line needs a day, like 5 Oct 2026\./);
+  assert.equal(h.saved().work.length, 5);
+});
+
+test("what Copy gives pastes back the same", () => {
+  const h = phone();
+  add(h, "talk", "A teaching talk on a motility topic", "2026-10-05", "Motility rounds");
+  add(h, "abstract", "A case report", "2026-10-15", "A national meeting", "Submitted");
+  add(h, "teach", "Small-group teaching", "2026-11-10");
+  add(h, "other", "A committee", "2026-09-01", "The program", "Fellow member");
+  const text = h.val("workText()"), was = rows(h).sort();
+  const h2 = phone();
+  h2.click("reviewworkpaste"); typeIn(h2, "text", text); h2.click("reviewworkpastesave");
+  assert.deepEqual(rows(h2).sort(), was);
+});
+
+test("the day can be written a few ways; a day that can't be is not taken", () => {
+  const h = phone(), day = (s, y, m, d) => h.val(`workDayOf(${JSON.stringify(s)}, new Date(${y}, ${m - 1}, ${d}))`);
+  assert.equal(day("5 Oct 2026", 2026, 11, 15), "2026-10-05");
+  assert.equal(day("October 5, 2026", 2026, 11, 15), "2026-10-05");
+  assert.equal(day("Sept 3 2026.", 2026, 11, 15), "2026-09-03");
+  assert.equal(day("2026-10-05", 2026, 11, 15), "2026-10-05");
+  assert.equal(day("23 Nov", 2026, 11, 15), "2026-11-23", "no year: this year");
+  assert.equal(day("20 Dec", 2026, 1, 10), "2025-12-20", "no year, and this year's would be months ahead: last year");
+  for (const s of ["31 Feb 2026", "2026-02-31", "Day 12", "CDDW 2027", "GI rounds"]) assert.equal(day(s, 2026, 11, 15), null, s);
+});

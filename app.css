@@ -1503,6 +1503,11 @@ iframe.rostview-pic { display: block; width: 100%; height: calc(100vh - 64px); b
 .cv-acts .btn { flex: 1; margin: 0; }
 .cv-show { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--fold-2); background: var(--field); color: var(--light); font-size: 13px; }
 .sheet.worksheet { z-index: 41; }
+.cv-paste { display: block; margin: 6px auto 0; }
+.cv-paste-box { display: block; width: 100%; min-height: 190px; margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--fold-2);
+  background: var(--field); color: var(--light); font: inherit; font-size: 16px; line-height: 1.45; resize: none; }
+.cv-paste-box::placeholder { color: var(--faint); }
+.cv-count { margin: 6px 2px 0; min-height: 16px; font-size: 11px; color: var(--dim); }
 
 /* Different assessors: the name on each "N Assessor" line, and the log sheet's word on the one typed */
 .lwho { color: var(--dim); font-weight: 400; }
