@@ -22,12 +22,14 @@ const DRUGS = H.val("IBD_DRUGS"), SRC = H.val("IBD_SRC"), BASE = H.val("IBD_BASE
 const SITS = H.val("IBD_SITS"), CLASSES = H.val("IBD_CLASSES");
 const byId = Object.fromEntries(DRUGS.map(d => [d.id, d]));
 const keys = line => String(line[1] || "").split(/\s+/).filter(Boolean);
+// A card's dose lines: the older drugs keep one list, the rest have rows.
+const doseOf = d => Array.isArray(d.dose) ? d.dose : Object.values(d.dose).flat();
 // Every [text, sources] line in the data, with where it sits.
 function allLines() {
   const out = [];
   for (const d of DRUGS) {
     const add = (where, ls) => ls.forEach(l => out.push({where: d.id + " " + where, l}));
-    add("how", [d.how]); add("use", d.use); add("dose", d.dose); add("avoid", d.avoid); add("harm", d.harm); add("preg", d.preg);
+    add("how", [d.how]); add("use", d.use); add("dose", doseOf(d)); add("avoid", d.avoid); add("harm", d.harm); add("preg", d.preg);
     add("monitor", d.monitor); add("before", d.before.extra);
     if (d.warn) add("warn", [d.warn]);
     if (d.differ) add("differ", d.differ);
@@ -58,7 +60,8 @@ test("every card has the parts a card needs", () => {
     assert.ok(d.n && d.brands && d.k !== undefined, d.id);
     assert.ok(d.dz.length && d.dz.every(z => z === "uc" || z === "cd"), d.id + " disease");
     assert.ok(d.route.length && d.route.every(r => ["oral", "rectal", "iv", "sc"].includes(r)), d.id + " route");
-    for (const part of ["use", "dose", "avoid", "harm", "monitor"]) assert.ok(d[part].length, d.id + " has no " + part);
+    for (const part of ["use", "avoid", "harm", "monitor"]) assert.ok(d[part].length, d.id + " has no " + part);
+    assert.ok(doseOf(d).length, d.id + " has no dose");
     assert.ok(Array.isArray(d.preg), d.id + " pregnancy");
     assert.ok(d.before.base.every(id => BASE[id]), d.id + " work-up");
   }

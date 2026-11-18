@@ -30,7 +30,7 @@ const IBD_SRC = {
   hcCimzia: {w: "HC", t: "Cimzia monograph", d: "2019-11-13", u: IBD_DPD(81737)},
   hcEntyvio: {w: "HC", t: "Entyvio monograph", d: "2023-11-17", u: IBD_DPD(92117)},
   hcStelara: {w: "HC", t: "Stelara monograph", d: "2024-08-14", u: IBD_DPD(80608)},
-  hcSkyrizi: {w: "HC", t: "Skyrizi monograph", d: "2026-07-08", u: IBD_DPD(100855)},
+  hcSkyrizi: {w: "HC", t: "Skyrizi monograph", d: "2026-10-16", u: IBD_DPD(100855)},
   hcOmvoh: {w: "HC", t: "Omvoh monograph", d: "2026-06-16", u: IBD_DPD(102858)},
   hcTremfya: {w: "HC", t: "Tremfya monograph", d: "2026-08-14", u: IBD_DPD(95860)},
   hcXeljanz: {w: "HC", t: "Xeljanz monograph", d: "2026-10-29", u: IBD_DPD(90863)},
@@ -64,6 +64,8 @@ const IBD_SRC = {
   acg25uc: {w: "ACG", y: 2025, t: "Ulcerative colitis in adults", u: "https://doi.org/10.14309/ajg.0000000000003463"},
   acg25cd: {w: "ACG", y: 2025, t: "Crohn's disease in adults", u: "https://doi.org/10.14309/ajg.0000000000003465"},
   cgh25up: {w: "CGH", y: 2025, t: "Upadacitinib for perianal fistulas: post hoc analysis of 3 phase 3 trials (Colombel)", u: "https://doi.org/10.1016/j.cgh.2024.08.032"},
+  cgh22ust: {w: "CGH", y: 2022, t: "Ustekinumab reinduction or a shorter interval in Crohn's: meta-analysis of 15 cohorts (Meserve)",
+    u: "https://doi.org/10.1016/j.cgh.2021.10.002"},
   ddw26fz: {w: "DDW", y: 2026, t: "FUZION CD: guselkumab for perianal fistulas, week 24 (conference abstract)",
     u: "https://www.hcplive.com/view/guselkumab-shows-efficacy-in-perianal-fistulizing-crohn-s-disease-in-phase-3-fuz"},
   acg25p: {w: "ACG", y: 2025, t: "Preventive care in IBD", u: "https://doi.org/10.14309/ajg.0000000000003541"},
@@ -105,6 +107,24 @@ const IBD_ADV = ["tb", "hbv", "hcv", "vzv", "cbc", "liver", "renal", "preg"];
 // The same tests as a clinic note lists them.
 const IBD_ORDER = {tb: "IGRA (or TST); chest X-ray if positive", hbv: "HBsAg, anti-HBc, anti-HBs", hcv: "HCV antibody, HIV",
   vzv: "VZV IgG if immunity is uncertain", cbc: "CBC", liver: "ALT, ALP, bilirubin", renal: "Creatinine", preg: "Pregnancy test if applicable"};
+
+// Reading an anti-TNF drug level: the trough with its antibodies, tested when
+// the disease is active. Each anti-TNF card ends Going up with these lines and
+// then its own target.
+const IBD_TNF_LEVELS = [
+  ["Low trough, no antibodies: go up (shorter interval or higher dose) or add an immunomodulator. With a low level, 86% respond to going up, against 17% with antibodies.", "aga17 cag15"],
+  ["Undetectable drug with high-titre antibodies: switch to another anti-TNF, given with an immunomodulator, or to another class. Low-titre antibodies: going up can still work.", "aga17 acg25cd"],
+  ["On target and still active: another class. Going up can still make sense for perianal disease, where targets may be higher, or for activity seen only on endoscopy.", "aga17"],
+];
+// The other biologics: no drug levels.
+const IBD_NO_LEVELS = ["ACG finds too little evidence to recommend drug levels for vedolizumab, ustekinumab or the IL-23 drugs.", "acg25uc"];
+// Stepping down an anti-TNF given with an immunomodulator. Each anti-TNF card
+// takes the lines for the diseases it treats.
+const IBD_TNF_DOWN = {
+  cd: ["Crohn's: steroid-free 6 months or more on an anti-TNF with an immunomodulator, AGA suggests stopping the immunomodulator, not the anti-TNF. Keeping both suits those with past anti-drug antibodies or HLA-DQA1*05.", "aga25cd"],
+  uc: ["UC: steroid-free 6 months or more on an anti-TNF with an immunomodulator, AGA suggests keeping the anti-TNF and makes no call on the immunomodulator.", "aga24uc"],
+  trough: ["Stopping the immunomodulator: check the trough before and after, especially on infliximab.", "aga25cd"],
+};
 
 const IBD_DRUGS = [
   // ---- 5-ASA ------------------------------------------------------------------------------
@@ -369,13 +389,30 @@ const IBD_DRUGS = [
       ["Acute severe UC: rescue if no response to IV steroids by day 3.", "acg25uc"],
       ["High-risk Crohn's after resection: prevents recurrence.", "acg25cd"],
     ],
-    dose: [
-      ["5 mg/kg IV at weeks 0, 2 and 6, then every 8 weeks.", "hcRemicade"],
-      ["Losing response: up to 10 mg/kg; check the trough and antibodies first.", "hcRemicade aga17"],
-      ["Trough target: at least 5 mg/L.", "aga17"],
-      ["Fistulas: no response by week 14, stop.", "hcRemicade"],
-      ["Remsima SC: 120 mg every 2 weeks, from 4 weeks after IV induction.", "hcRemsimaSC"],
-    ],
+    dose: {
+      ind: [
+        ["5 mg/kg IV at weeks 0, 2 and 6.", "hcRemicade"],
+        ["Fistulas: no response by week 14, stop.", "hcRemicade"],
+      ],
+      main: [
+        ["5 mg/kg IV every 8 weeks.", "hcRemicade"],
+        ["Infusions run at least 2 hours. After 3 in a row without a reaction, 5 mg/kg can run over 1 hour; 10 mg/kg stays at 2.", "hcRemicade"],
+        ["Remsima SC: 120 mg every 2 weeks, from 4 weeks after the last IV induction dose, or 8 weeks after the last IV maintenance dose.", "hcRemsimaSC"],
+      ],
+      up: [
+        ["Up to 10 mg/kg in UC or Crohn's; check the trough and antibodies first.", "hcRemicade"],
+        ["Fistulas: lost response, 10 mg/kg; of those who won it back, most did after 1 dose.", "hcRemicade"],
+        ["Remsima SC: no higher dose in the label, and too little data on switching from more than 5 mg/kg every 8 weeks.", "hcRemsimaSC"],
+        ["A shorter interval, down to every 4 weeks, alone or with the higher dose; in one open Crohn's study, 83% responded at a year.", "cag15 cag19", "off"],
+        ["Acute severe UC with albumin under 25 g/L: ACG says consider intensified dosing. In a trial of 10 vs 5 mg/kg as the first dose, only those with low albumin did better by day 7.", "acg25uc", "off"],
+        ["Remsima SC 240 mg every 2 weeks: after 10 mg/kg IV every 4 weeks, 67% relapsed on 120 mg (10% after 5 mg/kg every 8 weeks), and 240 mg won back remission in 93%.", "acg25cd", "off"],
+      ],
+      down: [IBD_TNF_DOWN.cd, IBD_TNF_DOWN.uc, IBD_TNF_DOWN.trough],
+      lv: IBD_TNF_LEVELS.concat([
+        ["Infliximab target: trough at least 5 mg/L.", "aga17"],
+        ["Perianal fistulas: higher levels go with better healing; no target is set.", "acg25cd"],
+      ]),
+    },
     warn: ["Serious infections including TB and invasive fungal infections; lymphoma, including hepatosplenic T-cell lymphoma, mostly in young men also on a thiopurine.", "hcRemicade"],
     avoid: [
       ["Serious or active infection: sepsis, abscess, TB, opportunistic infection.", "hcRemicade"],
@@ -422,12 +459,21 @@ const IBD_DRUGS = [
       ["Perianal fistulas: anti-TNF to induce and maintain.", "cag18"],
       ["UC: combine with an immunomodulator. Crohn's: no recommendation either way.", "aga24uc aga25cd"],
     ],
-    dose: [
-      ["160 mg at week 0, 80 mg at week 2, then 40 mg every other week.", "hcHumira"],
-      ["Crohn's: dose escalation may be considered for a flare; some week-4 non-responders respond by week 12.", "hcHumira"],
-      ["UC: continue only if it worked within the first 8 weeks.", "hcHumira"],
-      ["Trough target: at least 7.5 mg/L (weaker evidence than for infliximab).", "aga17"],
-    ],
+    dose: {
+      ind: [
+        ["160 mg SC at week 0 (in one day, or split over 2), then 80 mg at week 2.", "hcHumira"],
+        ["Crohn's: response usually shows by week 4; some who haven't responded then do by week 12.", "hcHumira"],
+        ["UC: continue only if it worked within the first 8 weeks.", "hcHumira"],
+      ],
+      main: [["40 mg every other week from week 4.", "hcHumira"]],
+      up: [
+        ["Crohn's flare: the label allows 40 mg every week.", "hcHumira"],
+        ["UC: the adult label has no higher dose.", "hcHumira"],
+        ["UC: a shorter interval or a higher dose, guided by the trough.", "cag15 aga17", "off"],
+      ],
+      down: [IBD_TNF_DOWN.cd, IBD_TNF_DOWN.uc, IBD_TNF_DOWN.trough],
+      lv: IBD_TNF_LEVELS.concat([["Adalimumab target: trough at least 7.5 mg/L (weaker evidence than for infliximab).", "aga17"]]),
+    },
     warn: ["Serious infections, including TB and invasive fungal infections. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcHumira"],
     avoid: [
       ["Serious or active infection, including TB.", "hcHumira"],
@@ -462,10 +508,13 @@ const IBD_DRUGS = [
       ["Intermediate efficacy as a first advanced therapy in UC.", "aga24uc"],
       ["Combine with an immunomodulator rather than using it alone.", "aga24uc"],
     ],
-    dose: [
-      ["200 mg SC at week 0, 100 mg at week 2, then 50 mg every 4 weeks.", "hcSimponi"],
-      ["100 mg every 4 weeks at the physician's discretion; check levels before escalating.", "hcSimponi"],
-    ],
+    dose: {
+      ind: [["200 mg SC at week 0, then 100 mg at week 2.", "hcSimponi"]],
+      main: [["50 mg every 4 weeks.", "hcSimponi"]],
+      up: [["100 mg every 4 weeks, at the physician's discretion; consider a drug level first.", "hcSimponi"]],
+      down: [IBD_TNF_DOWN.uc],
+      lv: IBD_TNF_LEVELS.concat([["Golimumab: too little data for a target trough.", "aga17"]]),
+    },
     warn: ["Serious infections, including TB. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcSimponi"],
     avoid: [
       ["Severe infection: sepsis, TB, opportunistic infection.", "hcSimponi"],
@@ -491,10 +540,13 @@ const IBD_DRUGS = [
       ["Crohn's: AGA suggests it over no treatment, as a lower-efficacy option.", "aga25cd"],
       ["Not recommended in the CAG perianal guideline.", "cag18"],
     ],
-    dose: [
-      ["No Crohn's dose in the Canadian label.", "hcCimzia"],
-      ["Trough target: at least 20 mg/L.", "aga17"],
-    ],
+    dose: {
+      ind: [],
+      main: [["400 mg SC every 4 weeks kept remission better than placebo at 26 weeks (Cochrane review, cited by ACG).", "acg25cd", "off"]],
+      up: [],
+      down: [IBD_TNF_DOWN.cd, IBD_TNF_DOWN.trough],
+      lv: IBD_TNF_LEVELS.concat([["Certolizumab target: trough at least 20 mg/L.", "aga17"]]),
+    },
     warn: ["Serious infections, including TB and invasive fungal infections. Lymphoma and other cancers, some fatal, in children and teenagers on TNF blockers.", "hcCimzia"],
     avoid: [
       ["Moderate to severe heart failure.", "hcCimzia"],
@@ -522,12 +574,23 @@ const IBD_DRUGS = [
       ["Crohn's: higher efficacy if naive, lower if previously exposed.", "aga25cd"],
       ["UC: preferred over adalimumab.", "acg25uc"],
     ],
-    dose: [
-      ["300 mg IV at weeks 0, 2 and 6, then every 8 weeks.", "hcEntyvio"],
-      ["No benefit by week 10 (UC) or week 14 (Crohn's): stop.", "hcEntyvio"],
-      ["Losing response: 300 mg IV every 4 weeks.", "hcEntyvio"],
-      ["SC: 108 mg every 2 weeks, replacing the next IV dose after at least 2 infusions.", "hcEntyvio"],
-    ],
+    dose: {
+      ind: [
+        ["300 mg IV at weeks 0, 2 and 6.", "hcEntyvio"],
+        ["No benefit by week 10 (UC) or week 14 (Crohn's): stop.", "hcEntyvio"],
+        ["Crohn's: judge the response between weeks 10 and 14; without one, skip the week-14 dose and consider another therapy.", "cag19"],
+      ],
+      main: [
+        ["300 mg IV every 8 weeks.", "hcEntyvio"],
+        ["SC: 108 mg every 2 weeks, in place of the next IV dose, after at least 2 infusions.", "hcEntyvio"],
+      ],
+      up: [
+        ["Losing response on IV: 300 mg every 4 weeks.", "hcEntyvio"],
+        ["On SC: too little data on giving it more often.", "hcEntyvio"],
+      ],
+      down: [],
+      lv: [IBD_NO_LEVELS],
+    },
     avoid: [
       ["Active severe or opportunistic infection.", "hcEntyvio"],
       ["Do not combine with an anti-TNF or natalizumab.", "hcEntyvio"],
@@ -563,11 +626,23 @@ const IBD_DRUGS = [
       ["Crohn's: higher efficacy if naive; intermediate if exposed.", "aga25cd"],
       ["Also approved for psoriasis and psoriatic arthritis.", "hcStelara"],
     ],
-    dose: [
-      ["One IV dose by weight: 55 kg or less 260 mg; over 55 to 85 kg 390 mg; over 85 kg 520 mg (about 6 mg/kg).", "hcStelara"],
-      ["Then 90 mg SC at week 8 and every 8 weeks; every 12 weeks may suit low disease burden.", "hcStelara"],
-      ["No benefit 16 weeks after the IV dose: consider stopping.", "hcStelara"],
-    ],
+    dose: {
+      ind: [
+        ["One IV dose by weight: 55 kg or less 260 mg; over 55 to 85 kg 390 mg; over 85 kg 520 mg (about 6 mg/kg).", "hcStelara"],
+        ["Crohn's: judge the response at 6 to 10 weeks.", "cag19"],
+        ["No benefit 16 weeks after the IV dose: consider stopping.", "hcStelara"],
+      ],
+      main: [
+        ["90 mg SC at week 8, then every 8 weeks.", "hcStelara"],
+        ["After a break, restarting 90 mg SC every 8 weeks is safe and effective.", "hcStelara"],
+      ],
+      up: [
+        ["On every 12 weeks: back to every 8 if the response falls short.", "hcStelara"],
+        ["IV reinduction, an interval under 8 weeks, or both: 55% regained a response in a meta-analysis of 15 cohorts; a shorter interval alone, 57%.", "acg25cd cgh22ust", "off"],
+      ],
+      down: [["Low inflammatory burden: every 12 weeks after the week-8 dose, at the physician's discretion.", "hcStelara"]],
+      lv: [IBD_NO_LEVELS],
+    },
     avoid: [
       ["Severe infection: sepsis, active TB, opportunistic infection.", "hcStelara"],
       ["Past cancer: not studied; use with caution.", "hcStelara"],
@@ -599,10 +674,22 @@ const IBD_DRUGS = [
       ["Crohn's: higher efficacy, whether naive or exposed.", "aga25cd"],
       ["Also approved for psoriasis and psoriatic arthritis.", "hcSkyrizi"],
     ],
-    dose: [
-      ["Crohn's: 600 mg IV at weeks 0, 4 and 8, then 360 mg SC at week 12 and every 8 weeks.", "hcSkyrizi"],
-      ["UC: 1200 mg IV at weeks 0, 4 and 8, then 180 or 360 mg SC every 8 weeks from week 12, the lowest that works.", "hcSkyrizi"],
-    ],
+    dose: {
+      ind: [
+        ["Crohn's: 600 mg IV at weeks 0, 4 and 8.", "hcSkyrizi"],
+        ["UC: 1200 mg IV at weeks 0, 4 and 8.", "hcSkyrizi"],
+      ],
+      main: [
+        ["Crohn's: 360 mg SC at week 12, then every 8 weeks.", "hcSkyrizi"],
+        ["UC: 180 or 360 mg SC at week 12, then every 8 weeks; use the lowest dose that keeps the response.", "hcSkyrizi"],
+      ],
+      up: [
+        ["UC: from 180 to 360 mg.", "hcSkyrizi"],
+        ["Crohn's: 360 mg is the only dose in the label, so there is no step up.", "hcSkyrizi"],
+      ],
+      down: [["UC: from 360 to 180 mg once settled, the lowest dose that keeps the response.", "hcSkyrizi"]],
+      lv: [IBD_NO_LEVELS],
+    },
     avoid: [
       ["Active TB; treat latent TB first.", "hcSkyrizi"],
       ["Live vaccines during treatment; after a live vaccine, wait 4 weeks to start.", "hcSkyrizi"],
@@ -617,7 +704,10 @@ const IBD_DRUGS = [
     ],
     before: {base: IBD_ADV, extra: []},
     monitor: [["Liver enzymes as clinically indicated, especially during induction.", "hcSkyrizi"]],
-    differ: [["Hepatitis B: AGA rates cytokine blockers moderate risk when anti-HBc is positive.", "aga25h"]],
+    differ: [
+      ["Hepatitis B: AGA rates cytokine blockers moderate risk when anti-HBc is positive.", "aga25h"],
+      ["Crohn's maintenance: the Canadian label gives 360 mg only; AGA describes two maintenance doses, the higher for heavier disease or past anti-TNF failure.", "hcSkyrizi aga25cd"],
+    ],
   },
   {id: "mirikizumab", cls: "il", n: "Mirikizumab",
     brands: "Omvoh",
@@ -628,11 +718,22 @@ const IBD_DRUGS = [
       ["UC: intermediate efficacy, whether naive or exposed.", "aga24uc"],
       ["Crohn's: higher efficacy if naive; intermediate if exposed.", "aga25cd"],
     ],
-    dose: [
-      ["UC: 300 mg IV at weeks 0, 4 and 8; not enough response at week 12, 3 more IV doses at weeks 12, 16 and 20. Then 200 mg SC every 4 weeks.", "hcOmvoh"],
-      ["UC: no benefit after extended induction by week 24, stop.", "hcOmvoh"],
-      ["Crohn's: 900 mg IV at weeks 0, 4 and 8, then 300 mg SC every 4 weeks from week 12; no benefit by week 24, consider stopping.", "hcOmvoh"],
-    ],
+    dose: {
+      ind: [
+        ["UC: 300 mg IV at weeks 0, 4 and 8.", "hcOmvoh"],
+        ["Crohn's: 900 mg IV at weeks 0, 4 and 8; no benefit by week 24, consider stopping.", "hcOmvoh"],
+      ],
+      main: [
+        ["UC: 200 mg SC every 4 weeks after induction.", "hcOmvoh"],
+        ["Crohn's: 300 mg SC every 4 weeks from week 12.", "hcOmvoh"],
+      ],
+      up: [
+        ["UC, not enough response at week 12: 300 mg IV at weeks 12, 16 and 20, then the usual maintenance if it worked; no benefit by week 24, stop.", "hcOmvoh"],
+        ["Crohn's: no extended induction or higher dose in the label.", "hcOmvoh"],
+      ],
+      down: [],
+      lv: [IBD_NO_LEVELS],
+    },
     avoid: [
       ["Clinically important active infection. No data in hepatitis B, hepatitis C or HIV.", "hcOmvoh"],
       ["Live vaccines: avoid; if needed, give at least 4 weeks before starting.", "hcOmvoh"],
@@ -659,10 +760,16 @@ const IBD_DRUGS = [
       ["Crohn's: higher efficacy, whether naive or exposed.", "aga25cd"],
       ["Also approved for psoriasis and psoriatic arthritis.", "hcTremfya"],
     ],
-    dose: [
-      ["Induction: 200 mg IV, or 400 mg SC, at weeks 0, 4 and 8.", "hcTremfya"],
-      ["Maintenance: 100 mg SC at week 16, then every 8 weeks; or 200 mg SC at week 12, then every 4 weeks, if the response is not enough.", "hcTremfya"],
-    ],
+    dose: {
+      ind: [["200 mg IV, or 400 mg SC (two 200 mg injections), at weeks 0, 4 and 8.", "hcTremfya"]],
+      main: [["100 mg SC at week 16, then every 8 weeks.", "hcTremfya"]],
+      up: [
+        ["200 mg SC at week 12, then every 4 weeks, if the benefit falls short or by clinical judgement.", "hcTremfya"],
+        ["Crohn's: AGA says the higher dose may suit heavy inflammation, more severe disease, or past anti-TNF failure.", "aga25cd"],
+      ],
+      down: [],
+      lv: [IBD_NO_LEVELS],
+    },
     avoid: [
       ["Clinically important active infection, including active TB.", "hcTremfya"],
       ["Acute liver disease or cirrhosis: consider other options.", "hcTremfya"],
@@ -691,11 +798,27 @@ const IBD_DRUGS = [
       ["UC: intermediate efficacy if naive; higher after other advanced therapies.", "aga24uc"],
       ["Also approved for rheumatoid arthritis, psoriatic arthritis and ankylosing spondylitis.", "hcXeljanz"],
     ],
-    dose: [
-      ["10 mg twice daily for at least 8 weeks; no benefit by week 16, stop.", "hcXeljanz"],
-      ["Maintenance 5 mg twice daily; 10 mg twice daily for some, at the lowest dose and shortest time that works.", "hcXeljanz"],
-      ["Halve the dose for moderate or severe kidney impairment, moderate liver impairment, or ketoconazole or fluconazole.", "hcXeljanz"],
-    ],
+    dose: {
+      ind: [
+        ["10 mg twice daily for at least 8 weeks.", "hcXeljanz"],
+        ["No benefit by week 16: stop.", "hcXeljanz"],
+      ],
+      main: [["5 mg twice daily; 10 mg twice daily for some, depending on response. Use the lowest dose, for the shortest time, that keeps the response.", "hcXeljanz"]],
+      up: [
+        ["No response at week 8: 8 more weeks of 10 mg twice daily (the label allows up to week 16); about half then respond.", "hcXeljanz aga24uc acg25uc"],
+        ["Maintenance: 10 mg twice daily if 5 mg isn't enough. ACG would consider it for most, especially after anti-TNF failure.", "hcXeljanz acg25uc"],
+      ],
+      down: [
+        ["From 10 to 5 mg twice daily: about 29% needed 10 mg again, and only 63% of those regained the response. In OCTAVE, 25% stepped down couldn't stay in remission.", "aga24uc"],
+        ["The case for stepping down: shingles and clots are more common on 10 mg twice daily.", "aga24uc"],
+      ],
+      adj: [
+        ["Kidney, liver or interacting drugs: creatinine clearance under 60 mL/min, moderate liver impairment, a strong CYP3A4 inhibitor such as ketoconazole, or fluconazole. 10 mg twice daily becomes 5 mg twice daily, and 5 mg twice daily becomes 5 mg once daily.", "hcXeljanz"],
+        ["Hemoglobin: down 20 g/L or more, or under 80 g/L on a repeat test, hold until back above 80 g/L.", "hcXeljanz"],
+        ["Neutrophils 0.5 to 1.0 ×10⁹/L: if it persists, on 10 mg twice daily drop to 5 mg; on 5 mg, hold. Once above 1.0, resume, back to 10 mg if the response needs it.", "hcXeljanz"],
+        ["Neutrophils or lymphocytes: under 0.5 ×10⁹/L on a repeat test, stop.", "hcXeljanz"],
+      ],
+    },
     warn: ["Serious infections; lymphoma and other cancers, including lung cancer; blood clots; major cardiac events; death. The cancer, clot, cardiac and death signals came from RA patients 50 or older with a cardiac risk factor.", "hcXeljanz"],
     avoid: [
       ["Pregnancy and breastfeeding: contraindicated in Canada.", "hcXeljanz"],
@@ -733,7 +856,10 @@ const IBD_DRUGS = [
       ["Test for TB during therapy as well.", "hcXeljanz"],
       ["Yearly skin check for non-melanoma skin cancer.", "acg25p"],
     ],
-    differ: [["Pregnancy: the label contraindicates it; the 2025 global consensus says avoid unless essential for the mother.", "hcXeljanz gc25"]],
+    differ: [
+      ["Pregnancy: the label contraindicates it; the 2025 global consensus says avoid unless essential for the mother.", "hcXeljanz gc25"],
+      ["Maintenance dose: the label says the lowest dose for the shortest time; ACG would consider 10 mg twice daily for most, as relapse after stepping down isn't always won back.", "hcXeljanz acg25uc"],
+    ],
   },
   {id: "upadacitinib", cls: "jak", n: "Upadacitinib",
     brands: "Rinvoq",
@@ -745,13 +871,25 @@ const IBD_DRUGS = [
       ["Crohn's: higher efficacy after other advanced therapies; lower as a first one (US rules limit JAKs to after anti-TNF).", "aga25cd"],
       ["Also approved for rheumatoid arthritis, psoriatic arthritis, axial spondyloarthritis, giant cell arteritis and atopic dermatitis.", "hcRinvoq"],
     ],
-    dose: [
-      ["UC: 45 mg daily for 8 weeks, then 15 mg; 30 mg for refractory, severe or extensive disease.", "hcRinvoq"],
-      ["Crohn's: 45 mg daily for 12 weeks, then 15 or 30 mg.", "hcRinvoq"],
-      ["65 or older: 15 mg maintenance only.", "hcRinvoq"],
-      ["Severe kidney impairment or strong CYP3A4 inhibitors: 30 mg to induce, 15 mg to maintain.", "hcRinvoq"],
-      ["Response not kept on 30 mg: stop.", "hcRinvoq"],
-    ],
+    dose: {
+      ind: [
+        ["UC: 45 mg once daily for 8 weeks.", "hcRinvoq"],
+        ["Crohn's: 45 mg once daily for 12 weeks.", "hcRinvoq"],
+      ],
+      main: [["15 mg once daily. 30 mg for refractory, severe or extensive UC, or for Crohn's with a heavy burden or too little benefit on 15 mg. Use the lowest dose that keeps the response.", "hcRinvoq"]],
+      up: [
+        ["From 15 to 30 mg when 15 mg isn't enough.", "hcRinvoq"],
+        ["UC: response not kept on 30 mg, stop.", "hcRinvoq"],
+        ["Crohn's: AGA says 30 mg may suit heavy inflammation, more severe disease, or past anti-TNF failure. At 52 weeks, 48% were in remission on 30 mg against 37% on 15 mg, with more infections on JAK inhibitors at higher doses.", "aga25cd"],
+        ["UC, no response at week 8: 8 more weeks of 45 mg; 48% then responded.", "aga24uc", "off"],
+      ],
+      down: [["From 30 to 15 mg: the label asks for the lowest dose that keeps the response.", "hcRinvoq"]],
+      adj: [
+        ["65 or older: 15 mg maintenance only.", "hcRinvoq"],
+        ["Kidney or interacting drugs: with severe kidney impairment or a strong CYP3A4 inhibitor, 30 mg to induce and 15 mg to maintain. Mild or moderate kidney or liver impairment: no change.", "hcRinvoq"],
+        ["Blood counts: neutrophils under 1.0 or lymphocytes under 0.5 ×10⁹/L, or hemoglobin under 80 g/L, hold; restart once back above.", "hcRinvoq"],
+      ],
+    },
     warn: ["Serious infections; lymphoma and other cancers, with lung cancer seen in older RA patients on another JAK inhibitor; blood clots; major cardiac events; death.", "hcRinvoq"],
     avoid: [
       ["Severe liver impairment (Child-Pugh C).", "hcRinvoq"],
@@ -798,11 +936,16 @@ const IBD_DRUGS = [
       ["UC: higher efficacy if naive; lower after other advanced therapies.", "aga24uc"],
       ["Also approved for relapsing multiple sclerosis.", "hcZeposia"],
     ],
-    dose: [
-      ["7-day starter pack: 0.23 mg on days 1 to 4, 0.46 mg on days 5 to 7, then 0.92 mg daily.", "hcZeposia"],
-      ["Mild or moderate liver impairment: 0.92 mg every other day after the titration.", "hcZeposia"],
-      ["Restart the titration after a gap of more than 7 days (days 15 to 28) or more than 14 days (after day 28).", "hcZeposia"],
-    ],
+    dose: {
+      ind: [["7-day starter pack: 0.23 mg on days 1 to 4, then 0.46 mg on days 5 to 7.", "hcZeposia"]],
+      main: [["0.92 mg once daily from day 8.", "hcZeposia"]],
+      up: [],
+      down: [],
+      adj: [
+        ["Mild or moderate liver impairment: 0.92 mg every other day after the titration. Kidney impairment: no change.", "hcZeposia"],
+        ["Missed doses: restart the titration after a miss in the first 2 weeks, a gap of more than 7 days in days 15 to 28, or more than 14 days after day 28.", "hcZeposia"],
+      ],
+    },
     avoid: [
       ["In the last 6 months: heart attack, unstable angina, stroke, TIA, or heart failure needing admission; any NYHA III or IV.", "hcZeposia"],
       ["Mobitz II or third-degree AV block, sick sinus or SA block, unless paced.", "hcZeposia"],
@@ -850,7 +993,13 @@ const IBD_DRUGS = [
       ["Moderate to severe UC (Canada 2024); not approved for Crohn's.", "hcVelsipity"],
       ["UC: higher efficacy if naive; lower after other advanced therapies.", "aga24uc"],
     ],
-    dose: [["2 mg once daily, with no titration.", "hcVelsipity"]],
+    dose: {
+      ind: [["2 mg once daily from the first dose; no titration.", "hcVelsipity"]],
+      main: [["2 mg once daily.", "hcVelsipity"]],
+      up: [],
+      down: [],
+      adj: [["Severe liver impairment: not recommended. Kidney or mild to moderate liver impairment: no change.", "hcVelsipity"]],
+    },
     avoid: [
       ["In the last 6 months: heart attack, unstable angina, stroke, TIA, or heart failure needing admission; any NYHA III or IV.", "hcVelsipity"],
       ["Mobitz II or third-degree AV block, sick sinus or SA block, unless paced.", "hcVelsipity"],
@@ -1082,12 +1231,21 @@ const IBD_CLASS_BY_ID = Object.fromEntries(IBD_CLASSES.map(c => [c.id, c]));
 
 // Source keys on a line, in order.
 function ibdKeys(line) { return String(line && line[1] || "").split(/\s+/).filter(Boolean); }
+// Dose rows, in the order a card shows them. A biologic's or small molecule's
+// dose is {ind, main, up, down, adj, lv}; lv, how to read a drug level, closes
+// the Going up row. A line may end "off" when the use is off-label in Canada.
+// The older drugs keep one list.
+const IBD_DOSE_ROWS = [["ind", "Induction"], ["main", "Maintenance"], ["up", "Going up"], ["down", "Going down"], ["adj", "Adjust for"]];
+function ibdDoseLines(d) {
+  if (Array.isArray(d.dose)) return d.dose;
+  return IBD_DOSE_ROWS.flatMap(([k]) => d.dose[k] || []).concat(d.dose.lv || []);
+}
 // A shared work-up line on a drug's card cites that drug's own Health Canada
 // monograph, never another drug's (the hepatitis C line came from Omvoh's, the
 // varicella line from Zeposia's); with none left it rests on usual practice.
 function ibdBaseFor(d, id) {
   const line = IBD_BASE[id], own = new Set();
-  [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra)
+  [d.how].concat(d.use, ibdDoseLines(d), d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra)
     .forEach(l => { for (const k of ibdKeys(l)) if (k.startsWith("hc")) own.add(k); });
   const keys = ibdKeys(line).filter(k => !k.startsWith("hc") || own.has(k));
   return [line[0], keys.join(" ") || "prac"];
@@ -1096,7 +1254,7 @@ function ibdBaseFor(d, id) {
 function ibdRefs(d) {
   const out = [];
   const add = line => { for (const k of ibdKeys(line)) if (!out.includes(k)) out.push(k); };
-  [d.how].concat(d.use, d.dose, d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || []).forEach(add);
+  [d.how].concat(d.use, ibdDoseLines(d), d.warn ? [d.warn] : [], d.avoid, d.harm, d.preg, d.monitor, d.differ || []).forEach(add);
   for (const id of d.before.base) add(ibdBaseFor(d, id));
   d.before.extra.forEach(add);
   return out;
@@ -1115,7 +1273,7 @@ function ibdWorkupText(d) {
 
 // What a drug is found by: names first, then brands and class, then the card.
 function ibdHay(d) {
-  const lines = [d.how].concat(d.use, d.dose, d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra);
+  const lines = [d.how].concat(d.use, ibdDoseLines(d), d.avoid, d.harm, d.preg, d.monitor, d.differ || [], d.before.extra);
   return {
     name: searchHay(d.n),
     k: searchHay(d.brands + " " + d.k + " " + IBD_CLASS_BY_ID[d.cls].n),

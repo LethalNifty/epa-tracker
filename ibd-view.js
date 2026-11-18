@@ -43,8 +43,11 @@ function ibdTags(keys) {
   return [...by].map(([w, ts]) =>
     `<span class="st${IBD_SRC_CA.has(w) ? " ca" : w === "Practice" ? " pr" : ""}" title="${esc(ts.join("; "))}">${esc(w)}</span>`).join("");
 }
+// An off-label line ([text, sources, "off"]) opens with a pill that says so.
 function ibdLine(line) {
-  return `<li>${ibdHi(ibdLead(esc(line[0])))}<span class="sts">${ibdTags(line[1])}</span></li>`;
+  const off = line[2] === "off";
+  return `<li${off ? ' class="off"' : ""}>${off ? '<span class="offtag mono">Off-label</span>' : ""}` +
+    `${ibdHi(ibdLead(esc(line[0])))}<span class="sts">${ibdTags(line[1])}</span></li>`;
 }
 // A short label before a colon ("Liver:", "Past cancer:") reads as the line's lead.
 function ibdLead(html) {
@@ -55,6 +58,23 @@ function ibdList(lines) { return lines && lines.length ? `<ul class="dl">${lines
 function ibdSec(title, lines, cls) {
   if (!lines || !lines.length) return "";
   return `<section class="ds${cls ? " " + cls : ""}"><h4 class="mono">${title}</h4>${ibdList(lines)}</section>`;
+}
+// The dose of a biologic or small molecule, row by row: induction, then
+// maintenance, going up (closed by how to read a drug level), going down, and
+// what changes the dose. A row with nothing behind it says so; Adjust for only
+// shows when there is something. The older drugs keep one list.
+const IBD_DOSE_MARK = {up: "↑", down: "↓"};
+function ibdDoseHTML(d) {
+  if (Array.isArray(d.dose)) return ibdSec("Dose", d.dose);
+  let h = `<section class="ds dose"><h4 class="mono">Dose</h4>`;
+  for (const [k, label] of IBD_DOSE_ROWS) {
+    const lines = d.dose[k] || [], lv = k === "up" && d.dose.lv && d.dose.lv.length ? d.dose.lv : null;
+    if (k === "adj" && !lines.length) continue;
+    h += `<div class="dz-row r-${k}"><h5 class="dz-h mono"><i class="dz-m" aria-hidden="true">${IBD_DOSE_MARK[k] || ""}</i>${label}</h5>` +
+      (lines.length ? ibdList(lines) : lv ? "" : `<p class="dl-none">None in the label or the guidelines used here.</p>`) +
+      (lv ? `<div class="dz-lv"><p class="mono">Drug levels</p>${ibdList(lv)}</div>` : "") + `</div>`;
+  }
+  return h + `</section>`;
 }
 function ibdRoute(d) {
   const names = {oral: "Oral", rectal: "Rectal", iv: "IV", sc: "SC"};
@@ -138,7 +158,7 @@ function ibdDrugHTML(d, opts = {}) {
   if (d.off) h += `<p class="dr-offnote">${ic("alert", "sm")}<span>${esc(d.off)}</span></p>`;
   if (d.warn) h += `<div class="dr-warn"><p class="mono">Health Canada boxed warning</p><p>${esc(d.warn[0])}<span class="sts">${ibdTags(d.warn[1])}</span></p></div>`;
   h += ibdSec("Use", d.use);
-  h += ibdSec("Dose", d.dose);
+  h += ibdDoseHTML(d);
   h += ibdSec("Avoid or use with care", d.avoid);
   h += ibdSec("Serious side effects", d.harm, "harm");
   h += d.preg.length ? ibdSec("Pregnancy and breastfeeding", d.preg) :

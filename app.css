@@ -904,6 +904,30 @@ a.srcrow:active { background: var(--wall-2); }
 .dl-note { margin: 6px 0 0; color: var(--dim); font-size: 12px; line-height: 1.4; }
 .dcopy { display: inline-flex; align-items: center; margin-top: 6px; color: var(--wli); }
 
+/* Dose rows. Induction and maintenance follow in time, so a rail joins their
+   dots; going up and going down branch off with an arrow each; Adjust for has
+   a square. Lines drop their bullets: the markers carry the rows. */
+.dose .dz-row { position: relative; padding: 9px 0 2px 18px; }
+.dose .dz-row + .dz-row { border-top: 1px solid var(--fold); }
+.dz-h { position: relative; margin: 0; color: var(--light); font-size: 10.5px; letter-spacing: .1em; }
+.dz-m { position: absolute; left: -18px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%;
+  background: var(--wall-2); box-shadow: inset 0 0 0 1.5px var(--c); font-style: normal; }
+.r-ind .dz-m { background: var(--c); }
+.r-ind::after { content: ""; position: absolute; z-index: 0; left: 4px; top: 22px; bottom: -14px; width: 1px;
+  background: linear-gradient(var(--c), color-mix(in srgb, var(--c) 35%, transparent)); }
+.r-main .dz-m { z-index: 1; }
+.r-up .dz-m, .r-down .dz-m { margin-top: -6px; height: 12px; background: none; box-shadow: none; border-radius: 0;
+  color: var(--c); font: 600 13px/12px var(--mono); text-align: center; }
+.r-adj .dz-m { border-radius: 2px; box-shadow: inset 0 0 0 1.5px var(--dim); }
+.dose .dl li { padding-left: 0; }
+.dose .dl li::before { display: none; }
+.dose .dl-none { margin: 3px 0 7px; }
+.offtag { display: inline-block; margin-right: 7px; padding: 2px 5px 1px; border-radius: 4px; background: var(--offlabel-wash);
+  color: var(--offlabel); font-size: 10px; letter-spacing: .08em; vertical-align: 1px; }
+.dz-lv { margin: 4px 0 8px; padding: 9px 11px 2px; border-radius: 10px; background: var(--field); border: 1px solid var(--fold); }
+.dz-lv > .mono { color: var(--dim); font-size: 10.5px; }
+.dz-lv .dl li { font-size: 13px; }
+
 /* Source tags: Canadian ones carry NBI cyan, the rest stay white light. */
 .st { display: inline-block; margin-left: 4px; padding: 3px 4px 2px; border-radius: 4px; background: var(--wall-3); color: var(--dim);
   font: 500 11px/1 var(--mono); letter-spacing: .04em; vertical-align: 1px; white-space: nowrap; }
