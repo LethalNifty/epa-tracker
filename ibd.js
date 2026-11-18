@@ -12,7 +12,7 @@ const IBD_CHECKED = "2026-10-10";
 const IBD_DPD = code => "https://health-products.canada.ca/dpd-bdpp/info?lang=eng&code=" + code;
 const IBD_SRC = {
   hcPentasa: {w: "HC", t: "Pentasa monograph", d: "2026-04-16", u: IBD_DPD(16855)},
-  hcMezavant: {w: "HC", t: "Mezavant monograph", d: "2025-12-11", u: IBD_DPD(78289)},
+  hcMezavant: {w: "HC", t: "Mezavant monograph", d: "2026-10-29", u: IBD_DPD(78289)},
   hcSalaz: {w: "HC", t: "Salazopyrin monograph", d: "2020-10-19", u: IBD_DPD(17417)},
   hcEntocort: {w: "HC", t: "Entocort capsules monograph", d: "2023-03-09", u: IBD_DPD(43534)},
   hcEntEnema: {w: "HC", t: "Entocort Enema monograph", d: "2023-03-31", u: IBD_DPD(16264)},
@@ -24,7 +24,7 @@ const IBD_SRC = {
   hcMetoject: {w: "HC", t: "Metoject monograph", d: "2024-09-10", u: IBD_DPD(94144)},
   hcNeoral: {w: "HC", t: "Neoral and Sandimmune monograph", d: "2026-07-30", u: IBD_DPD(17814)},
   hcRemicade: {w: "HC", t: "Remicade monograph", d: "2025-01-30", u: IBD_DPD(67959)},
-  hcRemsimaSC: {w: "HC", t: "Remsima SC monograph", d: "2024-06-28", u: IBD_DPD(100077)},
+  hcRemsimaSC: {w: "HC", t: "Remsima SC monograph", d: "2026-09-17", u: IBD_DPD(100077)},
   hcHumira: {w: "HC", t: "Humira monograph", d: "2022-09-16", u: IBD_DPD(74379)},
   hcSimponi: {w: "HC", t: "Simponi monograph", d: "2026-04-07", u: IBD_DPD(81020)},
   hcCimzia: {w: "HC", t: "Cimzia monograph", d: "2019-11-13", u: IBD_DPD(81737)},
@@ -33,7 +33,7 @@ const IBD_SRC = {
   hcSkyrizi: {w: "HC", t: "Skyrizi monograph", d: "2026-07-08", u: IBD_DPD(100855)},
   hcOmvoh: {w: "HC", t: "Omvoh monograph", d: "2026-06-16", u: IBD_DPD(102858)},
   hcTremfya: {w: "HC", t: "Tremfya monograph", d: "2026-08-14", u: IBD_DPD(95860)},
-  hcXeljanz: {w: "HC", t: "Xeljanz monograph", d: "2026-04-09", u: IBD_DPD(90863)},
+  hcXeljanz: {w: "HC", t: "Xeljanz monograph", d: "2026-10-29", u: IBD_DPD(90863)},
   hcRinvoq: {w: "HC", t: "Rinvoq monograph", d: "2026-07-14", u: IBD_DPD(98509)},
   hcZeposia: {w: "HC", t: "Zeposia monograph", d: "2024-08-28", u: IBD_DPD(99535)},
   hcVelsipity: {w: "HC", t: "Velsipity monograph", d: "2026-02-12", u: IBD_DPD(103353)},
@@ -135,6 +135,7 @@ const IBD_DRUGS = [
       ["Blood: serious blood dyscrasias, rare; more likely alongside azathioprine or 6-MP.", "hcMezavant hcPentasa"],
       ["Skin: DRESS, Stevens-Johnson syndrome or toxic epidermal necrolysis; stop at the first sign.", "hcMezavant hcPentasa"],
       ["Liver failure has been reported in people with existing liver disease.", "hcMezavant hcPentasa"],
+      ["Brain: idiopathic intracranial hypertension, rare; ask about severe headache, vision changes or tinnitus, and consider stopping.", "hcMezavant"],
     ],
     preg: [["Continue through pregnancy and breastfeeding.", "gc25"]],
     before: {base: ["renal"], extra: []},
@@ -682,7 +683,7 @@ const IBD_DRUGS = [
 
   // ---- JAK inhibitors ----------------------------------------------------------------------
   {id: "tofacitinib", cls: "jak", n: "Tofacitinib",
-    brands: "Xeljanz and generics (Auro, JAMP, pms, Sandoz, Taro)",
+    brands: "Xeljanz and generics (Auro, JAMP, MSN, pms, Sandoz, Taro)",
     dz: ["uc"], route: ["oral"], k: "xeljanz tofa jak",
     how: ["Oral small molecule that blocks JAK enzymes inside immune cells.", "hcXeljanz"],
     use: [
@@ -704,6 +705,8 @@ const IBD_DRUGS = [
       ["Past cancer, other than treated non-melanoma skin cancer: weigh carefully.", "hcXeljanz"],
       ["Don't start if neutrophils are under 1.0 or lymphocytes under 0.5 ×10⁹/L, or hemoglobin under 90 g/L.", "hcXeljanz"],
       ["Rifampin and other strong inducers.", "hcXeljanz"],
+      ["Strong immunosuppressants alongside it (azathioprine, cyclosporine, tacrolimus): not studied, not advised.", "hcXeljanz"],
+      ["Live vaccines during treatment.", "hcXeljanz"],
     ],
     harm: [
       ["Cancer: lymphoma and lung cancer, the excess seen in older RA patients with cardiac risk; non-melanoma skin cancer, dose-related, including squamous cell carcinoma.", "hcXeljanz"],
@@ -711,6 +714,7 @@ const IBD_DRUGS = [
       ["Shingles; serious and opportunistic infections, including TB, cryptococcus and Pneumocystis.", "hcXeljanz"],
       ["Major cardiac events; GI perforation, mostly with NSAIDs or steroids; interstitial lung disease.", "hcXeljanz"],
       ["Low lymphocytes, neutrophils or hemoglobin; higher lipids and liver enzymes.", "hcXeljanz"],
+      ["Hypersensitivity: angioedema and urticaria, some serious; stop it while the cause is found.", "hcXeljanz"],
     ],
     preg: [
       ["Avoid unless essential for the mother; stop at least 4 weeks before conception; don't breastfeed.", "gc25"],
