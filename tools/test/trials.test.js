@@ -358,14 +358,16 @@ test("Trials opens with the running list from the weekly watch, newest first, fo
   const h = watchPhone("guides");
   h.click("guidestab", {tab: "t"});
   let html = h.html();
-  assert.match(html, /New from the weekly watch<\/span><span>8<\/span>/);
+  const n = WATCH.length; // grows each week the watch keeps a trial
+  assert.ok(n >= 8);
+  assert.ok(html.includes(`New from the weekly watch</span><span>${n}</span>`));
   assert.equal(rows(html), 4);
   assert.ok(html.indexOf("RESOLVE") < html.indexOf("REFIT2"), "newest first");
   assert.ok(html.indexOf('id="trialsq"') < html.indexOf("New from the weekly watch"), "under the search");
-  assert.match(html, /data-action="guidestrwmore">Show all 8</);
+  assert.ok(html.includes(`data-action="guidestrwmore">Show all ${n}<`));
   h.click("guidestrwmore");
   html = h.html();
-  assert.equal(rows(html), 8);
+  assert.equal(rows(html), n);
   assert.doesNotMatch(html, /guidestrwmore/);
   // A section chip or a search hides the running list.
   h.click("guidestrchip", {chip: "liver"});
@@ -396,7 +398,8 @@ test("a watch trial opens like a landmark card: why, the question, who, who it's
 
 test("new watch trials light the bar and the Trials switch until Trials is opened; the rows keep their dots that visit", () => {
   const h = watchPhone("week");
-  assert.equal(h.val("trialsWatchUnseenCount()"), 8);
+  assert.ok(WATCH.length >= 8);
+  assert.equal(h.val("trialsWatchUnseenCount()"), WATCH.length);
   assert.match(h.html(), /data-page="guides">.*class="nvdot"/);
   h.click("tab", {page: "guides"});
   assert.match(h.html(), /data-tab="t">Trials<i class="gdot"/);
