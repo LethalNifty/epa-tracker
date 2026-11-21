@@ -1,6 +1,6 @@
 "use strict";
-// Add to GI Hub through the sender (tools/agenda/worker.mjs): pictures and PDFs
-// shared from the phone wait in KV for Claude, then for the phone, and go once
+// Add to GI Hub through the sender (tools/agenda/worker.mjs): pictures, PDFs and
+// spreadsheets shared from the phone wait in KV for Claude, then for the phone, and go once
 // nobody needs them. Run the way Cloudflare runs it, over in-memory KV and the
 // inbox's Durable Object. Placeholder names only.
 const test = require("node:test");
@@ -77,6 +77,30 @@ test("a PNG and a PDF are known by their first bytes, whatever the header says",
   assert.equal((await share(c, new TextEncoder().encode("%PDF-1.7\n1 0 obj"), "image/jpeg")).status, 200);
   assert.deepEqual((await items(c)).map(x => x.file.type), ["image/png", "application/pdf"]);
   assert.equal(files(c).length, 2);
+});
+
+// A spreadsheet as Mail shares one: a zip whose names include xl/workbook.xml.
+const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const zipNamed = (...names) => Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 20, 0, 0, 0, ...new TextEncoder().encode(names.join("\0\0\0"))]);
+const SHEET = zipNamed("[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/worksheets/sheet1.xml");
+
+test("a spreadsheet shared from Mail waits for Claude as one", async () => {
+  const c = await sender();
+  assert.equal((await share(c, SHEET, "application/octet-stream")).status, 200);
+  const [it] = await items(c);
+  assert.deepEqual(it.file, {type: XLSX, size: SHEET.length});
+  const res = await c.call(CK, "GET", "/file/" + it.id);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("Content-Type"), XLSX);
+  assert.deepEqual(new Uint8Array(await res.arrayBuffer()), SHEET);
+});
+
+test("a zip that isn't a spreadsheet is still refused", async () => {
+  const c = await sender();
+  const res = await share(c, zipNamed("[Content_Types].xml", "word/document.xml"), "application/octet-stream");
+  assert.equal(res.status, 415);
+  assert.equal((await res.json()).error, "not a picture, a PDF or a spreadsheet");
+  assert.deepEqual(files(c), []);
 });
 
 test("a text body becomes something said", async () => {
@@ -160,6 +184,19 @@ test("confirming a call result lets the sender delete its pictures", async () =>
   assert.equal((await c.json(PT, "PUT", "/alerts", {list: [], ack: [got[0].id]})).status, 200);
   assert.deepEqual(files(c), []);
   assert.equal((await c.call(PT, "GET", "/file/" + s.id)).status, 404);
+});
+
+test("a call result keeps its PDF for the phone but never its spreadsheet", async () => {
+  const c = await sender();
+  await share(c, SHEET, "application/octet-stream");
+  await share(c, new TextEncoder().encode("%PDF-1.7\n1 0 obj"), "application/pdf");
+  const [h, s] = await items(c);
+  assert.equal((await results(c, [call(h.id, s.id)])).status, 200);
+  const [got] = (await (await c.call(PT, "GET", "/results")).json()).results;
+  assert.deepEqual(got.sheets.map(x => [x.site, x.file]), [["hsc", undefined], ["stb", s.id]], "GI Hub can't show a spreadsheet");
+  assert.deepEqual(got.keep, [s.id]);
+  assert.deepEqual(files(c), ["file:" + s.id]);
+  assert.equal((await c.call(PT, "GET", "/file/" + h.id)).status, 404);
 });
 
 test("Claude's result drops the files it doesn't keep", async () => {

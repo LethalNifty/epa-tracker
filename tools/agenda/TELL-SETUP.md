@@ -124,47 +124,53 @@ shows how many came out right, with the misses. Run it again after any change to
 
 ## 7. Add to GI Hub (the Share Sheet)
 
-For the call schedule, a texted swap, a booking: a photo, a screenshot or
-a PDF, shared from Mail, Photos or Messages. In Shortcuts, a new shortcut
-called Add to GI Hub:
+For the call schedule, a texted swap, a booking: a photo, a screenshot, a
+PDF or a spreadsheet (the call schedule's `.xlsx`), shared from Mail,
+Photos, Files or Messages. In Shortcuts, a new shortcut called Add to GI
+Hub:
 
 1. Tap its name at the top, then Details, and turn on
    Show in Share Sheet. The first action now reads Receive Any input from Share Sheet:
-   tap Any and choose only Images and PDFs. Text isn't taken: share a
+   tap Any and choose only Images, PDFs and Files. Text isn't taken: share a
    texted swap as a screenshot, or say it to Tell GI Hub.
 2. Format Date: Current Date, Date Format ISO 8601, Include ISO 8601 Time
    on. It comes before the repeat, so the files of one share carry the
    same time, which is how Claude knows they came together.
 3. Repeat with Each, with the Shortcut Input:
    1. Get Details of Files: File Extension of the Repeat Item.
-   2. If File Extension is `pdf`: Set Variable, named Shared File, to the
-      Repeat Item.
-   3. Otherwise: Convert Image, the Repeat Item to JPEG, with Preserve
-      Metadata off, then Set Variable Shared File to the Converted Image.
-      JPEG turns the iPhone's own HEIC photos into a kind the sender takes,
-      and without the metadata no location goes with it.
-   4. After End If, Get Contents of URL:
+   2. Match Text: `^(heic|heif|jpe?g)$` in the File Extension, with Case
+      Sensitive off.
+   3. If Matches has any value: Convert Image, the Repeat Item to JPEG,
+      with Preserve Metadata off, then Set Variable, named Shared File, to
+      the Converted Image. That's only for photos: JPEG turns the iPhone's
+      own HEIC photos into a kind the sender takes, and without the
+      metadata no location goes with it.
+   4. Otherwise: Set Variable Shared File to the Repeat Item. Screenshots,
+      PDFs and spreadsheets go as they are: Convert Image would send only
+      a picture of a PDF's or spreadsheet's blank file icon.
+   5. After End If, Get Contents of URL:
       `https://gi-hub-agenda.lethalnifty.workers.dev/inbox`
       - Method: POST
       - Headers: `Authorization`, value `Bearer `, a space, then the
         Shortcut key (copy it again in Settings, Tell GI Hub); and `X-At`,
         value the Formatted Date
       - Request Body: File, set to Shared File
-   5. Get Dictionary Value: `ok` in the Contents of URL.
-   6. If the Dictionary Value does not have any value: Show Notification
+   6. Get Dictionary Value: `ok` in the Contents of URL.
+   7. If the Dictionary Value does not have any value: Show Notification
       "Not sent. Share it again when you have signal.", then Stop This
       Shortcut.
 4. After End Repeat: Show Notification "Sent to GI Hub".
 
-To try it: in Mail, open the call schedule email, tap the HSC sheet, then
-the share button, Add to GI Hub. Straight after, the St. Boniface sheet
-the same way, so Claude reads them together. In a few minutes GI Hub tells
-you the call schedule is ready to check. The first check asks which fellow
-is you.
+To try it: in Mail, open the call schedule email, tap one sheet (the
+St. Boniface spreadsheet or the HSC PDF), then the share button, Add to GI
+Hub. Straight after, the other sheet the same way, so Claude reads them
+together. In a few minutes GI Hub tells you the call schedule is ready to
+check. The first check asks which fellow is you.
 
 A shared file waits in the sender until GI Hub picks it up: minutes, and
 never more than 3 days. Then it's deleted there; GI Hub keeps the call
-sheets at the bottom of Call.
+sheets' pictures and PDFs at the bottom of Call. A spreadsheet isn't kept:
+GI Hub can't show one, so its sheet is listed without a picture.
 
 ## Ideas, on the desktop
 
@@ -200,7 +206,14 @@ npx wrangler kv key delete "idea:<id>" --binding AGENDA --remote
   it again when you have signal. It says Not sent with good signal: copy
   the Shortcut key into its header again, or, if 50 things already wait
   for Claude, try again later. A photo that's never sent: check the
-  Otherwise branch converts it to JPEG.
+  Match Text branch converts it to JPEG.
+- Add to GI Hub stops with "A TLS error caused the secure connection to
+  fail": the address in Get Contents of URL has a typo. Paste it in again
+  rather than typing it.
+- Claude files a sheet as a note that just says "xlsx" or "pdf": the
+  shortcut sent a picture of the file's icon, not the file. Check that
+  only the Match Text branch converts, and that the Otherwise branch sends
+  the Repeat Item itself.
 - A call check that's Not right: tap Not right. GI Hub throws that reading
   away and keeps the pictures at the bottom of Call. Send the sheets to
   Claude in chat, and import the file it makes with Call's Import.

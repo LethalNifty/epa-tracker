@@ -17,8 +17,9 @@
 //   alerts  {at, list: [{t, kind, s?, d?, id?}]}, the next five weeks
 //   sent    the reminders sent in the last quarter hour, so a late one goes only once
 //   idea:<id>  {for, t, said}: an idea Claude filed, for the desktop to read
-//   file:<id>  a picture or PDF shared to Add to GI Hub, as it came, until nobody
-//              needs it (3 days at most): Claude reads it, the phone keeps a call sheet
+//   file:<id>  a picture, PDF or spreadsheet shared to Add to GI Hub, as it came, until
+//              nobody needs it (3 days at most): Claude reads it, the phone keeps a
+//              call sheet's picture or PDF
 // and the Durable Object TELL (tell.mjs): the inbox, Claude's run, the results.
 // Secrets, set once by the user: TASK_URL, the Claude task's start address,
 // and TASK_TOKEN, its token.
@@ -45,7 +46,7 @@
 //   GET    /file/<id>  a shared file while it waits
 //   POST   /results  {results}: what Claude filed, by item
 import {newVapid, sendPush} from "./webpush.mjs";
-import {tellId, FILE_MAX} from "./tell.mjs";
+import {tellId, FILE_MAX, XLSX} from "./tell.mjs";
 export {Tell} from "./tell.mjs";
 
 const ORIGIN = "https://lethalnifty.github.io";
@@ -189,13 +190,22 @@ async function dropFiles(env, ids) {
 }
 const obj = b => (b && typeof b === "object" ? b : {});
 const FILE_KEEP = 3 * 86400, TEXT_BYTES = 20000;   // seconds a shared file waits at most; the most a text body can be
+// Whether the bytes hold this ASCII text anywhere (a zip's file names).
+function hasText(b, text) {
+  const t = new TextEncoder().encode(text);
+  for (let i = b.indexOf(t[0]); i >= 0 && i <= b.length - t.length; i = b.indexOf(t[0], i + 1))
+    if (t.every((x, k) => b[i + k] === x)) return true;
+  return false;
+}
 // What a shared body is, from its first bytes: "image/jpeg", "image/png",
-// "application/pdf", "text" (UTF-8 with no NULs), or null.
+// "application/pdf", a spreadsheet (a zip with xl/workbook.xml in it),
+// "text" (UTF-8 with no NULs), or null.
 export function sniff(b) {
   const starts = sig => sig.every((x, i) => b[i] === x);
   if (starts([0xff, 0xd8, 0xff])) return "image/jpeg";
   if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
   if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return "application/pdf";
+  if (starts([0x50, 0x4b, 0x03, 0x04]) && hasText(b, "xl/workbook.xml")) return XLSX;
   if (b.includes(0)) return null;
   try { new TextDecoder("utf-8", {fatal: true}).decode(b); return "text"; } catch (e) { return null; }
 }
@@ -208,8 +218,8 @@ async function tellRoute(req, env, now, fetchImpl, path, m) {
     if (b === undefined) return reply(413, {error: "too long"});
     return out(await ask("say", {text: obj(b).text, at: obj(b).at}));
   }
-  // Add to GI Hub: a picture, a PDF or text as it came, its time in X-At. The
-  // inbox checks the key and makes room before the bytes go in KV.
+  // Add to GI Hub: a picture, a PDF, a spreadsheet or text as it came, its
+  // time in X-At. The inbox checks the key and makes room before the bytes go in KV.
   if (path === "/inbox" && m === "POST") {
     const bytes = new Uint8Array(await req.arrayBuffer()), at = req.headers.get("X-At") || "", type = sniff(bytes);
     if (bytes.length > FILE_MAX) return reply(413, {error: "too big"});
@@ -220,7 +230,7 @@ async function tellRoute(req, env, now, fetchImpl, path, m) {
       try { j = JSON.parse(text); } catch (e) {}
       return out(await ask("say", j && typeof j === "object" && typeof j.text === "string" ? {text: j.text, at: j.at} : {text, at}));
     }
-    if (!type) return reply(415, {error: "not a picture or a PDF"});
+    if (!type) return reply(415, {error: "not a picture, a PDF or a spreadsheet"});
     const id = tellId("i"), r = await ask("share", {id, type, size: bytes.length, at});
     if (r.status !== 200) return out(r);
     try { await env.AGENDA.put("file:" + id, bytes, {expirationTtl: FILE_KEEP}); }

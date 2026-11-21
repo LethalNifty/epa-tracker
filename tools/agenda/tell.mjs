@@ -9,7 +9,7 @@
 //   keys     {shortcut, claude}: SHA-256 fingerprints of the keys Settings made
 //   inbox    [{id, text | file, said, off, got, test?}]: what waits for Claude. said
 //            is the phone's clock with its offset, off that offset in minutes;
-//            file {type, size} is a picture or PDF shared to Add to GI Hub, its
+//            file {type, size} is a picture, PDF or spreadsheet shared to Add to GI Hub, its
 //            bytes in KV under file:<id> (worker.mjs), 3 days at most
 //   seen     {hash: got}: what was said lately, so a resend from Reminders is one item
 //   run      {at, took, tries, next, err, fails, firing}: Claude's run
@@ -29,8 +29,12 @@ import {TELL_TESTS, TELL_SHEET, tellScore} from "./tell-tests.mjs";
 const TEXT_MAX = 4000, INBOX_MAX = 50, MINUTE = 60000, DAY = 864e5;
 const SEEN_KEEP = 3 * DAY;
 const HEX64 = /^[0-9a-f]{64}$/, ITEM_ID = /^i[a-z0-9]{10}$/;
-// What Add to GI Hub takes: pictures and PDFs, 10 MB each at most.
-export const FILE_TYPES = ["image/jpeg", "image/png", "application/pdf"], FILE_MAX = 10485760;
+// What Add to GI Hub takes: pictures, PDFs and spreadsheets (.xlsx, as Mail
+// shares a call schedule sent as one), 10 MB each at most. GI Hub can show
+// the pictures and PDFs, so only those stay with a call result for the phone.
+export const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export const SHOWN_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+export const FILE_TYPES = [...SHOWN_TYPES, XLSX], FILE_MAX = 10485760;
 const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 // A fresh id: the prefix and ten random letters and digits.
@@ -292,7 +296,7 @@ const OPS = {
   // what it is, its size and when it was shared (one share's files carry the same).
   share: {who: ["shortcut", "phone"], async run(b, now) {
     if (!ITEM_ID.test(b.id || "") || !FILE_TYPES.includes(b.type) || !Number.isInteger(b.size) || b.size < 1 || b.size > FILE_MAX)
-      return [400, {error: "not a picture or PDF the inbox takes"}];
+      return [400, {error: "not a picture, PDF or spreadsheet the inbox takes"}];
     const inbox = (await this.storage.get("inbox")) || [];
     if (inbox.length >= INBOX_MAX) return [429, {error: "the inbox is full"}];
     const {said, off} = saidParse(b.at, now);
@@ -346,9 +350,10 @@ const OPS = {
       for (const r of rs) {
         r.at = now;
         if (r.with && !(r.with = r.with.filter(w => own.includes(w))).length) delete r.with;
-        // A call result keeps its sheets' pictures: its own files, never a test's.
+        // A call result keeps its sheets' pictures: its own files, never a test's,
+        // and never a spreadsheet (its sheet goes without a picture).
         if (r.kind !== "call") continue;
-        const mine = [id, ...(r.with || [])].filter(w => waiting.get(w).file);
+        const mine = [id, ...(r.with || [])].filter(w => waiting.get(w).file && SHOWN_TYPES.includes(waiting.get(w).file.type));
         r.sheets = r.sheets.map(x => !x.file || mine.includes(x.file) ? x : {site: x.site, from: x.from, to: x.to});
         const keep = [...new Set(r.sheets.map(x => x.file).filter(Boolean))];
         if (keep.length && !item.test) r.keep = keep;

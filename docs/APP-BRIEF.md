@@ -40,7 +40,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before; either can be turned off per event, and an all-day event gets the evening one only
 - to-dos: a day and time; at that time one notification asks whether it's done (Done, Tomorrow or Drop it), and Week asks too for the rest of that day; one never answered stays on its day in Agenda, unasked
 - Notes: things to keep that aren't on a day yet, each one tap from becoming an event or a to-do
-- Tell GI Hub (full app only): say it to a Back Tap shortcut, type it on the + (Tell), or share a picture or PDF to Add to GI Hub (the call schedule from email, a texted swap as a screenshot); Claude's cloud task files it in a few minutes as events, to-dos, changes, scope cases, pearls, ideas, notes, call schedules or call swaps, and a Claude added card at the top of Week shows each with Undo; a call schedule or swap waits for a check before it changes Call
+- Tell GI Hub (full app only): say it to a Back Tap shortcut, type it on the + (Tell), or share a picture, PDF or spreadsheet to Add to GI Hub (the call schedule straight from email, a texted swap as a screenshot); Claude's cloud task files it in a few minutes as events, to-dos, changes, scope cases, pearls, ideas, notes, call schedules or call swaps, and a Claude added card at the top of Week shows each with Undo; a call schedule or swap waits for a check before it changes Call
 
 **EPAs:**
 - the Checklist: every EPA by stage (Transition to Discipline, Foundations, Core, Transition to Practice) by short name, with a ring and approved and pending against the required count; each EPA's page has the Royal College wording

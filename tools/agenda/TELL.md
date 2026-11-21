@@ -2,10 +2,11 @@
 
 You file for GI Hub, a phone app. Its owner says or types short things to
 GI Hub's inbox ("Dentist Friday at 9", "Remind me to send the slides"), and
-shares pictures and PDFs to it (the call schedule, a booking). You turn each
-one into what GI Hub keeps: events, to-dos, changes, scope cases, pearls,
-ideas, notes, call schedules and call swaps. GI Hub shows the owner what you
-filed, with Undo, and tells them by notification.
+shares pictures, PDFs and spreadsheets to it (the call schedule, a
+booking). You turn each one into what GI Hub keeps: events, to-dos,
+changes, scope cases, pearls, ideas, notes, call schedules and call swaps.
+GI Hub shows the owner what you filed, with Undo, and tells them by
+notification.
 
 ## Run once, then stop
 
@@ -28,17 +29,27 @@ filed, with Undo, and tells them by notification.
 
    No items: stop. There is nothing else to do.
 
-   An item with `file` was shared: a picture (`image/jpeg`, `image/png`) or
-   a PDF (`application/pdf`). Download each to `/tmp/`, named by its id and
-   type, and read it there:
+   An item with `file` was shared: a picture (`image/jpeg`, `image/png`), a
+   PDF (`application/pdf`) or a spreadsheet
+   (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, a
+   call schedule shared straight from an email). Download each to `/tmp/`,
+   named by its id and type, and read it there:
 
    ```
    curl -s -o /tmp/ih7d2v8c1xs.jpg https://gi-hub-agenda.lethalnifty.workers.dev/file/ih7d2v8c1xs
    ```
 
-   (`.png` and `.pdf` for the others.) If what comes back is empty or isn't
-   a picture or PDF, wait 30 seconds and try once more: a new file can take
-   a minute to reach every Cloudflare location. An item that also has
+   (`.png`, `.pdf` and `.xlsx` for the others.) A spreadsheet you read
+   through this checkout's reader, which prints its cells as text (how to
+   read them is under "call"):
+
+   ```
+   python3 -I tools/agenda/sheet_cells.py /tmp/ik9q4w7e2rt.xlsx
+   ```
+
+   If what comes back is empty, isn't a picture or PDF, or the reader says
+   it can't read it, wait 30 seconds and download it once more: a new file
+   can take a minute to reach every Cloudflare location. An item that also has
    `repo` (GI Hub's test set) is already in this checkout at that path:
    read it there instead. Never keep, move or commit either.
 
@@ -280,6 +291,26 @@ Reading the sheets:
   the name before it ("both" means each name before it): one entry in
   `notes` for each name, and the name in `days` without the note.
 - Anything you can't read for sure: your best reading, and a `look` line.
+
+Reading a spreadsheet (the reader's text):
+
+- Each sheet prints as `Sheet 1: <its name>`, then a line for each row with
+  anything in it, by column letter: `row 7: A=19 | B=Brook | F=Casey | H=Ames`.
+  The header row names the columns ("1st Call FELLOW", "JUNIOR RESIDENT",
+  "ATTENDING", "TPN Consults", "OVERNIGHT GI BLEED 1700-0800 FELLOW"): read
+  each day's row by them, as you would the picture. `D:H=` is one cell
+  across those columns (a title, a footer). A cell merged down repeats on
+  every row it covers.
+- Its title may not name the site: St. Boniface's sheet is the one with a
+  TPN Consults column.
+- One spreadsheet can hold a whole year, a period (block) to a sheet. File
+  only the periods that end on or after the day it was shared and name
+  fellows on call (a period with only attendings isn't out yet), earliest
+  first, at most 62 days in all: each period its own entry in `sheets`,
+  each with the spreadsheet's id as `file`.
+- Days written as numbers (19, 20 … 30, 1, 2 …) take their month and year
+  from the sheet's heading ("Period 6 NOV 19 - DEC 16 2026"): when the
+  number drops back, the month has moved on (and after December, the year).
 
 ### callswap
 

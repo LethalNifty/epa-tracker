@@ -539,7 +539,8 @@ test("the cloud task's rules name every kind and field the sender keeps", async 
 test("the setup steps make the Add to GI Hub shortcut and count the new test set", () => {
   const fs = require("node:fs");
   const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL-SETUP.md"), "utf8");
-  for (const words of ["Add to GI Hub", "Show in Share Sheet", "Images and PDFs", "Convert Image", "JPEG", "`X-At`", "Request Body: File",
+  for (const words of ["Add to GI Hub", "Show in Share Sheet", "Images, PDFs and Files", "Match Text: `^(heic|heif|jpe?g)$`",
+    "If Matches has any value: Convert Image", "Otherwise: Set Variable Shared File to the Repeat Item", "JPEG", "`X-At`", "Request Body: File",
     "Sent to GI Hub", "Not sent", "23 sentences and two made-up call sheets", "Not right"])
     assert.ok(md.includes(words), words);
 });
