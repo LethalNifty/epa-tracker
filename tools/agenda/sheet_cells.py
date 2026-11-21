@@ -196,20 +196,44 @@ def one_line(text):
     return " / ".join(" ".join(p.split()) for p in text.replace("\r", "\n").split("\n") if p.strip())
 
 
-def sheet_lines(root, strings, styles, base):
-    """A sheet's rows as lines, and its merged ranges."""
-    rows = {}   # row number: {column number: text}
+def rows_of(root):
+    """A sheet's rows: (row number, row)."""
     rnum = 0
     for row in root.findall("m:sheetData/m:row", NS):
         rnum = whole(row.get("r")) or rnum + 1
+        yield rnum, row
+
+
+def cells(root):
+    """A sheet's cells, written or only styled: (row number, column number, cell)."""
+    for rnum, row in rows_of(root):
         cnum = 0
         for c in row.findall("m:c", NS):
             at = ref(c.get("r"))
             r, cnum = at if at else (rnum, cnum + 1)
-            text = one_line(value(c, strings, styles, base))
-            if text:
-                rows.setdefault(r, {})[cnum] = text
-    merges = [m.get("ref", "") for m in root.findall("m:mergeCells/m:mergeCell", NS)]
+            yield r, cnum, c
+
+
+def merged(root):
+    """A sheet's merged ranges: (as written, ((first row, first column),
+    (last row, last column)), or None for one that can't be read)."""
+    out = []
+    for m in root.findall("m:mergeCells/m:mergeCell", NS):
+        span = m.get("ref", "")
+        ends = [ref(x) for x in span.split(":")]
+        out.append((span, (ends[0], ends[1]) if len(ends) == 2 and None not in ends else None))
+    return out
+
+
+def sheet_lines(root, book):
+    """A sheet's rows as lines, and its merged ranges."""
+    rows = {}   # row number: {column number: text}
+    for r, cnum, c in cells(root):
+        text = one_line(book.text(c))
+        if text:
+            rows.setdefault(r, {})[cnum] = text
+    spans = merged(root)
+    merges = [span for span, _ in spans]
     # A merged cell reads once across the columns it covers ("D:H=" for a
     # title over five) and again on every row it covers down (an attending
     # merged over a week is on each day). It reaches only as far as the
@@ -217,9 +241,8 @@ def sheet_lines(root, strings, styles, base):
     last_row = max(rows) if rows else 0
     last_col = max((max(cols) for cols in rows.values()), default=0)
     across = {}   # (row, first column): last column
-    for span in merges:
-        ends = [ref(x) for x in span.split(":")]
-        if len(ends) != 2 or None in ends:
+    for _, ends in spans:
+        if ends is None:
             continue
         (r1, c1), (r2, c2) = ends
         top = rows.get(r1, {}).get(c1)
@@ -248,33 +271,67 @@ def sheet_lines(root, strings, styles, base):
     return lines
 
 
+class Book:
+    """A spreadsheet open for reading: its sheets in order (name, hidden, part),
+    its shared strings, what each cell style shows, its calendar, and any
+    other part by name. Unreadable when it isn't a spreadsheet."""
+
+    def __init__(self, path):
+        try:
+            self.zip = zipfile.ZipFile(path)
+        except Exception:
+            raise Unreadable(path)
+        try:
+            book = self.part("xl/workbook.xml")
+            if book is None:
+                raise Unreadable("xl/workbook.xml")
+            rels = self.part("xl/_rels/workbook.xml.rels")
+            targets = {}
+            for rel in (rels.findall("p:Relationship", NS) if rels is not None else []):
+                t = rel.get("Target", "")
+                targets[rel.get("Id")] = t.lstrip("/") if t.startswith("/") else posixpath.normpath(posixpath.join("xl", t))
+            pr = book.find("m:workbookPr", NS)
+            self.base = date(1904, 1, 1) if pr is not None and pr.get("date1904") in ("1", "true") else date(1899, 12, 30)
+            sst = self.part("xl/sharedStrings.xml")
+            self.strings = [text_of(si) for si in sst.findall("m:si", NS)] if sst is not None else []
+            self.styles = self.part("xl/styles.xml")
+            self.kinds = kinds(self.styles)
+            self.sheets = [(sh.get("name", ""), sh.get("state") in ("hidden", "veryHidden"), targets.get(sh.get(RID), ""))
+                           for sh in book.findall("m:sheets/m:sheet", NS)]
+        except BaseException:
+            self.zip.close()
+            raise
+
+    def part(self, name):
+        return part(self.zip, name)
+
+    def sheet(self, n):
+        """Sheet n (counting from 1), parsed; None when the file lacks it."""
+        return self.part(self.sheets[n - 1][2]) if 1 <= n <= len(self.sheets) else None
+
+    def text(self, c):
+        """A cell as the sheet shows it, line breaks and all."""
+        return value(c, self.strings, self.kinds, self.base)
+
+    def close(self):
+        self.zip.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
 def read(path):
     """Every sheet's lines, in the workbook's order."""
-    try:
-        z = zipfile.ZipFile(path)
-    except Exception:
-        raise Unreadable(path)
-    with z:
-        book = part(z, "xl/workbook.xml")
-        if book is None:
-            raise Unreadable("xl/workbook.xml")
-        rels = part(z, "xl/_rels/workbook.xml.rels")
-        targets = {}
-        for rel in (rels.findall("p:Relationship", NS) if rels is not None else []):
-            t = rel.get("Target", "")
-            targets[rel.get("Id")] = t.lstrip("/") if t.startswith("/") else posixpath.normpath(posixpath.join("xl", t))
-        pr = book.find("m:workbookPr", NS)
-        base = date(1904, 1, 1) if pr is not None and pr.get("date1904") in ("1", "true") else date(1899, 12, 30)
-        sst = part(z, "xl/sharedStrings.xml")
-        strings = [text_of(si) for si in sst.findall("m:si", NS)] if sst is not None else []
-        styles = kinds(part(z, "xl/styles.xml"))
+    with Book(path) as book:
         out = []
-        for n, sh in enumerate(book.findall("m:sheets/m:sheet", NS), 1):
-            hidden = " (hidden)" if sh.get("state") in ("hidden", "veryHidden") else ""
-            out.append("Sheet %d: %s%s" % (n, sh.get("name", ""), hidden))
-            root = part(z, targets.get(sh.get(RID), ""))
+        for n, (name, hidden, _) in enumerate(book.sheets, 1):
+            out.append("Sheet %d: %s%s" % (n, name, " (hidden)" if hidden else ""))
+            root = book.sheet(n)
             if root is not None:
-                out.extend(sheet_lines(root, strings, styles, base))
+                out.extend(sheet_lines(root, book))
         return out
 
 

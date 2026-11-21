@@ -199,6 +199,49 @@ test("a call result keeps its PDF for the phone but never its spreadsheet", asyn
   assert.equal((await c.call(PT, "GET", "/file/" + h.id)).status, 404);
 });
 
+// Claude's drawing of a spreadsheet it read: a PDF the phone shows in the spreadsheet's place.
+const DRAWING = new TextEncoder().encode("%PDF-1.4\n% the periods Claude filed\n");
+const draw = (c, tok, id, body = DRAWING) => c.call(tok, "PUT", "/file/" + id, body, {"Content-Type": "application/pdf"});
+
+test("Claude's drawing of a spreadsheet goes to the phone in its place", async () => {
+  const c = await sender();
+  await share(c, SHEET, "application/octet-stream");
+  await share(c, new TextEncoder().encode("%PDF-1.7\n1 0 obj"), "application/pdf");
+  const [h, s] = await items(c);
+  assert.equal((await draw(c, CK, h.id)).status, 200);
+  assert.deepEqual((await items(c))[0].file, {type: "application/pdf", size: DRAWING.length});
+  assert.deepEqual(new Uint8Array(await (await c.call(CK, "GET", "/file/" + h.id)).arrayBuffer()), DRAWING);
+  assert.equal((await results(c, [call(h.id, s.id)])).status, 200);
+  const [got] = (await (await c.call(PT, "GET", "/results")).json()).results;
+  assert.deepEqual(got.sheets.map(x => [x.site, x.file]), [["hsc", h.id], ["stb", s.id]]);
+  assert.deepEqual(got.keep, [h.id, s.id]);
+  const pic = await c.call(PT, "GET", "/file/" + h.id);
+  assert.equal(pic.status, 200);
+  assert.equal(pic.headers.get("Content-Type"), "application/pdf");
+  assert.deepEqual(new Uint8Array(await pic.arrayBuffer()), DRAWING);
+});
+
+test("only Claude draws, only a PDF, and only over a spreadsheet that still waits", async () => {
+  const c = await sender();
+  await share(c, SHEET, "application/octet-stream");
+  await share(c, JPEG);
+  const [x, p] = await items(c);
+  for (const tok of [SK, PT, null]) assert.equal((await draw(c, tok, x.id)).status, 401);
+  assert.equal((await draw(c, CK, x.id, JPEG)).status, 415);
+  const big = new Uint8Array(10485761);
+  big.set(DRAWING);
+  assert.equal((await draw(c, CK, x.id, big)).status, 413);
+  assert.equal((await draw(c, CK, p.id)).status, 409, "a picture stays as it was shared");
+  assert.equal((await draw(c, CK, "nope")).status, 400);
+  assert.equal((await draw(c, CK, "iabcdefghij")).status, 404);
+  assert.deepEqual(new Uint8Array(c.env.AGENDA.m.get("file:" + x.id).v), SHEET);
+  assert.deepEqual(new Uint8Array(c.env.AGENDA.m.get("file:" + p.id).v), JPEG);
+  assert.deepEqual((await items(c)).map(i => i.file.type), [XLSX, "image/jpeg"]);
+  // Filed already: too late to draw.
+  assert.equal((await results(c, [{item: x.id, kind: "note", t: "A shared file Claude couldn't read"}])).status, 200);
+  assert.equal((await draw(c, CK, x.id)).status, 404);
+});
+
 test("Claude's result drops the files it doesn't keep", async () => {
   const c = await sender();
   await share(c, JPEG);

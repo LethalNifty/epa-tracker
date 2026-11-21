@@ -312,6 +312,18 @@ const OPS = {
     await this.storage.put("inbox", inbox);
     return [200, {ok: true}];
   }},
+  // Claude drew a spreadsheet it read (a PDF of the periods it filed) for the
+  // phone to show in its place: the item stays, now that PDF. Only a
+  // spreadsheet that still waits, never a test's; the Worker then keeps the bytes.
+  drawn: {who: ["claude"], async run(b) {
+    if (b.type !== "application/pdf" || !Number.isInteger(b.size) || b.size < 1 || b.size > FILE_MAX) return [400, {error: "a PDF"}];
+    const inbox = (await this.storage.get("inbox")) || [], item = inbox.find(x => x.id === b.id && x.file);
+    if (!item) return [404, {error: "no such file"}];
+    if (item.file.type !== XLSX || item.test) return [409, {error: "not a spreadsheet"}];
+    item.file = {type: b.type, size: b.size};
+    await this.storage.put("inbox", inbox);
+    return [200, {ok: true}];
+  }},
   // Whether a shared file's bytes may be read: by Claude while its item
   // waits, by the phone while a result it hasn't confirmed keeps it.
   fileok: {who: ["claude", "phone"], async run(b, now, who) {

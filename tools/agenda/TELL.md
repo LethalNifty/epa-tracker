@@ -59,8 +59,10 @@ notification.
 2. File every item as one or more results (below). Every item gets at
    least one, or goes `with` another item's result.
 
-3. Write all the results to `/tmp/results.json` (never inside this
-   repository) and send them in one request:
+3. A call that came as a spreadsheet: first draw it for GI Hub (under
+   "call", "Drawing a spreadsheet"). Then write all the results to
+   `/tmp/results.json` (never inside this repository) and send them in one
+   request:
 
    ```
    curl -s -X POST -H "Content-Type: application/json" --data-binary @/tmp/results.json https://gi-hub-agenda.lethalnifty.workers.dev/results
@@ -311,6 +313,20 @@ Reading a spreadsheet (the reader's text):
 - Days written as numbers (19, 20 … 30, 1, 2 …) take their month and year
   from the sheet's heading ("Period 6 NOV 19 - DEC 16 2026"): when the
   number drops back, the month has moved on (and after December, the year).
+
+Drawing a spreadsheet: GI Hub can't show one, so before you send the
+results, draw the sheets you filed from it as one PDF page with this
+checkout's drawer (the sheets numbered as the reader numbers them, earliest
+first), and send the drawing in the spreadsheet's place:
+
+```
+python3 -I tools/agenda/sheet_pdf.py /tmp/ik9q4w7e2rt.xlsx /tmp/ik9q4w7e2rt.pdf 6 7
+curl -s -X PUT -H "Content-Type: application/pdf" --data-binary @/tmp/ik9q4w7e2rt.pdf https://gi-hub-agenda.lethalnifty.workers.dev/file/ik9q4w7e2rt
+```
+
+The answer is `{"ok": true}`, and GI Hub shows the drawing as those sheets'
+picture. If either step fails, send the results anyway: the sheets are
+listed without a picture.
 
 ### callswap
 

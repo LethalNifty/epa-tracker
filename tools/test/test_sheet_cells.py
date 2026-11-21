@@ -17,13 +17,14 @@ REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PKG = "http://schemas.openxmlformats.org/package/2006/relationships"
 
 
-def workbook(sheets, strings=(), date1904=False, styles=None):
-    """An .xlsx in memory: sheets is [(name, rows xml, merges)], as Excel writes them."""
+def workbook(sheets, strings=(), date1904=False, styles=None, extra=None):
+    """An .xlsx in memory: sheets is [(name, rows xml, merges[, xml before the rows])],
+    as Excel writes them; extra adds parts by name (a theme)."""
     parts = {
         "[Content_Types].xml": '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
         "xl/workbook.xml": f'<?xml version="1.0"?><workbook xmlns="{MAIN}" xmlns:r="{REL}">'
         + (f'<workbookPr date1904="1"/>' if date1904 else "")
-        + "<sheets>" + "".join(f'<sheet name="{n}" sheetId="{i + 1}" r:id="rId{i + 1}"/>' for i, (n, _, _) in enumerate(sheets))
+        + "<sheets>" + "".join(f'<sheet name="{s[0]}" sheetId="{i + 1}" r:id="rId{i + 1}"/>' for i, s in enumerate(sheets))
         + "</sheets></workbook>",
         "xl/_rels/workbook.xml.rels": f'<?xml version="1.0"?><Relationships xmlns="{PKG}">'
         + "".join(f'<Relationship Id="rId{i + 1}" Target="worksheets/sheet{i + 1}.xml"/>' for i in range(len(sheets)))
@@ -34,10 +35,12 @@ def workbook(sheets, strings=(), date1904=False, styles=None):
             '<numFmts><numFmt numFmtId="164" formatCode="ddd\\ mmm\\ d"/><numFmt numFmtId="165" formatCode="0.00&quot;h&quot;"/></numFmts>'
             '<cellXfs><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="164"/><xf numFmtId="165"/><xf numFmtId="20"/></cellXfs></styleSheet>'),
     }
-    for i, (_, rows, merges) in enumerate(sheets):
+    for i, sheet in enumerate(sheets):
+        rows, merges, head = sheet[1], sheet[2], sheet[3] if len(sheet) > 3 else ""
         cells = "".join('<mergeCell ref="%s"/>' % m for m in merges)
         merged = "<mergeCells>%s</mergeCells>" % cells if merges else ""
-        parts[f"xl/worksheets/sheet{i + 1}.xml"] = f'<?xml version="1.0"?><worksheet xmlns="{MAIN}"><sheetData>{rows}</sheetData>{merged}</worksheet>'
+        parts[f"xl/worksheets/sheet{i + 1}.xml"] = f'<?xml version="1.0"?><worksheet xmlns="{MAIN}">{head}<sheetData>{rows}</sheetData>{merged}</worksheet>'
+    parts.update(extra or {})
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for name, text in parts.items():

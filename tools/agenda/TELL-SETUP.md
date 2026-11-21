@@ -169,8 +169,9 @@ check. The first check asks which fellow is you.
 
 A shared file waits in the sender until GI Hub picks it up: minutes, and
 never more than 3 days. Then it's deleted there; GI Hub keeps the call
-sheets' pictures and PDFs at the bottom of Call. A spreadsheet isn't kept:
-GI Hub can't show one, so its sheet is listed without a picture.
+sheets' pictures and PDFs at the bottom of Call. A spreadsheet comes back
+as Claude's drawing of it, a PDF, since GI Hub can't show the spreadsheet
+itself.
 
 ## Ideas, on the desktop
 

@@ -251,6 +251,20 @@ async function tellRoute(req, env, now, fetchImpl, path, m) {
     if (!type || type === "text") return reply(404, {error: "gone"});
     return new Response(bytes, {status: 200, headers: {...HEADERS, "Content-Type": type}});
   }
+  // Claude's drawing of a spreadsheet it read, a PDF, in the spreadsheet's
+  // place. The inbox checks the key and the item before the bytes go in KV.
+  if (path.startsWith("/file/") && m === "PUT") {
+    const id = path.slice(6);
+    if (!ITEM_ID.test(id)) return reply(400, {error: "not a file"});
+    const bytes = new Uint8Array(await req.arrayBuffer());
+    if (bytes.length > FILE_MAX) return reply(413, {error: "too big"});
+    if (sniff(bytes) !== "application/pdf") return reply(415, {error: "not a PDF"});
+    const r = await ask("drawn", {id, type: "application/pdf", size: bytes.length});
+    if (r.status !== 200) return out(r);
+    try { await env.AGENDA.put("file:" + id, bytes, {expirationTtl: FILE_KEEP}); }
+    catch (e) { return reply(500, {error: "the sender couldn't keep it"}); }
+    return out(r);
+  }
   if (path === "/results" && m === "POST") {
     const b = await readCapped(req, 400000);
     if (b === undefined) return reply(413, {error: "too many results"});

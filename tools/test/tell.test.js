@@ -536,6 +536,21 @@ test("the cloud task's rules name every kind and field the sender keeps", async 
   for (const s of swap.slots) assert.ok(names.has(s.from) && names.has(s.to), JSON.stringify(s));
 });
 
+test("a call shared as a spreadsheet is read and drawn by this checkout's own tools before the results go", () => {
+  const fs = require("node:fs");
+  const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL.md"), "utf8");
+  for (const tool of ["tools/agenda/sheet_cells.py", "tools/agenda/sheet_pdf.py"]) {
+    assert.ok(md.includes("python3 -I " + tool + " /tmp/"), tool);
+    assert.ok(fs.existsSync(path.join(ROOT, tool)), tool + " is in the checkout");
+  }
+  for (const words of ["first draw it for GI Hub", 'curl -s -X PUT -H "Content-Type: application/pdf" --data-binary @/tmp/',
+    "send the results anyway"])
+    assert.ok(md.includes(words), words);
+  const setup = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL-SETUP.md"), "utf8");
+  assert.ok(setup.includes("Claude's drawing of it"), "the setup says what GI Hub keeps of a spreadsheet");
+  assert.ok(!setup.includes("listed without a picture"), "and no longer that it keeps none");
+});
+
 test("the setup steps make the Add to GI Hub shortcut and count the new test set", () => {
   const fs = require("node:fs");
   const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL-SETUP.md"), "utf8");
