@@ -10,6 +10,28 @@ const noteHM = t => { const d = new Date(t); return notePad(d.getHours()) + ":" 
 const noteWd = t => NOTE_DAYS[new Date(t).getDay()];
 const noteDay = t => { const d = new Date(t); return d.getFullYear() + "-" + notePad(d.getMonth() + 1) + "-" + notePad(d.getDate()); };
 const noteLong = st => st.e - st.s > 24 * 3600000;
+const NOTE_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const NOTE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const noteParts = iso => iso.split("-").map(Number);
+const noteDate = iso => { const [y, m, d] = noteParts(iso); return `${NOTE_DAYS[new Date(y, m - 1, d).getDay()]} ${d} ${NOTE_MONTHS[m - 1]}`; };
+// Whole days from now's day to a day, by the calendar.
+const noteDaysTo = (iso, now) => { const [y, m, d] = noteParts(iso), a = new Date(now);
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5); };
+// How far off a day is: Today, Tomorrow, its weekday within the week, whole
+// weeks (up to eight), whole months on the same date, or else the days.
+function noteWhen(iso, now) {
+  const n = noteDaysTo(iso, now), [y, m, d] = noteParts(iso), a = new Date(now);
+  if (n <= 0) return "Today";
+  if (n === 1) return "Tomorrow";
+  if (n < 7) return NOTE_WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  if (n % 7 === 0 && n <= 56) return n === 7 ? "In 1 week" : `In ${n / 7} weeks`;
+  const mo = (y - a.getFullYear()) * 12 + m - 1 - a.getMonth();
+  if (mo >= 1 && d === a.getDate()) return mo === 1 ? "In 1 month" : `In ${mo} months`;
+  return `In ${n} days`;
+}
+// The time left before an event, in minutes, as the notification says it.
+const noteLeft = m => m < 2 ? "Starting now." : m < 60 ? `In ${m} minutes.` :
+  `In ${Math.floor(m / 60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}.`;
 
 function noteSite(name, x) {
   if (!x || !x.att) return `${name}: attending not listed.`;
@@ -75,11 +97,13 @@ function notePearls(brief, now) {
   if (n) return {title: `${n} pearl${n === 1 ? "" : "s"} to send`, body: "Send them from GI Hub so they're in Drive for tonight's cards.", tag, url};
   return {title: "Any pearls this week?", body: "Catch them in GI Hub while you still remember.", tag, url};
 }
-// Events, from the brief's agenda (alertOccurrences). 30 minutes before: the title,
-// the start and the note; one that arrives late says the minutes truly left. A
-// start that moved after the sender last heard keeps the time the phone has now
-// and drops the countdown. One that's gone, or a phone with no brief, still says when.
-// One Claude added that GI Hub hasn't picked up yet: the sender's copy carries its title (w).
+// Events, from the brief's agenda (alertOccurrences). Minutes before: the title,
+// the start and the note, and the time left (one that arrives late says what's
+// truly left). A start that moved after the sender last heard keeps the time
+// the phone has now and drops the countdown. One that's gone, or a phone with
+// no brief, still says when. One Claude added that GI Hub hasn't picked up
+// yet: the sender's copy carries its title (w). Each alert has its own tag, so
+// the 30-minute one never quietly takes the place of the hour before.
 const noteWhat = o => o.s ? `${o.t} at ${o.s}` : `${o.t} (all day)`;
 function noteEv(msg, brief, now) {
   const o = (brief && (brief.agenda || []).find(x => x.id === msg.id)) ||
@@ -87,22 +111,30 @@ function noteEv(msg, brief, now) {
   if (!o || !o.s) return {title: msg.s ? `Coming up at ${noteHM(msg.s)}` : "Coming up soon", body: "Open GI Hub's Agenda for what's on.",
     tag: "gi-ev", url: "./#agenda"};
   const left = msg.s && Number.isFinite(now) ? Math.round((msg.s - now) / 60000) : 30;
-  const soon = msg.s && noteHM(msg.s) !== o.s ? "" : left >= 2 ? `In ${left} minutes.` : "Starting now.";
-  return {title: noteWhat(o), body: [soon, o.n].filter(Boolean).join(" "), tag: "gi-ev-" + msg.id, url: "./#agenda"};
+  const soon = msg.s && noteHM(msg.s) !== o.s ? "" : noteLeft(left);
+  const lead = Number.isFinite(msg.t) && Number.isFinite(msg.s) ? "-" + Math.round((msg.s - msg.t) / 60000) : "";
+  return {title: noteWhat(o), body: [soon, o.n].filter(Boolean).join(" "), tag: "gi-ev-" + msg.id + lead, url: "./#agenda"};
 }
-// 19:00 the evening before: tomorrow's events with that alert on, all day first.
-// One that arrives after midnight (the phone was off at 19:00) says Today.
-// Ones Claude added that GI Hub hasn't picked up yet come in the sender's copy (w).
+// A day or more before (19:00 the evening before, unless you picked others):
+// the events of that day whose alert this is, all day first. It says how far
+// off the day is when it arrives (one that comes after midnight says Today),
+// and the date when that's two days or more. One the sender still has at a
+// time since changed names every event that day with such an alert. Ones
+// Claude added that GI Hub hasn't picked up yet come in the sender's copy (w).
+const noteAhead = x => !x.todo && (Array.isArray(x.ahead) ? x.ahead.length > 0 : !!x.eve);
 function noteEve(msg, brief, now) {
-  const day = msg.d && Number.isFinite(now) && noteDay(now) >= msg.d ? "Today" : "Tomorrow";
-  const list = brief && msg.d ? (brief.agenda || []).filter(x => x.d === msg.d && x.eve) : [];
+  const known = msg.d && Number.isFinite(now), day = known ? noteWhen(msg.d, now) : "Tomorrow", far = known && noteDaysTo(msg.d, now) >= 2;
+  const that = brief && msg.d ? (brief.agenda || []).filter(x => x.d === msg.d && noteAhead(x)) : [];
+  const own = that.filter(x => Array.isArray(x.ahead) ? x.ahead.includes(msg.t) : x.eve), list = own.length ? own : that;
   for (const x of Array.isArray(msg.w) ? msg.w : [])
     if (x && typeof x.t === "string" && x.t && !list.some(y => String(y.id).split("@")[0] === x.id)) list.push({id: x.id, t: x.t, s: x.s || null, n: ""});
-  if (!list.length) return {title: day + "'s agenda", body: "Open GI Hub's Agenda for what's on " + day.toLowerCase() + ".", tag: "gi-eve", url: "./#agenda"};
+  if (!list.length) return far ? {title: "Coming up " + noteDate(msg.d), body: "Open GI Hub's Agenda for what's on.", tag: "gi-eve", url: "./#agenda"}
+    : {title: day + "'s agenda", body: "Open GI Hub's Agenda for what's on " + day.toLowerCase() + ".", tag: "gi-eve", url: "./#agenda"};
   list.sort((a, b) => ((a.s || "") > (b.s || "") ? 1 : (a.s || "") < (b.s || "") ? -1 : 0));
-  const tag = "gi-eve-" + msg.d, url = "./#agenda";
-  if (list.length === 1) return {title: day + ": " + noteWhat(list[0]), body: list[0].n || "", tag, url};
-  return {title: `${day}: ${list.length} things`, body: list.map(noteWhat).join(", ") + ".", tag, url};
+  const tag = "gi-eve-" + msg.d + (Number.isFinite(msg.t) ? "@" + noteDay(msg.t) + "T" + noteHM(msg.t) : ""), url = "./#agenda";
+  const date = far ? noteDate(msg.d) : "";
+  if (list.length === 1) return {title: day + ": " + noteWhat(list[0]), body: [date && date + ".", list[0].n || ""].filter(Boolean).join(" "), tag, url};
+  return {title: `${day}: ${list.length} things`, body: (date ? date + ": " : "") + list.map(noteWhat).join(", ") + ".", tag, url};
 }
 // A to-do at its time: its question, or the to-do and Did you do it. The
 // answers wait in GI Hub (Week, or the to-do's sheet). One the phone hasn't
@@ -129,7 +161,7 @@ function noticeFor(msg, brief, now) {
   if (kind === "test")
     return {title: "GI Hub reminders are on", body: "Mondays at 08:00: the week's EPAs. Wednesdays at 08:00: what's still due, to ask for. " +
       "An hour before each call: who's on at each site. 20:00 on reading nights: tonight's pages. Sundays at 17:00: pearls to send. " +
-      "Events: 19:00 the evening before, and 30 minutes before.", tag: "gi-test", url: "./"};
+      "Events: 19:00 the evening before and 30 minutes before, or the alerts you pick.", tag: "gi-test", url: "./"};
   if (kind === "ev") return noteEv(msg, b, now);
   if (kind === "eve") return noteEve(msg, b, now);
   if (kind === "todo") return noteTodo(msg, b);

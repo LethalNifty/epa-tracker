@@ -181,14 +181,72 @@ function agSheetHTML() {
     (edit && s.rep && s.on ? `<button class="btn" data-action="agskip">Skip ${esc(agDayWords(s.on))} only</button>` : "") +
     (s.rep && s.skip && s.skip.length ? `<p class="ssub">${s.skip.length === 1 ? "One day" : s.skip.length + " days"} left out ` +
       `<button class="textbtn sm" data-action="agunskip">Bring back</button></p>` : "") +
-    `<div class="lbl mono">Alerts</div><div class="pickrow">` + [["eve", "Evening before"], ["30", "30 min before"]]
-      .filter(([k]) => k !== "30" || !s.allDay)
-      .map(([k, label]) => chip("agalert", agAlerts({s: s.allDay ? null : s.s, al: s.al}).includes(k), label, ` data-al="${k}"`)).join("") + `</div>` +
+    agAlertsHTML(s, chip) +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" data-ag="n" placeholder="Where, who, what to bring"></label>` +
     (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
     `<div class="sactions">${edit ? `<button class="btn danger" data-action="agdelete">Delete</button>` : ""}` +
     `<button class="btn primary" data-action="agsave">${edit ? "Save" : "Add event"}</button></div></div>`;
 }
+// ---- An event's alerts in its sheet ------------------------------------------------------------
+// A chip for each usual alert (minutes before only for a timed event), then
+// one for any other the event has (from Claude or a calendar file), to turn
+// it off. Under them a line for each alert that's on: when it goes, and for
+// one a day or more before, its own time.
+const AG_ALERT_CHIPS = [["30", "30 min"], ["60", "1 hour"], ["0d", "Day of"], ["1d", "Day before"], ["1w", "1 week"], ["2w", "2 weeks"], ["1m", "1 month"]];
+const AG_ALERT_AT = {"0d": "07:00"};   // the time a chip's alert starts at: 19:00 for the rest
+// The sheet's alerts as chosen, or the usual two when none was, in the order of their lines.
+const agSheetAlerts = s => Array.isArray(s.al) ? s.al : AG_ALERT_DEFAULT;
+function agAlertsHTML(s, chip) {
+  const list = agSheetAlerts(s), timed = !s.allDay, shown = c => timed || agAlertDay(c);
+  const on = new Set(list.filter(shown).map(agAlertBase));
+  const chips = AG_ALERT_CHIPS.filter(([b]) => timed || /[dwm]$/.test(b))
+    .concat([...on].filter(b => !AG_ALERT_CHIPS.some(x => x[0] === b))
+      .map(b => [b, agAlertWords(list.find(c => agAlertBase(c) === b)).replace(/ before$/, "")]));
+  const lines = list.map((c, i) => {
+    if (!shown(c)) return "";
+    const w = agAlertWhen(s, c), words = agAlertWords(c);
+    return `<div class="agal-r"><span class="agal-l">${words}</span><span id="agw${i}" class="agal-w${w.past ? " past" : ""}">${esc(w.txt)}</span>` +
+      (agAlertDay(c) ? `<input type="time" value="${c.slice(-5)}" data-agal="${i}" aria-label="${words}, its time">` : "") + `</div>`;
+  }).join("");
+  return `<div class="lbl mono">Alerts</div><div class="pickrow">` +
+    chips.map(([b, label]) => chip("agalert", on.has(b), label, ` data-al="${b}"`)).join("") + `</div>` +
+    (lines ? `<div class="agal">${lines}</div>` : "");
+}
+// When an alert goes, for its line: the day, and the time for one minutes
+// before; for a repeating event only the time. Struck through once it's past,
+// or when one a day or more before would come at or after the start.
+function agAlertWhen(s, c) {
+  const start = s.allDay ? null : AG_HM.test(s.s) ? s.s : undefined, none = {txt: "", past: false}, late = {txt: "After it starts", past: true};
+  if (start === undefined) return none;
+  if (s.rep) {
+    if (!agAlertDay(c)) return start ? {txt: agHM(agStamp("2026-01-01", start) - +c * 60000), past: false} : none;
+    return start && agAlertBase(c) === "0d" && c.slice(-5) >= start ? late : none;
+  }
+  if (!agValidIso(s.d)) return none;
+  const t = agAlertAt(c, s.d, start);
+  if (t === null) return none;
+  if (agAlertDay(c) && t >= agAlertBy(s.d, start)) return late;
+  return {txt: agDayWords(fmtDate(new Date(t))) + (agAlertDay(c) ? "" : ", " + agHM(t)), past: t <= callNow()};
+}
+// A new day, start or alert time relabels the lines where they are: a redraw could lose a tap.
+function agAlertsRelabel() {
+  if (!agSheet || agSheet.kind !== "event" || typeof document === "undefined") return;
+  agSheetAlerts(agSheet).forEach((c, i) => {
+    const el = document.getElementById("agw" + i);
+    if (!el) return;
+    const w = agAlertWhen(agSheet, c);
+    el.textContent = w.txt;
+    el.className = "agal-w" + (w.past ? " past" : "");
+  });
+}
+// One alert's own time, for one a day or more before; a cleared time keeps the one it had.
+function agAlertTime(i, hm) {
+  const list = [...agSheetAlerts(agSheet)], c = list[i];
+  if (!c || !agAlertDay(c) || !AG_HM.test(hm)) return;
+  list[i] = agAlertBase(c) + "@" + hm;
+  agSheet.al = list;
+}
+
 // Checks the sheet, then saves it; the sheet stays open with a message when something's missing.
 function agSave() {
   if (agSheet.kind === "todo") return agTodoSave();
@@ -225,7 +283,8 @@ function agTodoSave() {
 // Typing keeps a sheet in step without a redraw (which would drop the keyboard).
 function agField(t) {
   const ds = t && t.dataset;
-  if (ds && ds.ag && agSheet) { agSheet[ds.ag] = t.value; return true; }
+  if (ds && ds.agal !== undefined && agSheet) { agAlertTime(+ds.agal, t.value); agAlertsRelabel(); return true; }
+  if (ds && ds.ag && agSheet) { agSheet[ds.ag] = t.value; if (ds.ag === "d" || ds.ag === "s") agAlertsRelabel(); return true; }
   const b = ds && ds.agu && agUsual && (agUsual.days[ds.day] || [])[+ds.i];
   if (b) { b[ds.agu] = t.value; return true; }
   return false;
@@ -402,10 +461,12 @@ function agDispatch(act, d) {
     agSheet = null;
   }
   else if (act === "agunskip" && agSheet) agSheet.skip = [];
-  // One alert on or off; the other stays as it was (both, when none was chosen).
-  else if (act === "agalert" && agSheet && AG_ALERTS.includes(d.al)) {
-    const cur = Array.isArray(agSheet.al) ? agSheet.al : AG_ALERTS;
-    agSheet.al = AG_ALERTS.filter(k => k === d.al ? !cur.includes(k) : cur.includes(k));
+  // One kind of alert on, at its usual time, or off (however many of it there
+  // are); the rest stay as they were (the usual two, when none was chosen).
+  else if (act === "agalert" && agSheet && typeof d.al === "string" && d.al) {
+    const cur = agSheetAlerts(agSheet), b = d.al;
+    agSheet.al = cur.some(c => agAlertBase(c) === b) ? cur.filter(c => agAlertBase(c) !== b)
+      : agAlertsClean([...cur, /[dwm]$/.test(b) ? b + "@" + (AG_ALERT_AT[b] || "19:00") : b]);
   }
   else if (act === "agusual") { agUsual = JSON.parse(JSON.stringify(agState().usual)); agSheetFresh = true; }
   else if (act === "agusualclose") agUsual = null;

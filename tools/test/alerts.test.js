@@ -24,45 +24,109 @@ function agenda(today, items = [], opts = {}) {
 
 // ---- Each event's alerts ------------------------------------------------------------------
 
-test("a new event alerts the evening before and 30 minutes before, and the sheet can turn either off", () => {
+// The sheet's alert chips: [what it sets, on, label].
+const chipsOf = h => [...h.html().matchAll(/data-action="agalert" data-al="([^"]+)" aria-pressed="(true|false)">([^<]+)</g)]
+  .map(m => [m[1], m[2] === "true", m[3]]);
+// The sheet's alert lines: [what, when, struck through, its own time or null].
+const linesOf = h => [...h.html().matchAll(/<div class="agal-r"><span class="agal-l">([^<]+)<\/span><span id="agw\d+" class="agal-w( past)?">([^<]*)<\/span>(?:<input type="time" value="([^"]+)")?/g)]
+  .map(m => [m[1], m[3], !!m[2], m[4] || null]);
+
+test("a new event alerts at 19:00 the day before and 30 minutes before; every alert is a chip, and one a day or more before has its own time", () => {
   const h = agenda("2026-11-09");
   h.click("agnew");
-  assert.match(h.html(), /<div class="lbl mono">Alerts<\/div><div class="pickrow"><button class="pick ghost on" data-action="agalert" data-al="eve" aria-pressed="true">Evening before<\/button><button class="pick ghost on" data-action="agalert" data-al="30" aria-pressed="true">30 min before<\/button><\/div>/);
-  h.run(`agSheet.t = "Dentist"`);
+  assert.deepEqual(chipsOf(h), [["30", true, "30 min"], ["60", false, "1 hour"], ["0d", false, "Day of"], ["1d", true, "Day before"],
+    ["1w", false, "1 week"], ["2w", false, "2 weeks"], ["1m", false, "1 month"]]);
+  h.run(`Object.assign(agSheet, {t: "Dentist", d: "2026-11-27", s: "15:30", e: "16:30"})`);
   h.click("agsave");
   const id = h.saved().agenda.items[0].id;
   assert.equal(h.saved().agenda.items[0].al, null, "the usual alerts are kept as no choice made");
-  assert.deepEqual(h.val(`agAlerts(agState().items[0])`), ["eve", "30"]);
+  assert.deepEqual(h.val(`agAlerts(agState().items[0])`), ["1d@19:00", "30"]);
   h.click("agopen", {id});
-  h.click("agalert", {al: "eve"});
-  assert.match(h.html(), /data-al="eve" aria-pressed="false">Evening before/);
-  h.click("agsave");
-  assert.deepEqual(h.saved().agenda.items[0].al, ["30"]);
-  h.click("agopen", {id});
+  h.click("agalert", {al: "2w"});
   h.click("agalert", {al: "30"});
+  assert.deepEqual(h.val("agSheet.al"), ["2w@19:00", "1d@19:00"]);
+  assert.match(h.html(), /<input type="time" value="19:00" data-agal="0" aria-label="2 weeks before, its time">/);
+  // Two weeks before at 08:30 instead, set in its own time with no redraw.
+  const shown = h.html();
+  h.fire("change", {dataset: {agal: "0"}, value: "08:30"});
+  assert.equal(h.html(), shown);
+  h.click("agsave");
+  assert.deepEqual(h.saved().agenda.items[0].al, ["2w@08:30", "1d@19:00"]);
+  h.click("agopen", {id});
+  h.fire("change", {dataset: {agal: "0"}, value: ""});
+  assert.deepEqual(h.val("agSheet.al"), ["2w@08:30", "1d@19:00"], "a cleared time keeps the one it had");
+  h.click("agalert", {al: "2w"});
+  h.click("agalert", {al: "1d"});
   h.click("agsave");
   assert.deepEqual(h.saved().agenda.items[0].al, []);
   assert.deepEqual(h.val(`agAlerts(agState().items[0])`), []);
 });
 
-test("an all-day event offers only the evening before", () => {
+test("each alert's line says when it goes, struck through once past or after the start, and keeps up as the day and time change", () => {
+  const h = agenda("2026-11-09");
+  h.setNow("2026-11-09T12:00");
+  h.click("agnew");
+  h.run(`Object.assign(agSheet, {t: "Rounds talk", d: "2026-11-27", s: "12:00", e: "13:00"})`);
+  for (const al of ["2w", "1m", "0d"]) h.click("agalert", {al});
+  assert.deepEqual(linesOf(h), [["1 month before", "Tue 27 Oct", true, "19:00"], ["2 weeks before", "Fri 13 Nov", false, "19:00"],
+    ["Day before", "Thu 26 Nov", false, "19:00"], ["Day of", "Fri 27 Nov", false, "07:00"], ["30 min before", "Fri 27 Nov, 11:30", false, null]]);
+  // Typing a new start or day relabels the lines where they are, with no redraw.
+  for (let i = 0; i < 5; i++) h.els["agw" + i] = {textContent: "", className: ""};
+  const shown = h.html(), line = i => [h.els["agw" + i].textContent, h.els["agw" + i].className];
+  h.fire("input", {dataset: {ag: "s"}, value: "06:30"});
+  assert.deepEqual([line(3), line(4)], [["After it starts", "agal-w past"], ["Fri 27 Nov, 06:00", "agal-w"]]);
+  h.fire("input", {dataset: {ag: "d"}, value: "2026-12-11"});
+  assert.deepEqual([line(0), line(1)], [["Wed 11 Nov", "agal-w"], ["Fri 27 Nov", "agal-w"]], "a month before is no longer past");
+  h.fire("change", {dataset: {agal: "3"}, value: "06:00"});
+  assert.deepEqual(line(3), ["Fri 11 Dec", "agal-w"], "a day-of alert moved before the start");
+  assert.equal(h.html(), shown);
+  // A repeating event says only the times, and the day of when it comes too late.
+  h.fire("change", {dataset: {agal: "3"}, value: "07:00"});
+  h.click("agrep", {rep: "w"});
+  assert.deepEqual(linesOf(h).map(x => [x[1], x[2]]), [["", false], ["", false], ["", false], ["After it starts", true], ["06:00", false]]);
+});
+
+test("an all-day event offers only alerts a day or more before", () => {
   const h = agenda("2026-11-09");
   h.click("agnew");
   h.click("agallday");
-  assert.match(h.html(), /data-al="eve" aria-pressed="true">Evening before<\/button><\/div>/);
-  assert.doesNotMatch(h.html(), /data-al="30"/);
+  assert.deepEqual(chipsOf(h).map(x => x[0]), ["0d", "1d", "1w", "2w", "1m"]);
+  assert.match(h.html(), /data-al="1d" aria-pressed="true">Day before/);
+  assert.deepEqual(linesOf(h).map(x => x[0]), ["Day before"]);
   h.run(`agSheet.t = "Conference"`);
   h.click("agsave");
-  assert.deepEqual(h.val(`agAlerts(agState().items[0])`), ["eve"]);
+  assert.deepEqual(h.val(`agAlerts(agState().items[0])`), ["1d@19:00"]);
   // A timed event made all day keeps only what still applies.
-  assert.deepEqual(h.val(`agAlerts({s: null, al: ["eve", "30"]})`), ["eve"]);
+  assert.deepEqual(h.val(`agAlerts({s: null, al: ["eve", "30"]})`), ["1d@19:00"]);
   assert.deepEqual(h.val(`agAlerts({s: null, al: ["30"]})`), []);
+});
+
+test("an alert Claude or a calendar file set that no chip names gets a chip of its own, to turn it off", () => {
+  const h = agenda("2026-11-09", [ev("a1", "Course", "2026-11-20", "09:00", "17:00", {al: ["3d@08:00", "15", "0"]})]);
+  h.click("agopen", {id: "a1"});
+  assert.deepEqual(chipsOf(h).filter(x => x[1]), [["3d", true, "3 days"], ["15", true, "15 min"], ["0", true, "At the start"]]);
+  assert.deepEqual(linesOf(h).map(x => [x[0], x[1], x[2]]),
+    [["3 days before", "Tue 17 Nov", false], ["15 min before", "Fri 20 Nov, 08:45", false], ["At the start", "Fri 20 Nov, 09:00", false]]);
+  h.click("agalert", {al: "3d"});
+  assert.deepEqual(h.val("agSheet.al"), ["15", "0"]);
+});
+
+test("alerts are made whole: the old evening alert, weeks given as days, any time of day; junk and repeats dropped, eight at most, furthest first", () => {
+  const h = agenda("2026-11-09");
+  assert.deepEqual(h.val(`agAlertsClean(["30", "eve", "loud", "30", "14d@08:30", "1d@19:00", "0d@07:00", "61d@19:00", "1m@25:00", "1441",
+    "0w@19:00", "1m@19:00", "60", "7m@19:00", "9w@19:00", 30, null])`), ["1m@19:00", "2w@08:30", "1d@19:00", "0d@07:00", "60", "30"]);
+  assert.deepEqual(h.val(`agAlertsClean(["1d@08:00", "1d@19:00", "0", "1440"])`), ["1d@08:00", "1d@19:00", "1440", "0"]);
+  assert.equal(h.val(`agAlertsClean(["6m@19:00", "5m@19:00", "4m@19:00", "3m@19:00", "2m@19:00", "1m@19:00", "8w@19:00", "1w@19:00", "2d@19:00", "30"])`).length, 8);
+  // A month before is the same date, or that month's last day.
+  assert.equal(h.val(`fmtDate(new Date(agAlertAt("1m@19:00", "2027-03-31", "09:00")))`), "2027-02-28");
+  assert.equal(h.val(`fmtDate(new Date(agAlertAt("2m@19:00", "2027-01-15", null)))`), "2026-11-15");
 });
 
 test("alerts survive a save and a restore, and anything else in them is dropped", () => {
   const h = agenda("2026-11-09", [ev("a1", "Dentist", "2026-11-12", "15:30", "16:30", {al: ["30", "loud", "30"]}),
     ev("a2", "Clinic", "2026-11-13", "08:00", "12:00", {al: "eve"})]);
   assert.deepEqual(h.val(`agState().items.map(x => x.al)`), [["30"], null]);
+  assert.deepEqual(h.val(`agItemClean({t: "Old", d: "2026-11-14", s: "09:00", al: ["eve", "30"]}).al`), ["1d@19:00", "30"], "an alert saved before keeps going");
   h.run(`agUpdate("a1", {t: "Dentist, cleaning"})`);
   assert.deepEqual(h.saved().agenda.items[0].al, ["30"]);
   h.run(`window.__snap = agSnapshot(); agRemove("a1"); agRestore(window.__snap)`);
@@ -139,7 +203,59 @@ test("several events the same day share one evening reminder, which lists them",
   assert.deepEqual(planOf(h, ["eve"]), [["eve", "2026-10-28T19:00", "2026-10-29"]]);
   const t = at(2026, 10, 28, 19);
   assert.deepEqual(h.val(`noticeFor({kind: "eve", t: ${t}, d: "2026-10-29"}, remindBrief(${t}), ${t})`),
-    {title: "Tomorrow: 3 things", body: "Grand rounds (all day), Clinic at 08:00, Dentist at 15:30.", tag: "gi-eve-2026-10-29", url: "./#agenda"});
+    {title: "Tomorrow: 3 things", body: "Grand rounds (all day), Clinic at 08:00, Dentist at 15:30.", tag: "gi-eve-2026-10-29@2026-10-28T19:00", url: "./#agenda"});
+});
+
+test("each alert is in the plan at its own time: a day or more before go together by day and time, minutes before one by one (at the start too), none a day or more before at or after the start", () => {
+  const h = phone("2026-10-26T07:00", [
+    ev("a1", "Rounds talk", "2026-11-10", "12:00", "13:00", {al: ["2w@08:30", "1d@19:00", "60", "30"]}),
+    ev("a2", "Clinic day", "2026-11-10", "08:00", "17:00", {al: ["1d@19:00", "0d@07:00"]}),
+    ev("a3", "Early flight", "2026-10-30", "06:30", "08:00", {al: ["0d@07:00", "1d@20:00"]}),
+    ev("a4", "Exam", "2026-12-14", null, null, {al: ["1m@19:00", "1w@19:00"]}),
+    ev("a5", "Far trip", "2027-01-20", null, null, {al: ["1m@19:00"]}),
+    ev("a6", "Huddle", "2026-11-03", "09:00", "09:15", {al: ["0"]})]);
+  assert.deepEqual(planOf(h, ["ev", "eve"]), [
+    ["eve", "2026-10-27T08:30", "2026-11-10"],
+    ["eve", "2026-10-29T20:00", "2026-10-30"],
+    ["ev", "2026-11-03T09:00", "2026-11-03T09:00", "a6@2026-11-03"],
+    ["eve", "2026-11-09T19:00", "2026-11-10"],
+    ["eve", "2026-11-10T07:00", "2026-11-10"],
+    ["ev", "2026-11-10T11:00", "2026-11-10T12:00", "a1@2026-11-10"],
+    ["ev", "2026-11-10T11:30", "2026-11-10T12:00", "a1@2026-11-10"],
+    ["eve", "2026-11-14T19:00", "2026-12-14"]]);
+});
+
+test("an alert a day or more before says how far off it is, with the date; every alert has its own tag", () => {
+  const h = phone("2026-10-26T07:00", [
+    ev("a1", "Rounds talk", "2026-11-10", "12:00", "13:00", {al: ["2w@08:30", "1d@19:00", "60", "30"], n: "Bring the slides"}),
+    ev("a2", "Clinic day", "2026-11-10", "08:00", "17:00", {al: ["1d@19:00", "0d@07:00"]}),
+    ev("a4", "Exam", "2026-12-14", null, null, {al: ["1m@19:00", "1w@19:00"]}),
+    ev("a6", "Dinner", "2026-10-29", "18:00", "20:00", {al: ["3d@19:00"]}),
+    ev("a7", "Course", "2026-11-05", null, null, {al: ["10d@19:00"]})]);
+  const say = (msg, t = msg.t) => h.val(`noticeFor(${JSON.stringify(msg)}, remindBrief(${t}), ${t})`);
+  assert.deepEqual(say({kind: "eve", t: at(2026, 10, 27, 8, 30), d: "2026-11-10"}),
+    {title: "In 2 weeks: Rounds talk at 12:00", body: "Tue 10 Nov. Bring the slides", tag: "gi-eve-2026-11-10@2026-10-27T08:30", url: "./#agenda"});
+  assert.deepEqual(say({kind: "eve", t: at(2026, 10, 26, 19), d: "2026-10-29"}),
+    {title: "Thursday: Dinner at 18:00", body: "Thu 29 Oct.", tag: "gi-eve-2026-10-29@2026-10-26T19:00", url: "./#agenda"});
+  assert.equal(say({kind: "eve", t: at(2026, 10, 26, 19), d: "2026-11-05"}).title, "In 10 days: Course (all day)");
+  assert.deepEqual(say({kind: "eve", t: at(2026, 11, 14, 19), d: "2026-12-14"}),
+    {title: "In 1 month: Exam (all day)", body: "Mon 14 Dec.", tag: "gi-eve-2026-12-14@2026-11-14T19:00", url: "./#agenda"});
+  assert.equal(say({kind: "eve", t: at(2026, 12, 7, 19), d: "2026-12-14"}).title, "In 1 week: Exam (all day)");
+  // The evening before names both events; the morning of only the one that asked for it.
+  assert.deepEqual(say({kind: "eve", t: at(2026, 11, 9, 19), d: "2026-11-10"}),
+    {title: "Tomorrow: 2 things", body: "Clinic day at 08:00, Rounds talk at 12:00.", tag: "gi-eve-2026-11-10@2026-11-09T19:00", url: "./#agenda"});
+  assert.equal(say({kind: "eve", t: at(2026, 11, 10, 7), d: "2026-11-10"}).title, "Today: Clinic day at 08:00");
+  // One the sender still has at a time since changed names every event that day with such an alert.
+  assert.equal(say({kind: "eve", t: at(2026, 11, 9, 18), d: "2026-11-10"}).title, "Tomorrow: 2 things");
+  // An hour before, then 30 minutes before: two notifications, neither replacing the other.
+  const s = at(2026, 11, 10, 12);
+  assert.deepEqual(say({kind: "ev", t: at(2026, 11, 10, 11), s, id: "a1@2026-11-10"}),
+    {title: "Rounds talk at 12:00", body: "In 1 hour. Bring the slides", tag: "gi-ev-a1@2026-11-10-60", url: "./#agenda"});
+  assert.equal(say({kind: "ev", t: at(2026, 11, 10, 11, 30), s, id: "a1@2026-11-10"}).tag, "gi-ev-a1@2026-11-10-30");
+  assert.equal(say({kind: "ev", t: at(2026, 11, 10, 10, 30), s, id: "a1@2026-11-10"}).body, "In 1 hour 30 minutes. Bring the slides");
+  // With no brief, a far one still says the day.
+  assert.deepEqual(h.val(`noticeFor({kind: "eve", t: ${at(2026, 10, 27, 8, 30)}, d: "2026-11-10"}, null, ${at(2026, 10, 27, 8, 30)})`),
+    {title: "Coming up Tue 10 Nov", body: "Open GI Hub's Agenda for what's on.", tag: "gi-eve", url: "./#agenda"});
 });
 
 test("the plan is the same from midnight to midnight, so a redraw never sends it again", () => {
@@ -158,22 +274,25 @@ test("event notices come from what the phone saved; a deleted or unknown one sti
   const now = at(2026, 10, 29, 15), s = at(2026, 10, 29, 15, 30), brief = `remindBrief(${now})`;
   const say = (msg, b = brief, t = now) => h.val(`noticeFor(${JSON.stringify(msg)}, ${b}, ${t})`);
   assert.deepEqual(say({kind: "ev", t: now, s, id: "a1@2026-10-29"}),
-    {title: "Dentist at 15:30", body: "In 30 minutes. Bring the insurance card", tag: "gi-ev-a1@2026-10-29", url: "./#agenda"});
+    {title: "Dentist at 15:30", body: "In 30 minutes. Bring the insurance card", tag: "gi-ev-a1@2026-10-29-30", url: "./#agenda"});
   // Moved to 16:00 after the sender last heard: the time the phone has now, without the countdown.
   h.run(`agUpdate("a1", {s: "16:00", e: "17:00"})`);
   assert.deepEqual(say({kind: "ev", t: now, s, id: "a1@2026-10-29"}),
-    {title: "Dentist at 16:00", body: "Bring the insurance card", tag: "gi-ev-a1@2026-10-29", url: "./#agenda"});
+    {title: "Dentist at 16:00", body: "Bring the insurance card", tag: "gi-ev-a1@2026-10-29-30", url: "./#agenda"});
   const eve = at(2026, 10, 29, 19);
   assert.deepEqual(say({kind: "eve", t: eve, d: "2026-10-30"}, `remindBrief(${eve})`, eve),
-    {title: "Tomorrow: Conference (all day)", body: "", tag: "gi-eve-2026-10-30", url: "./#agenda"});
+    {title: "Tomorrow: Conference (all day)", body: "", tag: "gi-eve-2026-10-30@2026-10-29T19:00", url: "./#agenda"});
   const lost = {title: "Coming up at 15:30", body: "Open GI Hub's Agenda for what's on.", tag: "gi-ev", url: "./#agenda"};
   h.run(`agRemove("a1")`);
   assert.deepEqual(say({kind: "ev", t: now, s, id: "a1@2026-10-29"}), lost);
   assert.deepEqual(say({kind: "ev", t: now, s, id: "a1@2026-10-29"}, "null"), lost);
-  assert.deepEqual(say({kind: "eve", t: eve, d: "2026-10-31"}, "null", eve),
+  assert.deepEqual(say({kind: "eve", t: eve, d: "2026-10-30"}, "null", eve),
     {title: "Tomorrow's agenda", body: "Open GI Hub's Agenda for what's on tomorrow.", tag: "gi-eve", url: "./#agenda"});
-  assert.match(say({kind: "test"}, "null", 0).body, /Events: 19:00 the evening before, and 30 minutes before\.$/);
-  assert.match(h.val("REMIND_WHAT"), /<span class="mono">Events<\/span><span>19:00 the evening before, and 30 minutes before<\/span>/);
+  // Two days or more ahead, with nothing known: the date, never "Tomorrow".
+  assert.deepEqual(say({kind: "eve", t: eve, d: "2026-10-31"}, "null", eve),
+    {title: "Coming up Sat 31 Oct", body: "Open GI Hub's Agenda for what's on.", tag: "gi-eve", url: "./#agenda"});
+  assert.match(say({kind: "test"}, "null", 0).body, /Events: 19:00 the evening before and 30 minutes before, or the alerts you pick\.$/);
+  assert.match(h.val("REMIND_WHAT"), /<span class="mono">Events<\/span><span>19:00 the evening before and 30 minutes before, or the alerts you pick<\/span>/);
 });
 
 test("a reminder that arrives late says so: after midnight the evening one says Today, and the 30-minute one the minutes left", () => {

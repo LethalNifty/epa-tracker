@@ -13,8 +13,6 @@ const AG_T_MAX = 120, AG_N_MAX = 500;
 // nth (monthly on the nth weekday, -1 the last) and skip (days left out).
 const AG_REPS = ["d", "w", "m", "y"];
 const AG_WD = {SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6};
-// An event's alerts: at 19:00 the evening before, and 30 minutes before it starts.
-const AG_ALERTS = ["eve", "30"];
 
 // ---- Days ---------------------------------------------------------------------------
 const agDate = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
@@ -63,7 +61,7 @@ function agItemClean(x) {
   const it = {id: typeof x.id === "string" && /^a[a-z0-9]{1,24}$/.test(x.id) ? x.id : "", t: x.t.trim().slice(0, AG_T_MAX), d: x.d, d2, s, e,
     rep, n: typeof x.n === "string" ? x.n.trim().slice(0, AG_N_MAX) : "",
     uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : "",
-    al: !todo && Array.isArray(x.al) ? AG_ALERTS.filter(k => x.al.includes(k)) : null};
+    al: !todo && Array.isArray(x.al) ? agAlertsClean(x.al) : null};
   if (rep) Object.assign(it, agRepClean(x, rep));
   if (todo) it.todo = todo;
   return it;
@@ -91,9 +89,64 @@ function agTodoClean(x) {
   return {q: typeof x.q === "string" ? x.q.trim().slice(0, AG_Q_MAX) : "", tom: Number.isInteger(x.tom) ? Math.min(2, Math.max(0, x.tom)) : 0,
     done: typeof x.done === "string" && !isNaN(Date.parse(x.done)) ? x.done : null};
 }
-// The alerts an event gets: its own choice, or both when none was made; never
-// 30 minutes before an all-day event.
-const agAlerts = it => AG_ALERTS.filter(k => (Array.isArray(it.al) ? it.al : AG_ALERTS).includes(k) && (k !== "30" || !!it.s));
+
+// ---- Alerts -------------------------------------------------------------------------------
+// An event's alerts. Minutes before it starts ("30"), or days, weeks or months
+// before it at a time of day: "1d@19:00" the evening before, "0d@07:00" the day
+// itself, "2w@19:00", "1m@19:00" (the same date a month before, or that
+// month's last day). With none chosen: 19:00 the evening before, and 30
+// minutes before. Never minutes before an all-day event.
+const AG_ALERT_DEFAULT = ["1d@19:00", "30"], AG_ALERT_MAX = 8;
+const AG_ALERT_MOST = {d: 60, w: 8, m: 6}, AG_ALERT_DAYS = {d: 1, w: 7, m: 31};
+const agAlertDay = c => c.includes("@");
+const agAlertBase = c => c.split("@")[0];
+// One alert in its own words, or null. "eve" is how the evening before was saved until epa-v80.
+function agAlertNorm(c) {
+  if (c === "eve") return "1d@19:00";
+  if (Number.isInteger(c)) c = String(c);
+  if (typeof c !== "string") return null;
+  if (/^\d{1,4}$/.test(c)) return +c <= 1440 ? String(+c) : null;
+  const m = /^(\d{1,2})([dwm])@(\d\d:\d\d)$/.exec(c);
+  if (!m || !AG_HM.test(m[3])) return null;
+  let n = +m[1], u = m[2];
+  if (u === "d" && n > 0 && n % 7 === 0 && n / 7 <= AG_ALERT_MOST.w) { n /= 7; u = "w"; }
+  return n <= AG_ALERT_MOST[u] && (u === "d" || n >= 1) ? `${n}${u}@${m[3]}` : null;
+}
+// How long before its event's day an alert goes, in minutes (a month as 31 days), to put the furthest first.
+const agAlertLead = c => { const b = agAlertBase(c); return agAlertDay(c) ? +b.slice(0, -1) * AG_ALERT_DAYS[b.slice(-1)] * 1440 - agMin(c.slice(-5)) : +c; };
+// Alerts made whole: each once, eight at most, the furthest first (a day or more before, then minutes before).
+function agAlertsClean(list) {
+  const out = [...new Set((Array.isArray(list) ? list : []).map(agAlertNorm).filter(Boolean))];
+  return out.sort((a, b) => agAlertDay(b) - agAlertDay(a) || agAlertLead(b) - agAlertLead(a)).slice(0, AG_ALERT_MAX);
+}
+// The alerts an event gets: its own choice, or the usual two when none was made.
+const agAlerts = it => (Array.isArray(it.al) ? agAlertsClean(it.al) : AG_ALERT_DEFAULT).filter(c => agAlertDay(c) || !!it.s);
+// A day at a time ("HH:MM") by this phone's clock, as a moment.
+const agStamp = (iso, hm) => { const d = agDate(iso); d.setHours(+hm.slice(0, 2), +hm.slice(3)); return d.getTime(); };
+// The same date n months before, or that month's last day.
+function agMonthsBack(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return fmtDate(new Date(y, m - 1 - n, Math.min(d, new Date(y, m - n, 0).getDate())));
+}
+// When an alert goes, for a time its event starts on iso at s ("HH:MM", null
+// all day): a moment, or null for minutes before an all-day event.
+function agAlertAt(c, iso, s) {
+  if (!agAlertDay(c)) return s ? agStamp(iso, s) - +c * 60000 : null;
+  const b = agAlertBase(c), n = +b.slice(0, -1), u = b.slice(-1);
+  return agStamp(u === "m" ? agMonthsBack(iso, n) : agAddDays(iso, -n * AG_ALERT_DAYS[u]), c.slice(-5));
+}
+// From when an alert is too late: the start, or the end of an all-day event's first day.
+const agAlertBy = (iso, s) => s ? agStamp(iso, s) : agStamp(agAddDays(iso, 1), "00:00");
+// An alert in words: 30 min before, 1 hour before, Day of, Day before, 3 days before, 2 weeks before, 1 month before.
+function agAlertWords(c) {
+  if (!agAlertDay(c)) {
+    const m = +c, h = Math.floor(m / 60), r = m % 60;
+    return m === 0 ? "At the start" : m < 60 ? `${m} min before` : `${h} hour${h > 1 ? "s" : ""}${r ? ` ${r} min` : ""} before`;
+  }
+  const b = agAlertBase(c), n = +b.slice(0, -1), u = b.slice(-1);
+  if (u === "d") return n === 0 ? "Day of" : n === 1 ? "Day before" : `${n} days before`;
+  return `${n} ${u === "w" ? "week" : "month"}${n > 1 ? "s" : ""} before`;
+}
 function agNewId(taken) {
   let id;
   do id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); while (taken.has(id));

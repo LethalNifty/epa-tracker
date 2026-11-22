@@ -118,7 +118,7 @@ few minutes GI Hub says what it added, and it's on the Claude added card at
 the top of Week. Tap Undo there.
 
 Then Settings, Tell GI Hub, Run the test set:
-23 sentences and two made-up call sheets go through Claude like anything
+25 sentences and two made-up call sheets go through Claude like anything
 said or shared, but never into GI Hub. A few minutes later, Check the test
 shows how many came out right, with the misses. Run it again after any change to `TELL.md`.
 

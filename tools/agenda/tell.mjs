@@ -80,6 +80,36 @@ const hm = v => typeof v === "string" && HM.test(v) ? v : null;
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // "Wed 11 Nov", as the app writes a day.
 const dayWords = iso => { const d = new Date(dayMs(iso)); return `${WD[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+// The same date n months before, or that month's last day.
+const monthsBack = (iso, n) => { const y = +iso.slice(0, 4), m = +iso.slice(5, 7) - 1 - n, d = +iso.slice(8, 10);
+  return isoOf(Date.UTC(y, m, Math.min(d, new Date(Date.UTC(y, m + 1, 0)).getUTCDate()))); };
+
+// ---- An event's reminders --------------------------------------------------------------------------
+// In GI Hub's own words (agenda.js): minutes before as "30" (a day at most, "0"
+// at the start), a day or more before as "1d@19:00", "2w@08:00" or "1m@19:00"
+// ("0d" is the day itself). Each once, eight at most, the furthest first, and
+// none in minutes for an all-day event. None said: GI Hub's usual two.
+const AL_USUAL = ["1d@19:00", "30"], AL_MAX = 8, AL_MOST = {d: 60, w: 8, m: 6}, AL_DAYS = {d: 1, w: 7, m: 31};
+const alDay = c => c.includes("@");
+function alNorm(c) {
+  if (c === "eve") return "1d@19:00";
+  if (Number.isInteger(c)) c = String(c);
+  if (typeof c !== "string") return null;
+  if (/^\d{1,4}$/.test(c)) return +c <= 1440 ? String(+c) : null;
+  const m = /^(\d{1,2})([dwm])@(\d\d:\d\d)$/.exec(c);
+  if (!m || !HM.test(m[3])) return null;
+  let n = +m[1], u = m[2];
+  if (u === "d" && n > 0 && n % 7 === 0 && n / 7 <= AL_MOST.w) { n /= 7; u = "w"; }
+  return n <= AL_MOST[u] && (u === "d" || n >= 1) ? `${n}${u}@${m[3]}` : null;
+}
+// How long before its event's day an alert goes, in minutes (a month as 31 days).
+const alLead = c => { if (!alDay(c)) return +c; const b = c.split("@")[0];
+  return +b.slice(0, -1) * AL_DAYS[b.slice(-1)] * 1440 - (+c.slice(-5, -3) * 60 + +c.slice(-2)); };
+const alClean = (v, timed) => [...new Set(v.map(alNorm).filter(c => c && (timed || alDay(c))))]
+  .sort((a, b) => alDay(b) - alDay(a) || alLead(b) - alLead(a)).slice(0, AL_MAX);
+// The day an alert a day or more before goes on, for an event on iso.
+const alDayOf = (c, iso) => { const b = c.split("@")[0], n = +b.slice(0, -1), u = b.slice(-1);
+  return u === "m" ? monthsBack(iso, n) : addDays(iso, -n * AL_DAYS[u]); };
 
 // ---- What Claude files --------------------------------------------------------------------------
 const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -156,6 +186,8 @@ export function resultClean(raw, item) {
     if (s) r.s = s;
     if (e) r.e = e;
     if (n) r.n = n;
+    // Reminders said are the event's only ones; none it could read is none said.
+    if (Array.isArray(raw.al)) { const al = alClean(raw.al, !!s); if (al.length || !raw.al.length) r.al = al; }
   } else if (raw.kind === "todo") {
     const t = str(raw.t, 120), q = str(raw.q, 140);
     let d = raw.d == null ? null : day(raw.d), s = hm(raw.s);
@@ -233,20 +265,25 @@ const fresh = (results, now) => results.filter(r => !(r.ack && r.ack <= now - AC
 
 // ---- Alerts before GI Hub opens --------------------------------------------------------------------
 // What a result reminds you of if GI Hub doesn't open before it's due, in the
-// plan's own kinds: 30 minutes before a timed event, 19:00 the evening before
-// any event, a to-do at its time. Each carries what it's about (w), since the
+// plan's own kinds: an event's alerts as Claude heard them, or GI Hub's usual
+// two (19:00 the evening before, and 30 minutes before a timed event), none a
+// day or more before at or after the start; a to-do at its time. Each carries what it's about (w), since the
 // phone's brief doesn't know it yet, and when the phone confirmed it (ack):
 // the minute check leaves it to the phone's own plan once that plan is at
 // least that new. Times are in the offset the thing was said in.
-const SOON = 30 * MINUTE, EVE = "19:00", BACK = 15 * MINUTE, AHEAD = 40 * DAY;
+const BACK = 15 * MINUTE, AHEAD = 40 * DAY;
 const instant = (iso, s, off) => dayMs(iso) + (+s.slice(0, 2) * 60 + +s.slice(3) - off) * MINUTE;
 export function pendingAlerts(results, now) {
   const out = [];
   for (const r of results) {
     const a = [];
     if (r.kind === "event") {
-      if (r.s) { const s = instant(r.d, r.s, r.off); a.push({t: s - SOON, kind: "ev", s, id: r.id + "@" + r.d, w: r.t}); }
-      a.push({t: instant(addDays(r.d, -1), EVE, r.off), kind: "eve", d: r.d, w: [{id: r.id, t: r.t, s: r.s || null}]});
+      const s = r.s ? instant(r.d, r.s, r.off) : null, by = s !== null ? s : instant(addDays(r.d, 1), "00:00", r.off);
+      for (const c of Array.isArray(r.al) ? r.al : AL_USUAL) {
+        if (!alDay(c)) { if (s !== null) a.push({t: s - +c * MINUTE, kind: "ev", s, id: r.id + "@" + r.d, w: r.t}); continue; }
+        const t = instant(alDayOf(c, r.d), c.slice(-5), r.off);
+        if (t < by) a.push({t, kind: "eve", d: r.d, w: [{id: r.id, t: r.t, s: r.s || null}]});
+      }
     } else if (r.kind === "todo") a.push({t: instant(r.d, r.s, r.off), kind: "todo", id: r.id + "@" + r.d, w: r.t, q: r.q || ""});
     for (const x of a) if (x.t >= now - BACK && x.t <= now + AHEAD) out.push(r.ack ? {...x, ack: r.ack} : x);
   }

@@ -37,7 +37,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note; add, edit and delete with Undo
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view
-- alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before; either can be turned off per event, and an all-day event gets the evening one only
+- alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before unless you pick others, up to eight per event: 30 min, 1 hour, Day of, Day before, 1 week, 2 weeks or 1 month before, each one a day or more before at its own time (19:00 unless changed, Day of 07:00); a line under the chips says when each goes; an all-day event gets only those a day or more before; Tell GI Hub hears "remind me two weeks before and the day before"
 - to-dos: a day and time; at that time one notification asks whether it's done (Done, Tomorrow or Drop it), and Week asks too for the rest of that day; one never answered stays on its day in Agenda, unasked
 - Notes: things to keep that aren't on a day yet, each one tap from becoming an event or a to-do
 - Tell GI Hub (full app only): say it to a Back Tap shortcut, type it on the + (Tell), or share a picture, PDF or spreadsheet to Add to GI Hub (the call schedule straight from email, a texted swap as a screenshot); Claude's cloud task files it in a few minutes as events, to-dos, changes, scope cases, pearls, ideas, notes, call schedules or call swaps, and a Claude added card at the top of Week shows each with Undo; a call schedule or swap waits for a check before it changes Call
@@ -76,7 +76,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - an hour before call: who's on
 - 8 PM on reading nights: tonight's pages
 - Sunday 5 PM: pearls still to send (or a nudge to catch this week's)
-- events: 7 PM the evening before, and 30 minutes before
+- events: 7 PM the evening before and 30 minutes before, or the alerts you picked (each its own notification, saying how far off it is)
 - Settings turns them on in one tap (permission, then a test reminder), sends a test, and says when they've stopped reaching the phone
 - each reminder also puts a badge on the app icon for forms that passed 14 days pending since the app was last open; opening it clears the badge
 

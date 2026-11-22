@@ -230,6 +230,16 @@ test("a change never touches a repeating event, a past one or a done to-do", asy
     "Couldn't find \"book the room\" to cancel"]);
 });
 
+test("an event Claude filed with the reminders you said keeps them; one with none said gets the usual two", async () => {
+  const {c, h} = await tellPhone();
+  await files(c, [{kind: "event", t: "Rounds talk", d: "2026-12-18", s: "12:00", al: ["30", "2w@19:00"]},
+    {kind: "event", t: "Dentist", d: "2026-11-13", s: "09:00"}],
+    "Rounds talk December 18 at noon, remind me two weeks before and 30 minutes before, and the dentist Friday at 9");
+  await pick(h, "2026-11-09T14:05");
+  assert.deepEqual(h.saved().agenda.items.map(x => [x.t, x.al]), [["Rounds talk", ["2w@19:00", "30"]], ["Dentist", null]]);
+  assert.ok(h.val(`alertPlan(callNow())`).some(a => a.kind === "eve" && a.d === "2026-12-18" && a.t === at(2026, 12, 4, 19)), "two weeks before at 19:00");
+});
+
 test("a pickup with a sheet open saves but doesn't redraw", async () => {
   const {c, h} = await tellPhone();
   h.click("setclose"); h.click("tab", {page: "agenda"}); h.click("agnew");
@@ -252,17 +262,17 @@ test("the test set runs from Settings and shows how Claude did", async () => {
   const {c, h} = await tellPhone();
   h.click("teltest"); await settle(h);
   assert.ok(c.calls.includes("POST /tell/test"));
-  assert.equal((await c.env.TELL.storage.get("inbox")).filter(x => x.test).length, 25);
+  assert.equal((await c.env.TELL.storage.get("inbox")).filter(x => x.test).length, 27);
   h.click("telscore"); await settle(h);
-  assert.match(h.html(), /0 of 24 right<\/b>, 0 filed so far/);
-  assert.ok(h.html().includes("The test set: 23 made-up things said and a pair of made-up call sheets"));
+  assert.match(h.html(), /0 of 26 right<\/b>, 0 filed so far/);
+  assert.ok(h.html().includes("The test set: 25 made-up things said and a pair of made-up call sheets"));
   // A miss says what was wanted and what came; the sheets', what was read wrong.
   const ids = await c.env.TELL.storage.get("testIds"), sheet = await c.env.TELL.storage.get("testSheet");
   await c.env.TELL.storage.put("tests", {[ids[1]]: [{kind: "event", t: "Dentist", d: "2026-11-13", s: "21:00"}],
     [sheet.hsc]: [{kind: "note", t: "A shared file Claude couldn't read"}]});
   h.click("telscore"); await settle(h);
   const html = h.html();
-  assert.match(html, /0 of 24 right<\/b>, 2 filed so far/);
+  assert.match(html, /0 of 26 right<\/b>, 2 filed so far/);
   assert.ok(html.includes("Wanted event 2026-11-13 09:00; got event 2026-11-13 21:00"), "a said test's miss");
   assert.ok(html.includes("Wanted one call schedule; got note"), "the sheets' miss");
 });
@@ -409,11 +419,11 @@ test("an event Claude added alerts with its own words before GI Hub has it", () 
   const h = load({today: "2026-11-10", state: state({}, {agenda: {items: [ev("a1", "Dentist", "2026-11-11", "15:30", "16:30")]}})});
   h.setNow("2026-11-10T19:00");
   const s = at(2026, 11, 11, 9, 35), now = at(2026, 11, 11, 9, 5), soon = {kind: "ev", t: now, s, id: "a9b8c7d6e5f@2026-11-11", w: "Flight"};
-  const said = {title: "Flight at 09:35", body: "In 30 minutes.", tag: "gi-ev-a9b8c7d6e5f@2026-11-11", url: "./#agenda"};
+  const said = {title: "Flight at 09:35", body: "In 30 minutes.", tag: "gi-ev-a9b8c7d6e5f@2026-11-11-30", url: "./#agenda"};
   assert.deepEqual(h.val(`noticeFor(${JSON.stringify(soon)}, null, ${now})`), said);
   assert.deepEqual(h.val(`noticeFor(${JSON.stringify(soon)}, remindBrief(${now}), ${now})`), said);
   const eve = at(2026, 11, 10, 19), msg = {kind: "eve", t: eve, d: "2026-11-11", w: [{id: "a9b8c7d6e5f", t: "Flight", s: "09:35"}]};
-  const both = {title: "Tomorrow: 2 things", body: "Flight at 09:35, Dentist at 15:30.", tag: "gi-eve-2026-11-11", url: "./#agenda"};
+  const both = {title: "Tomorrow: 2 things", body: "Flight at 09:35, Dentist at 15:30.", tag: "gi-eve-2026-11-11@2026-11-10T19:00", url: "./#agenda"};
   assert.deepEqual(h.val(`noticeFor(${JSON.stringify(msg)}, remindBrief(${eve}), ${eve})`), both);
   // Once GI Hub has it, it's named once.
   h.run(`agState().items.push(agItemClean({id: "a9b8c7d6e5f", t: "Flight", d: "2026-11-11", s: "09:35"})); Store.save()`);

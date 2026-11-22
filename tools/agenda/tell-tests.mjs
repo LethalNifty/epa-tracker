@@ -1,4 +1,4 @@
-// Tell GI Hub's test set: 23 things said, each with what Claude should file,
+// Tell GI Hub's test set: 25 things said, each with what Claude should file,
 // and a pair of made-up call sheets (TELL_SHEET), to score Claude's sorting
 // before go-live (Settings, Run the test) and after any change to TELL.md.
 // They go through the inbox and Claude like anything said or shared, as if at
@@ -7,7 +7,8 @@
 //
 // A want lists the results in order: the kind, and any of d (a day, or a list
 // of days either of which is right; for a change, the day it moves to), s
-// (likewise its time), d2, chk, cancel, for; words, which must appear in its
+// (likewise its time), d2, chk, cancel, for; al, every reminder in any order
+// and no others; words, which must appear in its
 // title, text or what it changes; not, words that must appear nowhere (a
 // patient's name). A swap's want gives its slots, matched in any order, the
 // site only when the words name one. Placeholder names only.
@@ -59,6 +60,10 @@ export const TELL_TESTS = [
     want: [{kind: "callswap", slots: [{d: "2026-12-05", slot: "day", from: "me", to: "Quill"}]}]},
   {say: "Brook and Rowan switched nights, Brook has December 8 now and Rowan has December 14", at: "2026-11-25T10:00:00-05:00",
     want: [{kind: "callswap", slots: [{d: "2026-12-08", slot: "night", from: "Rowan", to: "Brook"}, {d: "2026-12-14", slot: "night", from: "Brook", to: "Rowan"}]}]},
+  {say: "Rounds presentation on December 18 at noon, remind me two weeks before and the day before", at: "2026-11-22T10:00:00-05:00",
+    want: [{kind: "event", d: "2026-12-18", s: "12:00", al: ["2w@19:00", "1d@19:00"], words: ["presentation"]}]},
+  {say: "Haircut December 4 at 5 pm, remind me that morning and an hour before", at: "2026-11-22T10:05:00-05:00",
+    want: [{kind: "event", d: "2026-12-04", s: "17:00", al: ["0d@08:00", "60"], words: ["haircut"]}]},
 ];
 
 // The made-up call sheets (test-sheets/make.mjs draws them from this): Block 7
@@ -115,6 +120,7 @@ function matches(want, r) {
   if (want.kind === "callswap") return slotsMatch(want.slots, r.slots);
   const val = k => r.kind === "change" && (k === "d" || k === "s") ? (r.to || {})[k] : r[k];
   for (const k of FIELDS) if (k in want && !(Array.isArray(want[k]) ? want[k].includes(val(k)) : want[k] === val(k))) return false;
+  if ("al" in want && !(Array.isArray(r.al) && r.al.length === want.al.length && want.al.every(c => r.al.includes(c)))) return false;
   const words = [r.t, r.text, r.m].filter(x => typeof x === "string").join("\n").toLowerCase();
   if ((want.words || []).some(w => !words.includes(w.toLowerCase()))) return false;
   const all = strings(r).join("\n").toLowerCase();

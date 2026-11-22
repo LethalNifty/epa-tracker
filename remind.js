@@ -126,7 +126,7 @@ const REMIND_WHAT = `<ul class="rlist"><li><span class="mono">Mon 08:00</span><s
   `<li><span class="mono">1 h before call</span><span>Who's on at HSC and St. Boniface</span></li>` +
   `<li><span class="mono">20:00</span><span>Tonight's Mayo pages, on reading nights</span></li>` +
   `<li><span class="mono">Sun 17:00</span><span>Pearls to send, before Sunday's cards</span></li>` +
-  `<li><span class="mono">Events</span><span>19:00 the evening before, and 30 minutes before</span></li></ul>`;
+  `<li><span class="mono">Events</span><span>19:00 the evening before and 30 minutes before, or the alerts you pick</span></li></ul>`;
 // Week: a row that opens Settings while reminders are off ("Not now" hides it
 // for good), and always while they need moving or have stopped reaching this phone.
 const REMIND_ROWS = {off: ["Reminders are off", "EPAs, call, reading nights and events, on this phone", "Set up"],

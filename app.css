@@ -1470,6 +1470,20 @@ a.src:active { background: var(--wall-3); }
 .agnote p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--light); white-space: pre-wrap; overflow-wrap: anywhere; }
 /* The new-sheet switch between an event and a to-do. */
 .ag-kind { margin: 0 0 14px; }
+/* The sheet's alerts: under the chips, a line for each one that's on, saying
+   when it goes, struck through once past; one a day or more before has its
+   own time (16px, so iPhone doesn't zoom in). */
+.agal { margin-top: 10px; border-top: 1px solid var(--fold); }
+.agal-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; min-height: 48px;
+  padding: 7px 2px; border-bottom: 1px solid var(--fold); }
+.agal-l { grid-column: 1; font-size: 14px; line-height: 1.3; color: var(--light); }
+.agal-w { grid-column: 1; margin-top: 2px; font: 500 11.5px/1.3 var(--mono); letter-spacing: .02em; color: var(--dim); font-variant-numeric: tabular-nums; }
+.agal-w:empty { display: none; }
+.agal-w.past { color: var(--faint); text-decoration: line-through; }
+.agal-r input { grid-column: 2; grid-row: 1 / span 2; width: 96px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--fold-2);
+  background: var(--field); color: var(--light); font: 400 16px var(--sans); -webkit-appearance: none; appearance: none; }
+.agal-r input:focus { border-color: var(--nbi); box-shadow: 0 0 0 4px var(--nbi-wash); outline: none; }
+.agal-r input::-webkit-calendar-picker-indicator { display: none; }
 
 /* Call roster (roster-view.js, the full app only): the check before Call changes, the sheets and a sheet full screen. */
 .rost-note { margin: 10px 2px 0; font-size: 13px; line-height: 1.4; color: var(--dim); }

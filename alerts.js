@@ -7,30 +7,43 @@
 // Full app only: the fellows' build leaves this file out.
 
 const ALERT_DAYS = 35;                // how far ahead the sender is told: five weeks
-const ALERT_EVE = 19;                 // 19:00 the evening before an event
-const ALERT_SOON = 30 * 60000;        // and 30 minutes before it starts
 
 const alertDay = (d0, k, h = 0) => new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k, h);
 const alertMidnight = now => { const d = new Date(now); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
 
-// Each time an event starts in the plan's days (and the day after, whose
-// evening reminder falls inside them) with an alert on: its id with the day,
-// the day, the start ("HH:MM", null all day), title, note, and which alerts.
-// A to-do still to ask (not done, fewer than two Tomorrows) is there on its
-// day with todo and its question instead. The service worker writes the
-// notification from this.
+// How many days before its event an alert can go, at most (a month as 31).
+const alertReach = al => Math.max(1, ...al.filter(agAlertDay).map(c => { const b = agAlertBase(c); return +b.slice(0, -1) * AG_ALERT_DAYS[b.slice(-1)]; }));
+// Each time an event starts with an alert that goes in the plan's days, or
+// the day before them (one that arrives late still finds its words): its id
+// with the day, the day, the start ("HH:MM", null all day), title, note, and
+// when its alerts go: ahead, those a day or more before (they go together by
+// day and time), and soon, those minutes before. One at or after the start
+// never goes. A to-do still to ask (not done, fewer than two Tomorrows) is
+// there on its day with todo and its question instead. The service worker
+// writes the notification from this.
 function alertOccurrences(now) {
-  const d0 = alertMidnight(now), out = [];
-  for (let k = 0; k <= ALERT_DAYS; k++) {
+  const d0 = alertMidnight(now), from = alertDay(d0, -1).getTime(), to = alertDay(d0, ALERT_DAYS).getTime(), out = [];
+  const its = agState().items.map(it => {
+    const al = it.todo ? [] : agAlerts(it);
+    return {it, al, last: it.todo ? ALERT_DAYS : al.length ? ALERT_DAYS + alertReach(al) : -1};
+  });
+  const most = Math.max(ALERT_DAYS, ...its.map(x => x.last));
+  for (let k = 0; k <= most; k++) {
     const iso = fmtDate(alertDay(d0, k));
-    for (const it of agState().items) {
-      if (!agStartsOn(it, iso)) continue;
+    for (const {it, al, last} of its) {
+      if (k > last || !agStartsOn(it, iso)) continue;
       if (it.todo) {
         if (!it.todo.done && it.todo.tom < 2) out.push({id: it.id + "@" + iso, d: iso, s: it.s, t: it.t, n: it.n, todo: true, q: it.todo.q});
         continue;
       }
-      const al = agAlerts(it);
-      if (al.length) out.push({id: it.id + "@" + iso, d: iso, s: it.s, t: it.t, n: it.n, eve: al.includes("eve"), soon: al.includes("30")});
+      const by = agAlertBy(iso, it.s), ahead = [], soon = [];
+      for (const c of al) {
+        const t = agAlertAt(c, iso, it.s);
+        // Minutes before can be at the start; a day or more before never at or after it.
+        if (t !== null && (!agAlertDay(c) || t < by) && t >= from && t < to) (agAlertDay(c) ? ahead : soon).push(t);
+      }
+      if (ahead.length || soon.length)
+        out.push({id: it.id + "@" + iso, d: iso, s: it.s, t: it.t, n: it.n, ahead: ahead.sort((a, b) => a - b), soon: soon.sort((a, b) => a - b)});
     }
   }
   return out;
@@ -38,8 +51,8 @@ function alertOccurrences(now) {
 
 // Every reminder from local midnight today for ALERT_DAYS days, soonest
 // first: Monday and Wednesday at 08:00, Sunday at 17:00, 20:00 on reading
-// nights to the plan's last day, an hour before each call, each event's, and
-// each to-do's one ask at its time.
+// nights to the plan's last day, an hour before each call, each event's
+// alerts, and each to-do's one ask at its time.
 // The same all day, so redrawing the app never sends it again.
 const alertAt = (day, hm) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), +hm.slice(0, 2), +hm.slice(3)).getTime();
 function alertPlan(now) {
@@ -59,12 +72,9 @@ function alertPlan(now) {
   for (const o of alertOccurrences(now)) {
     const day = agDate(o.d);
     if (o.todo) { out.push({t: alertAt(day, o.s), kind: "todo", id: o.id}); continue; }
-    if (o.soon) {
-      const s = alertAt(day, o.s);
-      out.push({t: s - ALERT_SOON, kind: "ev", s, id: o.id});
-    }
-    // One evening reminder for a day, however many events it has.
-    if (o.eve && !eves.has(o.d)) { eves.add(o.d); out.push({t: alertDay(day, -1, ALERT_EVE).getTime(), kind: "eve", d: o.d}); }
+    for (const t of o.soon) out.push({t, kind: "ev", s: alertAt(day, o.s), id: o.id});
+    // A day or more before: one reminder for a day and time, however many events it names.
+    for (const t of o.ahead) if (!eves.has(t + o.d)) { eves.add(t + o.d); out.push({t, kind: "eve", d: o.d}); }
   }
   return out.filter(a => a.t >= from && a.t < to).sort((a, b) => a.t - b.t);
 }

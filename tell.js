@@ -136,7 +136,7 @@ function tellApply(r, now) {
   if (r.kind === "event" || r.kind === "todo") {
     if (a.items.some(x => x.id === r.id)) return null;
     const it = agItemClean(r.kind === "todo" ? {id: r.id, t: r.t, d: r.d, s: r.s, ts, todo: {q: r.q || "", tom: 0, done: null}}
-      : {id: r.id, t: r.t, d: r.d, d2: r.d2 || null, s: r.s || null, e: r.e || null, n: r.n || "", ts});
+      : {id: r.id, t: r.t, d: r.d, d2: r.d2 || null, s: r.s || null, e: r.e || null, n: r.n || "", al: Array.isArray(r.al) ? r.al : null, ts});
     if (!it || it.id !== r.id) return null;
     a.items.push(it); Store.save();
     return {...e, undo: {del: it.id}};
@@ -310,7 +310,7 @@ const tellMissWords = m => Array.isArray(m.words) ? m.words.join("; ") :
   `Wanted ${(m.want || []).map(tellBrief).join(", ")}; got ${m.got && m.got.length ? m.got.map(tellBrief).join(", ") : "nothing"}`;
 function tellTestHTML() {
   const s = tellResult, miss = m => `<li><b>${esc(m.say)}</b><span class="mono">${esc(tellMissWords(m))}</span></li>`;
-  return `<p class="rnote">The test set: 23 made-up things said and a pair of made-up call sheets, to see how Claude files them. Check it a few minutes after you run it.</p>` +
+  return `<p class="rnote">The test set: 25 made-up things said and a pair of made-up call sheets, to see how Claude files them. Check it a few minutes after you run it.</p>` +
     `<div class="rbtns"><button class="btn" data-action="teltest">Run the test set</button><button class="btn" data-action="telscore">Check the test</button></div>` +
     (s ? `<p class="rnote"><b>${s.right} of ${s.n} right</b>${s.done < s.n ? `, ${s.done} filed so far` : ""}.</p>` +
       (s.misses && s.misses.length ? `<ul class="tellmiss">${s.misses.map(miss).join("")}</ul>` : "") : "");

@@ -141,12 +141,28 @@ trips.
 {"item": "ik3m9x2p4qa", "kind": "event", "t": "Vacation", "d": "2026-12-23", "d2": "2026-12-27"}
 ```
 
+```json
+{"item": "ik3m9x2p4qa", "kind": "event", "t": "Rounds talk", "d": "2026-12-18", "s": "12:00", "al": ["2w@19:00", "1d@19:00"]}
+```
+
 - `t`: its name as a calendar would show it (Dentist, Flight to Orlando,
   Coffee with Brook), up to 120 characters.
 - `d`: the day. `s` and `e`: start and end; leave `e` out unless an end was
   said, and leave both out for something all day. `d2`: the last day of
   something over several days. `n`: anything worth keeping that isn't the
   name (a flight number, an address), up to 500 characters.
+- `al`: the reminders, only when some were said ("remind me two weeks
+  before and the day before"). Minutes before, for something with a start
+  time, as a number in quotes: `"30"`, `"60"`, `"0"` at the start, up to
+  `"1440"`. A day or more before, as how far, `@` and the time of day:
+  `"1d@19:00"` the day before, `"3d@19:00"`, `"2w@19:00"` two weeks before,
+  `"1m@19:00"` a month before, `"0d@08:00"` that morning (days up to 60,
+  weeks up to 8, months up to 6). No time said: 19:00 for the day before or
+  earlier; 08:00 on the day itself, or an hour before (`"60"`) when it
+  starts by 08:00. The reminders said are the event's only ones: "remind me
+  the day before" is `["1d@19:00"]`, and "no reminders" is `[]`. Leave `al`
+  out when none were said: GI Hub then gives its usual two (19:00 the
+  evening before, and 30 minutes before). Eight at most.
 
 ### todo
 

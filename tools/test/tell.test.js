@@ -375,6 +375,41 @@ test("confirmed results still alert, carrying when they were confirmed", async (
   assert.deepEqual((await tick(b, A + 10 * MIN)).data.pending, []);
 });
 
+test("an event's own reminders, as Claude heard them, alert before the phone picks it up", async () => {
+  const b = await ready();
+  await say(b, "Rounds talk December 1 at noon, remind me a week before at 8 and an hour before");
+  const [x] = await items(b);
+  await file(b, [{item: x.id, kind: "event", t: "Rounds talk", d: "2026-12-01", s: "12:00", al: ["60", "1w@08:00"]}]);
+  const [r] = (await pick(b)).data.results;
+  assert.deepEqual(r.al, ["1w@08:00", "60"]);
+  assert.deepEqual((await tick(b, NOW + 2 * MIN)).data.pending, [
+    {t: Date.UTC(2026, 10, 24, 13), kind: "eve", d: "2026-12-01", w: [{id: r.id, t: "Rounds talk", s: "12:00"}]},
+    {t: Date.UTC(2026, 11, 1, 16), kind: "ev", s: Date.UTC(2026, 11, 1, 17), id: r.id + "@2026-12-01", w: "Rounds talk"},
+  ]);
+});
+
+test("Claude's reminders are kept only in GI Hub's own words: none said is none kept, and no minutes before an all-day event", async () => {
+  const {resultClean} = await mod("tell.mjs");
+  const it = {id: "iaaaaaaaaaa", said: AT, off: -300};
+  const al = r => resultClean({kind: "event", t: "Talk", d: "2026-11-20", ...r}, it).al;
+  assert.deepEqual(al({s: "12:00", al: ["30", "eve", "2w@19:00", "loud", 60, "14d@08:00", "30"]}), ["2w@08:00", "2w@19:00", "1d@19:00", "60", "30"]);
+  assert.deepEqual(al({al: ["30", "1d@19:00", "0d@08:00"]}), ["1d@19:00", "0d@08:00"]);
+  assert.deepEqual(al({s: "12:00", al: []}), [], "no reminders, as said");
+  assert.equal(al({s: "12:00"}), undefined, "none said: GI Hub's usual two");
+  assert.equal(al({s: "12:00", al: "2w@19:00"}), undefined);
+  assert.equal(al({s: "12:00", al: ["loud"]}), undefined, "nothing it could read is the same as none said");
+  assert.deepEqual(al({s: "12:00", al: ["0", "0d@08:00"]}), ["0d@08:00", "0"], "at the start, and the morning of");
+});
+
+test("before GI Hub picks it up, an alert at the start goes at the start, and one on the day at or after the start never goes", async () => {
+  const {pendingAlerts} = await mod("tell.mjs");
+  const r = {id: "a0000000001", kind: "event", t: "Huddle", d: "2026-11-12", s: "09:00", al: ["0d@09:00", "0"], said: AT, off: -300};
+  const s = Date.UTC(2026, 10, 12, 14);
+  assert.deepEqual(pendingAlerts([r], NOW), [{t: s, kind: "ev", s, id: "a0000000001@2026-11-12", w: "Huddle"}]);
+  assert.deepEqual(pendingAlerts([{...r, s: null, al: ["0d@09:00", "1d@19:00"]}], NOW).map(a => [a.kind, a.t]),
+    [["eve", Date.UTC(2026, 10, 12, 0)], ["eve", Date.UTC(2026, 10, 12, 14)]], "all day: the evening before, and that morning");
+});
+
 test("tests never alert", async () => {
   const b = await ready();
   await b.storage.put("inbox", [{id: "itest000001", text: "Flight on the 11th at 9:35", said: AT, off: -300, got: NOW, test: true}]);
@@ -385,9 +420,9 @@ test("tests never alert", async () => {
 
 // ---- The test set ------------------------------------------------------------------------------------
 
-test("the test set is 23 sentences with no real names", async () => {
+test("the test set is 25 sentences with no real names", async () => {
   const {TELL_TESTS} = await mod("tell-tests.mjs");
-  assert.equal(TELL_TESTS.length, 23);
+  assert.equal(TELL_TESTS.length, 25);
   // Every capitalized word after the first is a placeholder name, a day or a known word.
   const ok = new Set(["Brook", "Casey", "Quill", "Rowan", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     "November", "December", "I", "GI", "Hub", "Heidi", "Week", "Orlando"]);
@@ -416,6 +451,14 @@ test("a test result counts as right only when every field matches", async () => 
   assert.equal(tellScore(tests, {1: [{...move, chk: undefined}]}).right, 0, "Check this was wanted");
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on Quill's biopsy", d: "2026-11-16", s: "08:00"}]}).right, 0);
   assert.equal(tellScore(tests, {2: [{kind: "todo", t: "Follow up on the biopsy", d: "2026-11-16", s: "08:00"}]}).right, 1);
+  // Reminders, when the test wants them: every one, in any order, and no others.
+  const talk = [{say: "Rounds talk December 18 at noon, remind me two weeks before and the day before", at,
+    want: [{kind: "event", d: "2026-12-18", s: "12:00", al: ["2w@19:00", "1d@19:00"], words: ["talk"]}]}];
+  const got = al => tellScore(talk, {0: [{kind: "event", t: "Rounds talk", d: "2026-12-18", s: "12:00", ...(al ? {al} : {})}]}).right;
+  assert.equal(got(["1d@19:00", "2w@19:00"]), 1);
+  assert.equal(got(["2w@19:00", "1d@19:00", "30"]), 0);
+  assert.equal(got(["2w@19:00"]), 0);
+  assert.equal(got(null), 0);
 });
 
 test("the made-up sheets are a whole block in placeholder names", async () => {
@@ -443,16 +486,16 @@ test("the test set puts the made-up sheets in the inbox with their repository pa
   const b = await ready();
   assert.equal((await op(b, "test", {who: "phone"})).status, 200);
   const all = await items(b), sheets = all.filter(x => x.repo);
-  assert.equal(all.length, 25);
+  assert.equal(all.length, 27);
   assert.deepEqual(sheets.map(x => [x.repo, x.said, x.file.type]),
     [["tools/agenda/test-sheets/hsc.png", TELL_SHEET.at, "image/png"], ["tools/agenda/test-sheets/stb.png", TELL_SHEET.at, "image/png"]]);
   for (const x of sheets) assert.ok(fs.existsSync(path.join(ROOT, x.repo)), x.repo);
-  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 24, done: 0, right: 0, misses: []});
+  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 26, done: 0, right: 0, misses: []});
   // Claude's reading of them is scored like a test, and never reaches the phone.
   const [h, s] = sheets, read = {item: h.id, with: [s.id], kind: "call", days: TELL_SHEET.days, notes: TELL_SHEET.notes, people: [], rules: [], look: [],
     sheets: [{site: "hsc", from: TELL_SHEET.from, to: TELL_SHEET.to, file: h.id}, {site: "stb", from: TELL_SHEET.from, to: TELL_SHEET.to, file: s.id}]};
   assert.deepEqual((await file(b, [read])).data.drop, []);
-  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 24, done: 1, right: 1, misses: []});
+  assert.deepEqual((await op(b, "score", {who: "phone"})).data, {n: 26, done: 1, right: 1, misses: []});
   assert.deepEqual((await pick(b)).data.results, []);
 });
 
@@ -461,7 +504,7 @@ test("a sheet read right scores right, and a wrong night fellow is a miss in wor
   const ids = {hsc: "ihsctest001", stb: "istbtest001"};
   const read = () => ({kind: "call", days: structuredClone(TELL_SHEET.days), notes: structuredClone(TELL_SHEET.notes), people: [], rules: [], look: [],
     sheets: [{site: "hsc", from: TELL_SHEET.from, to: TELL_SHEET.to, file: ids.hsc}, {site: "stb", from: TELL_SHEET.from, to: TELL_SHEET.to, file: ids.stb}]});
-  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [read()]}), {n: 24, done: 1, right: 1, misses: []});
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [read()]}), {n: 26, done: 1, right: 1, misses: []});
   const wrong = read();
   wrong.days.find(x => x.d === "2026-12-31").stb.night.fellow = "Casey";
   const s = tellScore(TELL_TESTS, {}, {ids, rs: [wrong]});
@@ -477,7 +520,7 @@ test("a sheet read right scores right, and a wrong night fellow is a miss in wor
   assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: [nopic]}).misses[0].words,
     ["St. Boniface sheet: wanted its own picture", "Thu 7 Jan St. Boniface note for Casey: missing"]);
   // Not filed yet: not done. Many differences: five, and how many more.
-  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: null}), {n: 24, done: 0, right: 0, misses: []});
+  assert.deepEqual(tellScore(TELL_TESTS, {}, {ids, rs: null}), {n: 26, done: 0, right: 0, misses: []});
   const bad = read();
   for (const x of bad.days) x.hsc.night.att = "Nobody";
   const w = tellScore(TELL_TESTS, {}, {ids, rs: [bad]}).misses[0].words;
@@ -517,7 +560,7 @@ test("the cloud task's rules name every kind and field the sender keeps", async 
   const post = blocks.find(x => Array.isArray(x.results));
   assert.ok(post && post.results.every(x => typeof x.item === "string" && resultClean(x, item)), "the POST body example");
   // Every field the sender reads, by name.
-  for (const f of ["item", "kind", "t", "d", "d2", "s", "e", "n", "q", "m", "to", "cancel", "chk", "text", "topic", "who", "for",
+  for (const f of ["item", "kind", "t", "d", "d2", "s", "e", "n", "al", "q", "m", "to", "cancel", "chk", "text", "topic", "who", "for",
     "with", "file", "repo", "sheets", "site", "from", "days", "day", "night", "fellows", "fellow", "res", "att", "tpn", "notes", "people", "full",
     "rules", "look", "slots", "slot"])
     assert.match(md, new RegExp("`" + f + "`"), f);
@@ -556,7 +599,7 @@ test("the setup steps make the Add to GI Hub shortcut and count the new test set
   const md = fs.readFileSync(path.join(ROOT, "tools", "agenda", "TELL-SETUP.md"), "utf8");
   for (const words of ["Add to GI Hub", "Show in Share Sheet", "Images, PDFs and Files", "Match Text: `^(heic|heif|jpe?g)$`",
     "If Matches has any value: Convert Image", "Otherwise: Set Variable Shared File to the Repeat Item", "JPEG", "`X-At`", "Request Body: File",
-    "Sent to GI Hub", "Not sent", "23 sentences and two made-up call sheets", "Not right"])
+    "Sent to GI Hub", "Not sent", "25 sentences and two made-up call sheets", "Not right"])
     assert.ok(md.includes(words), words);
 });
 
