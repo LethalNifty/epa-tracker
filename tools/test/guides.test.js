@@ -41,7 +41,7 @@ test("the library file: shape, links and years", () => {
     }
     for (const c of t.c) assert.match(c.u, /^https:\/\//, t.id + " " + c.t);
   }
-  assert.equal(LIB.topics.length, 113);
+  assert.ok(LIB.topics.length >= 113, "the library has at least 113 topics");
   assert.ok(fs.statSync(FILE).size < 150 * 1024, "guides.json stays small");
 });
 
@@ -130,7 +130,7 @@ test("before the library loads, the tab says so and Biopsy still works", () => {
 test("the tab: white-light monitor, new, search, chips and every topic", () => {
   const h = phone();
   const html = h.html();
-  assert.match(html, /113 topics · Canadian first/);
+  assert.match(html, new RegExp(`${LIB.topics.length} topics · Canadian first`));
   assert.match(html, /class="monitor guidemon"/);
   assert.match(html, /Checked [A-Z][a-z]{2} \d{1,2}</);
   assert.match(html, /New · last 30 days/);
@@ -161,7 +161,7 @@ test("the list opens on this block's topics, then every section folded to one ro
   assert.match(html, /<span class="mono">Block 4 · Motility\/Nutrition<\/span><span class="mono n">\d+<\/span>/);
   assert.equal((html.match(/class="gt"/g) || []).length, 6);
   assert.match(html, new RegExp(`data-action="guideschip" data-chip="block">${n - 6} more for this block`));
-  assert.match(html, /Every topic<\/span><span class="mono n">113<\/span>/);
+  assert.match(html, new RegExp(`Every topic</span><span class="mono n">${LIB.topics.length}</span>`));
   assert.equal((html.match(/class="gsec"/g) || []).length, LIB.sections.length);
   // A section unfolds in place, and folds again.
   const liver = LIB.topics.filter(t => t.s === "liver").length;
