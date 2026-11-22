@@ -269,11 +269,13 @@ test("the test set runs from Settings and shows how Claude did", async () => {
   // A miss says what was wanted and what came; the sheets', what was read wrong.
   const ids = await c.env.TELL.storage.get("testIds"), sheet = await c.env.TELL.storage.get("testSheet");
   await c.env.TELL.storage.put("tests", {[ids[1]]: [{kind: "event", t: "Dentist", d: "2026-11-13", s: "21:00"}],
+    [ids[23]]: [{kind: "event", t: "Rounds presentation", d: "2026-12-18", s: "12:00"}],
     [sheet.hsc]: [{kind: "note", t: "A shared file Claude couldn't read"}]});
   h.click("telscore"); await settle(h);
   const html = h.html();
-  assert.match(html, /0 of 26 right<\/b>, 2 filed so far/);
+  assert.match(html, /0 of 26 right<\/b>, 3 filed so far/);
   assert.ok(html.includes("Wanted event 2026-11-13 09:00; got event 2026-11-13 21:00"), "a said test's miss");
+  assert.ok(html.includes("Wanted event 2026-12-18 12:00 alerts 2w@19:00 1d@19:00; got event 2026-12-18 12:00"), "a miss on the reminders alone");
   assert.ok(html.includes("Wanted one call schedule; got note"), "the sheets' miss");
 });
 

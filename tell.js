@@ -304,7 +304,9 @@ function tellKeyHTML(which, label) {
     `<button class="textbtn" data-action="telcopy" data-which="${which}">Copy</button></div>` +
     (tellShow === which ? `<input class="tellshow mono" type="text" readonly value="${esc(key)}" aria-label="${label}">` : "");
 }
-const tellBrief = x => [x.kind, ...[x.d, x.s].filter(Boolean).map(v => Array.isArray(v) ? v.join(" or ") : v)].join(" ");
+// What was wanted or filed, in short: the kind, day and time, and any reminders.
+const tellBrief = x => [x.kind, ...[x.d, x.s].filter(Boolean).map(v => Array.isArray(v) ? v.join(" or ") : v),
+  ...(Array.isArray(x.al) ? [x.al.length ? "alerts " + x.al.join(" ") : "no alerts"] : [])].join(" ");
 // A miss in words: what was wanted and what came, or, for the made-up sheets, what was read wrong.
 const tellMissWords = m => Array.isArray(m.words) ? m.words.join("; ") :
   `Wanted ${(m.want || []).map(tellBrief).join(", ")}; got ${m.got && m.got.length ? m.got.map(tellBrief).join(", ") : "nothing"}`;

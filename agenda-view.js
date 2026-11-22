@@ -189,8 +189,8 @@ function agSheetHTML() {
 }
 // ---- An event's alerts in its sheet ------------------------------------------------------------
 // A chip for each usual alert (minutes before only for a timed event), then
-// one for any other the event has (from Claude or a calendar file), to turn
-// it off. Under them a line for each alert that's on: when it goes, and for
+// one for any other the event has (one Claude filed, from what you said), to
+// turn it off. Under them a line for each alert that's on: when it goes, and for
 // one a day or more before, its own time.
 const AG_ALERT_CHIPS = [["30", "30 min"], ["60", "1 hour"], ["0d", "Day of"], ["1d", "Day before"], ["1w", "1 week"], ["2w", "2 weeks"], ["1m", "1 month"]];
 const AG_ALERT_AT = {"0d": "07:00"};   // the time a chip's alert starts at: 19:00 for the rest

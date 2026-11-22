@@ -267,10 +267,11 @@ const fresh = (results, now) => results.filter(r => !(r.ack && r.ack <= now - AC
 // What a result reminds you of if GI Hub doesn't open before it's due, in the
 // plan's own kinds: an event's alerts as Claude heard them, or GI Hub's usual
 // two (19:00 the evening before, and 30 minutes before a timed event), none a
-// day or more before at or after the start; a to-do at its time. Each carries what it's about (w), since the
-// phone's brief doesn't know it yet, and when the phone confirmed it (ack):
-// the minute check leaves it to the phone's own plan once that plan is at
-// least that new. Times are in the offset the thing was said in.
+// day or more before at or after the start; a to-do at its time. Each carries
+// what it's about (w), since the phone's brief doesn't know it yet, and when
+// the phone confirmed it (ack): the minute check leaves it to the phone's own
+// plan once that plan is at least that new. Times are in the offset the thing
+// was said in.
 const BACK = 15 * MINUTE, AHEAD = 40 * DAY;
 const instant = (iso, s, off) => dayMs(iso) + (+s.slice(0, 2) * 60 + +s.slice(3) - off) * MINUTE;
 export function pendingAlerts(results, now) {

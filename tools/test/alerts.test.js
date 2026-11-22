@@ -101,7 +101,7 @@ test("an all-day event offers only alerts a day or more before", () => {
   assert.deepEqual(h.val(`agAlerts({s: null, al: ["30"]})`), []);
 });
 
-test("an alert Claude or a calendar file set that no chip names gets a chip of its own, to turn it off", () => {
+test("an alert Claude filed that no chip names gets a chip of its own, to turn it off", () => {
   const h = agenda("2026-11-09", [ev("a1", "Course", "2026-11-20", "09:00", "17:00", {al: ["3d@08:00", "15", "0"]})]);
   h.click("agopen", {id: "a1"});
   assert.deepEqual(chipsOf(h).filter(x => x[1]), [["3d", true, "3 days"], ["15", true, "15 min"], ["0", true, "At the start"]]);
