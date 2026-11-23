@@ -135,9 +135,13 @@ test("a to-do's row in Agenda opens it, and a done one is struck through", () =>
     todo("a3", "Send the slides", "2026-11-11", "08:00")]);
   h.click("tab", {page: "agenda"});
   const html = h.html();
-  assert.match(html, /<button class="ag-row k-todo" data-action="agopen" data-id="a1">/);
-  assert.match(html, /<button class="ag-row k-todo done" data-action="agopen" data-id="a2">/);
-  assert.match(html, /<h2>Later this week<\/h2>[\s\S]*data-id="a3"/, "a to-do later this week shows with the rest");
+  assert.match(html, /<button class="kal-ev k-todo[^"]*" data-action="agopen" data-id="a1"/);
+  assert.match(html, /<button class="kal-ev k-todo done[^"]*" data-action="agopen" data-id="a2"/);
+  h.click("agview", {view: "w"});
+  assert.match(h.html(), /data-action="agopen" data-id="a3"/, "a to-do later this week shows in Week");
+  h.click("agview", {view: "m"});
+  assert.match(h.html(), /<button class="ag-row k-todo" data-action="agopen" data-id="a1">/);
+  assert.match(h.html(), /<button class="ag-row k-todo done" data-action="agopen" data-id="a2">/);
   assert.equal(h.val(`agMarks("2026-11-10").ev`), 1, "a done to-do isn't marked");
   assert.equal(h.val(`agNext(callNow())`).id, "a3", "nor is it next");
   h.click("agopen", {id: "a1"});

@@ -1,8 +1,8 @@
 "use strict";
-// The Agenda tab: Days and Month, the event sheet, your usual week, Add from
+// The Agenda tab: Day, Week and Month, the event sheet, your usual week, Add from
 // file and call requests, over agenda.js. Full app only.
 
-let agView = "d", agSel = null, agMonth = null, agSheet = null, agSheetFresh = false, agUsual = null, agError = null, agReq = null;
+let agView = "d", agWd = 7, agSel = null, agMonth = null, agSheet = null, agSheetFresh = false, agUsual = null, agError = null, agReq = null;
 const agToday = () => fmtDate(getToday());
 const agDayWords = iso => { const d = agDate(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const agHeading = iso => { const t = agToday();
@@ -36,8 +36,41 @@ function agListHTML(iso, ctx) {
 const agMarksHTML = m => `<i class="mk">${m.hol ? `<i class="m-hol"></i>` : ""}${m.call ? `<i class="m-call"></i>` : ""}` +
   `${m.read ? `<i class="m-read"></i>` : ""}${`<i class="m-ev"></i>`.repeat(Math.min(2, m.ev))}</i>`;
 
-// ---- Days ------------------------------------------------------------------------------------
-function agDaysHTML(ctx) {
+// ---- Day, Week and Month -----------------------------------------------------------------------
+// Day: the week strip, then the day's hours drawn to scale. Week: the hours of
+// 7 days from Monday, or of 3 from the chosen day. Month: each day with what's
+// on it by name, and the chosen day's rows under it. Each kind has its colour:
+// call in blue stripes, reading an amber outline, holidays red, to-dos an
+// outline, work hours grey, your own events the colour picked in their sheet.
+const agMins = hm => typeof hm === "string" && AG_HM.test(hm) ? agMin(hm) : null;
+const agMinsHM = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const agRange = (a, b) => { const A = agDate(a), B = agDate(b);
+  return A.getMonth() === B.getMonth() ? `${A.getDate()} – ${B.getDate()} ${LONG_MONTHS[B.getMonth()]}`
+    : `${A.getDate()} ${MONTHS[A.getMonth()]} – ${B.getDate()} ${MONTHS[B.getMonth()]}`; };
+// The days Week shows: from Monday, or 3 from the chosen day.
+const agWeekStart = () => agWd === 7 ? agMonday(agSel) : agSel;
+// What's drawn as a block: your events, to-dos and the night's reading, at a time.
+const agTimed = r => (r.k === "ev" || r.k === "todo" || (r.k === "read" && !r.off)) && !r.allDay;
+// Where a block ends, in minutes from midnight: midnight when it runs on; a
+// to-do takes half an hour, a time with no end 45 minutes.
+const agEndMins = (r, a) => { const e = agMins(r.to); return r.more ? 1440 : e !== null && e > a ? e : a + (r.k === "todo" ? 30 : 45); };
+const agAlertCount = id => { const it = agState().items.find(x => x.id === id); return it ? agAlerts(it).length : 0; };
+
+// Back, the day, week or month shown, on, and Today.
+function agNavHTML() {
+  const t = agToday();
+  let title, here;
+  if (agView === "d") { title = agHeading(agSel); here = agSel === t; }
+  else if (agView === "w") { const a = agWeekStart(), b = agAddDays(a, agWd - 1); title = agRange(a, b); here = t >= a && t <= b; }
+  else { const [y, m] = agMonth.split("-").map(Number); title = `${LONG_MONTHS[m - 1]} ${y}`; here = t.slice(0, 7) === agMonth; }
+  const unit = agView === "d" ? "day" : agView === "w" ? (agWd === 7 ? "week" : "3 days") : "month";
+  return `<div class="kal-nav"><button class="iconbtn ag-step" data-action="agstep" data-step="-1" aria-label="Previous ${unit}">${ic("back", "sm")}</button>` +
+    `<b class="kal-title">${esc(title)}</b>` +
+    `<button class="iconbtn ag-step fwd" data-action="agstep" data-step="1" aria-label="Next ${unit}">${ic("back", "sm")}</button>` +
+    `<button class="pick ghost kal-today${here ? " here" : ""}" data-action="agtoday">Today</button></div>`;
+}
+
+function agDayViewHTML(ctx) {
   const mon = agMonday(agSel), today = agToday();
   let strip = "";
   for (let k = 0; k < 7; k++) {
@@ -45,36 +78,184 @@ function agDaysHTML(ctx) {
     strip += `<button class="ws${cls ? " " + cls : ""}" data-action="agday" data-day="${iso}"><span class="mono">${DAYS[d.getDay()]}</span>` +
       `<b>${d.getDate()}</b>${agMarksHTML(agMarks(iso, ctx))}</button>`;
   }
-  let h = `<div class="ag-strip"><button class="iconbtn ag-step" data-action="agweek" data-step="-1" aria-label="Previous week">${ic("back", "sm")}</button>` +
-    `<div class="wstrip">${strip}</div><button class="iconbtn ag-step fwd" data-action="agweek" data-step="1" aria-label="Next week">${ic("back", "sm")}</button></div>` +
-    `<section class="sec"><div class="sec-head"><h2>${agHeading(agSel)}</h2></div>${agListHTML(agSel, ctx)}</section>`;
-  // The rest of the week: holidays, your events, to-dos not done yet and call; not the daily work rows or reading.
-  let later = "";
-  for (let iso = agAddDays(agSel, 1); iso < agAddDays(mon, 7); iso = agAddDays(iso, 1)) {
-    const rows = agDay(iso, ctx).filter(r => r.k === "hol" || r.k === "ev" || r.k === "all" || r.k === "call" || (r.k === "todo" && !r.done));
-    if (rows.length) later += `<div class="ag-later-d mono">${agDayWords(iso)}</div>` +
-      rows.map(r => r.k === "hol" ? `<div class="ag-hol mono">${esc(r.t)}</div>` : agRowHTML(r)).join("");
-  }
-  if (later) h += `<section class="sec"><div class="sec-head"><h2>Later this week</h2></div><div class="card ag-list">${later}</div></section>`;
-  return h;
+  return `<div class="ag-strip"><div class="wstrip">${strip}</div></div>` + agGridHTML([agSel], ctx, 54);
 }
 
-// ---- Month -----------------------------------------------------------------------------------
+function agWeekHTML(ctx) {
+  const a = agWeekStart(), days = [];
+  for (let k = 0; k < agWd; k++) days.push(agAddDays(a, k));
+  const wd = (n, label) => `<button class="pick ghost${agWd === n ? " on" : ""}" data-action="agwd" data-n="${n}" aria-pressed="${agWd === n}">${label}</button>`;
+  return `<div class="pickrow kal-wd">${wd(7, "7 days")}${wd(3, "3 days")}</div>` + agGridHTML(days, ctx, agWd === 7 ? 34 : 46);
+}
+
+// The hours of one day or several, H pixels to the hour: 07:00 to 22:00, wider
+// for anything earlier or later.
+function agGridHTML(days, ctx, H) {
+  const rowsBy = days.map(iso => agDay(iso, ctx)), n = days.length;
+  let lo = 7 * 60, hi = 22 * 60;
+  for (const rows of rowsBy) for (const r of rows) {
+    if (!agTimed(r)) continue;
+    const a = r.cont ? 0 : agMins(r.from);
+    if (a === null) continue;
+    lo = Math.min(lo, Math.floor(a / 60) * 60);
+    hi = Math.max(hi, Math.min(1440, Math.ceil(agEndMins(r, a) / 60) * 60));
+  }
+  const px = m => (m - lo) / 60 * H, g = {lo, hi, px, H, n};
+  let gut = "";
+  for (let m = lo; m <= hi; m += 60) gut += `<span style="top:${px(m)}px">${m === 1440 ? "00:00" : agMinsHM(m)}</span>`;
+  const heads = n > 1 ? `<div class="kal-heads" style="--n:${n}"><i></i>${days.map(agHeadHTML).join("")}</div>` : "";
+  return `<div class="card kal-grid${n > 1 ? " multi" : ""}${n > 3 ? " narrow" : ""}" lang="en" style="--n:${n};--h:${H}px">${heads}${agAllDayHTML(days, rowsBy)}` +
+    `<div class="kal-body" style="height:${px(hi)}px"><div class="kal-gut mono">${gut}</div>` +
+    days.map((iso, i) => agColHTML(iso, rowsBy[i], g)).join("") + `</div></div>`;
+}
+
+// A day's head in Week: it opens the day.
+function agHeadHTML(iso) {
+  const d = agDate(iso), cls = [iso === agToday() ? "today" : "", iso === agSel ? "sel" : "", agHoliday(iso) ? "hol" : ""].filter(Boolean).join(" ");
+  return `<button class="kal-head${cls ? " " + cls : ""}" data-action="agview" data-view="d" data-day="${iso}" aria-label="Open ${agDayWords(iso)}">` +
+    `<span class="mono">${DAYS[d.getDay()]}</span><b>${d.getDate()}</b></button>`;
+}
+
+// Bars across days, each in the first lane it overlaps nothing in; how many lanes.
+function agBarLanes(spans) {
+  const lanes = [];
+  for (const s of spans.slice().sort((p, q) => p.a - q.a || (q.b - q.a) - (p.b - p.a))) {
+    let l = 0;
+    while ((lanes[l] || []).some(o => !(s.b < o.a || s.a > o.b))) l++;
+    (lanes[l] = lanes[l] || []).push(s); s.lane = l;
+  }
+  return lanes.length;
+}
+
+// Holidays, all-day events and whole days on call, as bars over the hours.
+function agAllDayHTML(days, rowsBy) {
+  const spans = [];
+  days.forEach((iso, i) => {
+    for (const r of rowsBy[i]) {
+      const call = r.k === "call" && r.allDay;
+      if (r.k !== "hol" && r.k !== "all" && !call) continue;
+      const key = r.k === "hol" ? "hol" + iso : call ? "call" : r.id;
+      const prev = spans.find(x => x.key === key && x.b === i - 1);
+      if (prev) { prev.b = i; continue; }
+      spans.push({key, k: call ? "call" : r.k, t: call ? "On call" : r.t, id: r.id, on: r.on, c: r.c, a: i, b: i, cont: !!r.cont});
+    }
+  });
+  if (!spans.length) return "";
+  agBarLanes(spans);
+  const bars = spans.map(x => {
+    const act = x.k === "all" ? ` data-action="agopen" data-id="${esc(x.id)}"${x.on ? ` data-on="${x.on}"` : ""}` : x.k === "call" ? ` data-action="agcall"` : "";
+    const tag = act ? "button" : "div";
+    return `<${tag} class="kal-bar k-${x.k}${x.c ? " c-" + x.c : ""}${x.cont ? " cont" : ""}"${act} style="grid-column:${x.a + 1} / span ${x.b - x.a + 1};grid-row:${x.lane + 1}">${esc(x.t)}</${tag}>`;
+  }).join("");
+  return `<div class="kal-allday" style="--n:${days.length}"><span class="mono">all day</span><div class="kal-lanes">${bars}</div></div>`;
+}
+
+// One day's column: an hour to tap for a new event, work hours and call as
+// bands under your events, to-dos and reading, and a line at now.
+function agColHTML(iso, rows, g) {
+  const {lo, hi, px, H, n} = g, today = iso === agToday();
+  let slots = "", bands = "";
+  const blocks = [];
+  for (let m = lo; m < hi; m += 60)
+    slots += `<button class="kal-slot" data-action="agslot" data-day="${iso}" data-at="${agMinsHM(m)}" style="top:${px(m)}px;height:${H}px" aria-label="New event ${agDayWords(iso)} at ${agMinsHM(m)}"></button>`;
+  for (const r of rows) {
+    if (r.k === "work") {
+      const a = Math.max(lo, agMins(r.from)), b = Math.min(hi, agMins(r.to));
+      if (b > a) bands += `<div class="kal-band work" style="top:${px(a)}px;height:${px(b) - px(a)}px">${n === 1 ? `<span class="mono">${esc(r.t)}</span>` : ""}</div>`;
+    } else if (r.k === "call") {
+      // A call to midnight ends at the bottom, not the top.
+      const a = Math.max(lo, r.cont ? 0 : agMins(r.from)), b = Math.min(hi, r.more ? 1440 : agMins(r.to) || 1440);
+      const words = n > 3 ? "Call" : "On call" + (n === 1 && r.sub ? " · " + r.sub.split(" · ")[0] : "");
+      if (b > a) bands += `<div class="kal-band call" style="top:${px(a)}px;height:${px(b) - px(a)}px">` +
+        (r.allDay || r.cont ? "" : `<button class="kal-calllbl mono" data-action="agcall">${esc(words)}</button>`) + `</div>`;
+    } else if (agTimed(r)) {
+      const a = r.cont ? lo : agMins(r.from);
+      if (a === null) continue;
+      blocks.push({r, a: Math.max(lo, a), b: Math.min(hi, Math.max(agEndMins(r, a), a + 25))});
+    }
+  }
+  agLanes(blocks);
+  let now = "";
+  if (today) { const m = agMins(agHM(callNow())); if (m !== null && m >= lo && m <= hi) now = `<div class="kal-now" style="top:${px(m)}px"></div>`; }
+  return `<div class="kal-col${today ? " today" : ""}">${slots}${bands}${blocks.map(x => agBlockHTML(x, g)).join("")}${now}</div>`;
+}
+
+// Overlaps: one that starts half an hour or more after another lies over it,
+// set in; ones that start within half an hour of each other sit side by side.
+function agLanes(list) {
+  list.sort((p, q) => p.a - q.a || q.b - p.b);
+  const placed = [];
+  for (const x of list) {
+    const over = placed.filter(y => y.b > x.a && y.a < x.b);
+    x.col = 0; x.cols = 1; x.ind = 0; x.top = false;
+    if (over.length && over.every(y => x.a - y.a >= 30)) { x.ind = Math.max(...over.map(y => y.ind)) + 1; x.top = true; }
+    else if (over.length) {
+      const sib = over.filter(y => x.a - y.a < 30), group = sib.concat(x);
+      group.forEach((y, i) => { y.col = i; y.cols = group.length; y.ind = sib[0].ind; });
+    }
+    placed.push(x);
+  }
+}
+
+// One block: its name, its time when there's room, and its alerts in Day.
+function agBlockHTML(x, g) {
+  const r = x.r, top = g.px(x.a) + 1, h = Math.max(16, g.px(x.b) - g.px(x.a) - 2), ind = x.ind * (g.n === 1 ? 28 : g.n === 3 ? 12 : 7);
+  const left = `calc(${ind}px + ${x.col} * (100% - ${ind}px - 3px) / ${x.cols} + 2px)`, width = `calc((100% - ${ind}px - 3px) / ${x.cols} - 2px)`;
+  const time = r.cont ? "" : r.from + (r.to && !r.more ? "–" + r.to : "");
+  const title = r.k === "read" ? (g.n === 1 ? "Reading · " + r.t : g.n > 3 ? "Read" : "Reading") : r.t;
+  const al = r.k === "ev" && g.n === 1 ? agAlertCount(r.id) : 0;
+  const inner = `<b>${esc(title)}</b>` + (h >= 34 && time && g.n < 7 ? `<span class="mono">${time}</span>` : "") +
+    (al ? `<i class="kal-bell" aria-label="${al} alert${al === 1 ? "" : "s"}">${ic("bell")}${al}</i>` : "");
+  const act = r.k === "read" ? `data-action="agstudy"` : `data-action="agopen" data-id="${esc(r.id)}"${r.on ? ` data-on="${r.on}"` : ""}`;
+  return `<button class="kal-ev k-${r.k}${r.c ? " c-" + r.c : ""}${r.done ? " done" : ""}${h < 30 ? " short" : ""}${x.top ? " over" : ""}" ${act} ` +
+    `style="top:${top}px;height:${h}px;left:${left};width:${width}">${inner}</button>`;
+}
+
+// Month: each week a grid row, its all-day events as bars, then up to three
+// names a day and how many more; the chosen day's rows under it.
 function agMonthHTML(ctx) {
   const [y, m] = agMonth.split("-").map(Number), first = agMonday(agMonth + "-01");
-  const days = new Date(y, m, 0).getDate(), weeks = Math.ceil((agDiff(first, agMonth + "-01") + days) / 7), today = agToday();
-  let grid = "";
-  for (let k = 0; k < weeks * 7; k++) {
-    const iso = agAddDays(first, k), cls = [iso.slice(0, 7) !== agMonth ? "out" : "", iso < today ? "past" : "", iso === today ? "today" : "",
-      iso === agSel ? "sel" : ""].filter(Boolean).join(" ");
-    grid += `<button class="mc${cls ? " " + cls : ""}" data-action="agday" data-day="${iso}"><span>${agDate(iso).getDate()}</span>${agMarksHTML(agMarks(iso, ctx))}</button>`;
+  const count = new Date(y, m, 0).getDate(), weeks = Math.ceil((agDiff(first, agMonth + "-01") + count) / 7), today = agToday();
+  let h = "";
+  for (let w = 0; w < weeks; w++) {
+    const isos = [];
+    for (let k = 0; k < 7; k++) isos.push(agAddDays(first, w * 7 + k));
+    const rowsBy = isos.map(iso => agDay(iso, ctx)), spans = [];
+    isos.forEach((iso, i) => {
+      for (const r of rowsBy[i]) {
+        if (r.k !== "all") continue;
+        const prev = spans.find(x => x.id === r.id && x.b === i - 1);
+        if (prev) prev.b = i; else spans.push({id: r.id, t: r.t, c: r.c, a: i, b: i, cont: !!r.cont});
+      }
+    });
+    const L = agBarLanes(spans), room = Math.max(1, 3 - L);
+    let cells = "", top = "", stacks = "";
+    isos.forEach((iso, i) => {
+      const out = iso.slice(0, 7) !== agMonth, cls = [out ? "out" : "", iso < today ? "past" : "", iso === today ? "today" : "", iso === agSel ? "sel" : ""].filter(Boolean).join(" ");
+      cells += `<button class="kal-mc${cls ? " " + cls : ""}" data-action="agday" data-day="${iso}" style="grid-column:${i + 1}" aria-label="${agDayWords(iso)}"></button>`;
+      top += `<span class="kal-dn${cls ? " " + cls : ""}" style="grid-column:${i + 1}"><b>${agDate(iso).getDate()}</b>${agMarks(iso, ctx).read ? `<i class="m-read"></i>` : ""}</span>`;
+      const chips = [];
+      for (const r of rowsBy[i]) {
+        if (r.k === "hol") chips.push(["k-hol", r.t]);
+        else if (r.k === "call" && (!r.cont || r.allDay)) chips.push(["k-call", "Call"]);
+        else if (r.k === "ev" && !r.cont) chips.push(["k-ev" + (r.c ? " c-" + r.c : ""), r.t]);
+        else if (r.k === "todo" && !r.done) chips.push(["k-todo", r.t]);
+      }
+      const shown = chips.slice(0, room), more = chips.length - shown.length;
+      stacks += `<div class="kal-stack${out ? " out" : ""}" style="grid-column:${i + 1};grid-row:${L + 2}">` +
+        shown.map(([c, t]) => `<span class="kal-chip ${c}">${esc(t)}</span>`).join("") + (more ? `<span class="kal-more mono">+${more}</span>` : "") + `</div>`;
+    });
+    const bars = spans.map(x => `<span class="kal-span${x.c ? " c-" + x.c : ""}${x.cont ? " cont" : ""}" style="grid-column:${x.a + 1} / span ${x.b - x.a + 1};grid-row:${x.lane + 2}">${esc(x.t)}</span>`).join("");
+    h += `<div class="kal-week" style="grid-template-rows:auto${" auto".repeat(L)} 1fr">${cells}${top}${bars}${stacks}</div>`;
   }
-  return `<div class="card ag-month"><div class="cm-head"><button class="iconbtn ag-step" data-action="agmonth" data-step="-1" aria-label="Previous month">${ic("back", "sm")}</button>` +
-    `<b>${LONG_MONTHS[m - 1]} ${y}</b><button class="iconbtn ag-step fwd" data-action="agmonth" data-step="1" aria-label="Next month">${ic("back", "sm")}</button></div>` +
-    `<div class="cm-days mono">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => `<span>${d}</span>`).join("")}</div><div class="cm-grid">${grid}</div>` +
-    `<div class="cm-leg mono"><span><i class="m-call"></i>Call</span><span><i class="m-read"></i>Reading</span><span><i class="m-ev"></i>Yours</span><span><i class="m-hol"></i>Holiday</span></div></div>` +
-    `<section class="sec"><div class="sec-head"><h2>${agHeading(agSel)}</h2></div>${agListHTML(agSel, ctx)}</section>`;
+  return `<div class="card kal-month"><div class="cm-days mono">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => `<span>${d}</span>`).join("")}</div>` +
+    `<div class="kal-weeks">${h}</div>${agLegendHTML()}</div>` +
+    `<section class="sec"><div class="sec-head"><h2>${agHeading(agSel)}</h2><button class="textbtn sm" data-action="agview" data-view="d" data-day="${agSel}">Open the day</button></div>` +
+    agListHTML(agSel, ctx) + `</section>`;
 }
+const agLegendHTML = () =>
+  `<div class="cm-leg kal-leg mono"><span><i class="m-call"></i>Call</span><span><i class="m-read"></i>Reading</span><span><i class="m-hol"></i>Holiday</span><span><i class="kal-lt"></i>To-do</span></div>` +
+  `<div class="cm-leg kal-leg mono">${AG_COLOUR_CHIPS.map(([k, label]) => `<span><i class="kal-sw c-${k}"></i>${label}</span>`).join("")}</div>`;
 
 // ---- The page --------------------------------------------------------------------------------
 function viewAgenda() {
@@ -84,8 +265,8 @@ function viewAgenda() {
     `<button class="${agView === v ? "on" : ""}" data-action="agview" data-view="${v}"${agView === v ? ` aria-current="page"` : ""}>${label}</button>`;
   return `<header class="ph has-gear"><button class="iconbtn phgear phadd" data-action="agnew">${ic("plus")}Event</button>` +
     `<p class="eyebrow mono">${blk ? `Block ${blk.num} · ${esc(blk.name)}` : "GI Hub"}</p><h1 class="title">Agenda</h1></header>` +
-    `<div class="segtabs ag-seg" role="group" aria-label="Agenda views">${seg("d", "Days")}${seg("m", "Month")}</div>` +
-    (agView === "m" ? agMonthHTML(ctx) : agDaysHTML(ctx)) + agNotesHTML() +
+    `<div class="segtabs three ag-seg" role="group" aria-label="Agenda views">${seg("d", "Day")}${seg("w", "Week")}${seg("m", "Month")}</div>` +
+    agNavHTML() + (agView === "m" ? agMonthHTML(ctx) : agView === "w" ? agWeekHTML(ctx) : agDayViewHTML(ctx)) + agNotesHTML() +
     `<section class="sec"><div class="card ag-links">` +
     `<button class="ag-link" data-action="agfilepick">${ic("download")}<span><b>Add from file</b><span>An invite or a calendar export (.ics)</span></span></button>` +
     `<button class="ag-link" data-action="agusual">${ic("clock")}<span><b>Your usual week</b><span>The work hours shown on each day</span></span></button>` +
@@ -421,13 +602,30 @@ function agTodoDueHTML() {
 // ---- Taps --------------------------------------------------------------------------------------
 // Returns false when it redraws by itself.
 function agDispatch(act, d) {
-  if (act === "agview") { agView = d.view === "m" ? "m" : "d"; agMonth = agSel.slice(0, 7); }
-  else if (act === "agday") { agSel = d.day; if (agView === "m") agMonth = agSel.slice(0, 7); }
-  else if (act === "agweek") agSel = agAddDays(agSel, 7 * (+d.step || 0));
-  else if (act === "agmonth") {
-    const [y, m] = agMonth.split("-").map(Number), t = new Date(y, m - 1 + (+d.step || 0), 1);
-    agMonth = fmtDate(t).slice(0, 7);
-    agSel = agToday().slice(0, 7) === agMonth ? agToday() : agMonth + "-01";
+  // Day, Week or Month, on a day when one is given (a head in Week, Open the day).
+  if (act === "agview") {
+    agView = ["d", "w", "m"].includes(d.view) ? d.view : "d";
+    if (agValidIso(d.day)) agSel = d.day;
+    agMonth = agSel.slice(0, 7);
+  }
+  // A day picked in the strip or in Month; Month stays on its month.
+  else if (act === "agday" && agValidIso(d.day)) { agSel = d.day; if (agView !== "m") agMonth = agSel.slice(0, 7); }
+  // Back or on a day, a week (or 3 days) or a month.
+  else if (act === "agstep") {
+    const k = Math.trunc(+d.step) || 0;
+    if (agView === "m") {
+      const [y, m] = agMonth.split("-").map(Number), t = new Date(y, m - 1 + k, 1);
+      agMonth = fmtDate(t).slice(0, 7);
+      agSel = agToday().slice(0, 7) === agMonth ? agToday() : agMonth + "-01";
+    } else { agSel = agAddDays(agSel, k * (agView === "w" ? agWd : 1)); agMonth = agSel.slice(0, 7); }
+  }
+  else if (act === "agtoday") { agSel = agToday(); agMonth = agSel.slice(0, 7); }
+  else if (act === "agwd") agWd = d.n === "3" ? 3 : 7;
+  // An empty hour tapped: a new event there, for an hour.
+  else if (act === "agslot") {
+    agOpen(null);
+    if (agValidIso(d.day)) agSheet.d = d.day;
+    if (AG_HM.test(d.at || "")) { agSheet.s = d.at; agSheet.e = agMinsHM(Math.min(23 * 60 + 59, agMin(d.at) + 60)); }
   }
   else if (act === "agshow") { agSel = d.day; agView = "d"; go({page: "agenda"}); return false; }
   else if (act === "agcall") { go({page: "call", from: "agenda"}); return false; }

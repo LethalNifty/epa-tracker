@@ -1,5 +1,5 @@
 "use strict";
-// The Agenda tab: the bar with the + in the middle, Days and Month, the event
+// The Agenda tab: the bar with the + in the middle, Day, Week and Month, the event
 // sheet, your usual week, Add from file, and Week's Next line. Full app only.
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -49,60 +49,118 @@ test("Agenda opens from the bar", () => {
 
 // ---- The page -------------------------------------------------------------------------------
 const strip = html => [...html.matchAll(/<button class="ws([^"]*)" data-action="agday" data-day="([\d-]+)"/g)].map(m => [m[2], m[1].trim()]);
-const cells = html => [...html.matchAll(/<button class="mc([^"]*)" data-action="agday" data-day="([\d-]+)"/g)].map(m => [m[2], m[1].trim()]);
+const heads = html => [...html.matchAll(/<button class="kal-head([^"]*)" data-action="agview" data-view="d" data-day="([\d-]+)"/g)].map(m => [m[2], m[1].trim()]);
+const cells = html => [...html.matchAll(/<button class="kal-mc([^"]*)" data-action="agday" data-day="([\d-]+)"/g)].map(m => [m[2], m[1].trim()]);
+const title = html => (html.match(/<b class="kal-title">([^<]*)<\/b>/) || [])[1];
 
-test("Days: this week from Monday, today and the chosen day marked, the day's rows, then the rest of the week", () => {
-  const h = agenda("2026-10-27", [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30")], {call: true});
-  let html = h.html();
-  assert.match(html, /<button class="on" data-action="agview" data-view="d"[^>]*>Days<\/button><button class="" data-action="agview" data-view="m"[^>]*>Month<\/button>/);
-  assert.deepEqual(strip(html), [["2026-10-26", ""], ["2026-10-27", "today sel"], ["2026-10-28", ""], ["2026-10-29", ""],
-    ["2026-10-30", ""], ["2026-10-31", ""], ["2026-11-01", ""]]);
-  assert.match(html, /<h2>Today · Tue 27 Oct<\/h2>/);
-  assert.match(html, /<span class="ct mono">08:00<\/span><i class="cdot"><\/i><span class="cm"><b>Consults SBH<\/b><span>until 18:00<\/span>/);
-  // The rest of the week: your events and call, by day, without the daily work rows.
-  const later = html.slice(html.indexOf("<h2>Later this week</h2>"));
-  assert.match(later, /Wed 28 Oct[^]*?On call[^]*?Thu 29 Oct[^]*?Dentist/);
-  assert.doesNotMatch(later, /Consults SBH/);
-  h.click("agday", {day: "2026-10-29"});
-  html = h.html();
-  assert.match(html, /<h2>Thu 29 Oct<\/h2>/);
-  assert.deepEqual(strip(html)[3], ["2026-10-29", "sel"]);
-  h.click("agweek", {step: "1"});
-  assert.deepEqual(strip(h.html())[0], ["2026-11-02", ""]);
-  assert.equal(h.val("agSel"), "2026-11-05");
+test("Day, Week and Month, opening on Day", () => {
+  const h = agenda("2026-10-27");
+  assert.match(h.html(), /<div class="segtabs three ag-seg" role="group" aria-label="Agenda views"><button class="on" data-action="agview" data-view="d" aria-current="page">Day<\/button><button class="" data-action="agview" data-view="w">Week<\/button><button class="" data-action="agview" data-view="m">Month<\/button><\/div>/);
 });
 
-test("Month: a Monday-first grid with call, reading and your marks, and the chosen day's rows under it", () => {
+test("Day: the week strip, then the day's hours to scale: work as a band, your events as long as they last", () => {
+  const h = agenda("2026-10-27", [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30")], {call: true});
+  let html = h.html();
+  assert.equal(title(html), "Today · Tue 27 Oct");
+  assert.deepEqual(strip(html), [["2026-10-26", ""], ["2026-10-27", "today sel"], ["2026-10-28", ""], ["2026-10-29", ""],
+    ["2026-10-30", ""], ["2026-10-31", ""], ["2026-11-01", ""]]);
+  // 07:00 to 22:00, 54px an hour: work from 08:00 to 18:00.
+  assert.match(html, /<div class="kal-body" style="height:810px">/);
+  assert.match(html, /<div class="kal-band work" style="top:54px;height:540px"><span class="mono">Consults SBH<\/span><\/div>/);
+  assert.match(html, /<button class="kal-slot" data-action="agslot" data-day="2026-10-27" data-at="07:00"/);
+  // Call: a band with its words, to Call.
+  h.click("agday", {day: "2026-10-28"});
+  assert.match(h.html(), /<div class="kal-band call" style="[^"]*"><button class="kal-calllbl mono" data-action="agcall">On call/);
+  h.click("agstep", {step: "1"});
+  html = h.html();
+  assert.equal(h.val("agSel"), "2026-10-29");
+  assert.equal(title(html), "Thu 29 Oct");
+  assert.match(html, /<button class="kal-ev k-ev" data-action="agopen" data-id="a1" style="top:514px;height:52px;[^"]*"><b>Dentist<\/b><span class="mono">16:30–17:30<\/span><i class="kal-bell" aria-label="2 alerts">/);
+  h.click("agstep", {step: "-4"});
+  assert.deepEqual(strip(h.html())[0], ["2026-10-19", ""]);
+  h.click("agtoday");
+  assert.equal(h.val("agSel"), "2026-10-27");
+});
+
+test("Day: an empty hour opens a new event at that hour, for an hour", () => {
+  const h = agenda("2026-10-27");
+  h.click("agslot", {day: "2026-10-28", at: "15:00"});
+  assert.match(h.html(), /aria-label="New event"/);
+  assert.deepEqual(h.val("[agSheet.d, agSheet.s, agSheet.e, agSheet.allDay]"), ["2026-10-28", "15:00", "16:00", false]);
+});
+
+test("Day: events that overlap sit side by side, or one over the other when it starts later", () => {
+  const h = agenda("2026-11-23", [ev("a1", "Clinic", "2026-11-23", "13:00", "17:00"), ev("a2", "Call the lab", "2026-11-23", "13:15", "13:45"),
+    ev("a3", "Meeting", "2026-11-23", "15:00", "16:00")]);
+  const html = h.html(), block = id => (html.match(new RegExp(`<button class="kal-ev[^"]*" data-action="agopen" data-id="${id}" style="([^"]*)"`)) || [])[1];
+  assert.match(block("a1"), /left:calc\(0px \+ 0 \* \(100% - 0px - 3px\) \/ 2 \+ 2px\);width:calc\(\(100% - 0px - 3px\) \/ 2 - 2px\)/);
+  assert.match(block("a2"), /left:calc\(0px \+ 1 \* \(100% - 0px - 3px\) \/ 2 \+ 2px\)/);
+  assert.match(block("a3"), /left:calc\(28px \+ 0 \* \(100% - 28px - 3px\) \/ 1 \+ 2px\)/);
+  assert.match(html, /<button class="kal-ev k-ev over" data-action="agopen" data-id="a3"/);
+});
+
+test("Day: the hours widen for an early event, and an all-day event sits above them", () => {
+  const h = agenda("2026-11-23", [ev("a1", "Flight", "2026-11-23", "05:30", "07:00"), ev("a2", "Away", "2026-11-23", null, null, {d2: "2026-11-25"})]);
+  const html = h.html();
+  assert.match(html, /<div class="kal-gut mono"><span style="top:0px">05:00<\/span>/);
+  assert.match(html, /<div class="kal-allday" style="--n:1"><span class="mono">all day<\/span><div class="kal-lanes"><button class="kal-bar k-all" data-action="agopen" data-id="a2" style="grid-column:1 \/ span 1;grid-row:1">Away<\/button>/);
+});
+
+test("Week: 7 days from Monday, or 3 from the chosen day; a day's head opens it", () => {
+  const h = agenda("2026-10-27", [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30")], {call: true});
+  h.click("agview", {view: "w"});
+  let html = h.html();
+  assert.equal(title(html), "26 Oct – 1 Nov");
+  assert.deepEqual(heads(html), [["2026-10-26", ""], ["2026-10-27", "today sel"], ["2026-10-28", ""], ["2026-10-29", ""],
+    ["2026-10-30", ""], ["2026-10-31", ""], ["2026-11-01", ""]]);
+  assert.match(html, /<button class="pick ghost on" data-action="agwd" data-n="7" aria-pressed="true">7 days<\/button><button class="pick ghost" data-action="agwd" data-n="3" aria-pressed="false">3 days<\/button>/);
+  assert.match(html, /<div class="card kal-grid multi narrow" lang="en" style="--n:7;--h:34px">/);
+  assert.match(html, /data-action="agopen" data-id="a1"/);
+  h.click("agwd", {n: "3"});
+  html = h.html();
+  assert.equal(title(html), "27 – 29 October");
+  assert.deepEqual(heads(html).map(x => x[0]), ["2026-10-27", "2026-10-28", "2026-10-29"]);
+  assert.match(html, /<div class="card kal-grid multi" lang="en" style="--n:3;--h:46px">/);
+  h.click("agstep", {step: "1"});
+  assert.equal(title(h.html()), "30 Oct – 1 Nov");
+  h.click("agview", {view: "d", day: "2026-10-31"});
+  assert.deepEqual([h.val("agView"), h.val("agSel"), title(h.html())], ["d", "2026-10-31", "Sat 31 Oct"]);
+});
+
+test("Month: each day with what's on it by name, the chosen day's rows under it, and the colours' key", () => {
   const h = agenda("2026-10-27", [ev("a1", "Dentist", "2026-10-29", "16:30", "17:30")], {call: true});
   h.click("agview", {view: "m"});
   let html = h.html();
-  assert.match(html, /<b>October 2026<\/b>/);
+  assert.equal(title(html), "October 2026");
   const c = cells(html);
   assert.equal(c.length, 35);
   assert.deepEqual([c[0][0], c[34][0]], ["2026-09-28", "2026-11-01"]);
-  assert.deepEqual(c.find(x => x[0] === "2026-10-27")[1], "today sel");
+  assert.equal(c.find(x => x[0] === "2026-10-27")[1], "today sel");
   assert.equal(c[0][1], "out past");
-  const cell = iso => (html.match(new RegExp(`data-day="${iso}">[^]*?</button>`)) || [""])[0];
-  assert.match(cell("2026-10-28"), /m-call/);
-  assert.match(cell("2026-10-29"), /m-ev/);
-  assert.match(cell("2026-10-12"), /m-hol/);
+  assert.match(html, /<span class="kal-chip k-ev">Dentist<\/span>/);
+  assert.match(html, /<span class="kal-chip k-call">Call<\/span>/);
+  assert.match(html, /<span class="kal-chip k-hol">[^<]+<\/span>/);
+  assert.match(html, /<span><i class="kal-sw c-work"><\/i>Work<\/span><span><i class="kal-sw c-pers"><\/i>Personal<\/span><span><i class="kal-sw c-soc"><\/i>Social<\/span><span><i class="kal-sw c-trav"><\/i>Travel<\/span>/);
+  assert.match(html, /<h2>Today · Tue 27 Oct<\/h2><button class="textbtn sm" data-action="agview" data-view="d" data-day="2026-10-27">Open the day<\/button>/);
   h.click("agday", {day: "2026-10-29"});
   assert.match(h.html(), /<h2>Thu 29 Oct<\/h2>[^]*?Dentist/);
-  h.click("agmonth", {step: "1"});
+  assert.equal(title(h.html()), "October 2026");
+  h.click("agstep", {step: "1"});
   html = h.html();
-  assert.match(html, /<b>November 2026<\/b>/);
+  assert.equal(title(html), "November 2026");
   assert.equal(cells(html)[0][0], "2026-10-26");
+  assert.equal(h.val("agSel"), "2026-11-01");
 });
 
-test("a call row goes to Call and back; a reading row goes to Study", () => {
+test("call goes to Call and back; reading goes to Study", () => {
   const h = agenda("2026-10-28", [], {call: true});
-  assert.match(h.html(), /<button class="ag-row k-call" data-action="agcall">/);
+  assert.match(h.html(), /<button class="kal-calllbl mono" data-action="agcall">On call/);
   h.click("agcall");
   assert.equal(h.val("route.page"), "call");
   assert.match(h.html(), /data-page="agenda" aria-current="page"/);
   assert.match(h.html(), /<button class="back" data-action="back">[^]*?Agenda<\/button>/);
   const g = agenda("2026-10-27");
-  assert.match(g.html(), /<button class="ag-row k-read" data-action="agstudy">/);
+  assert.match(g.html(), /<button class="kal-ev k-read" data-action="agstudy"/);
   g.click("agstudy");
   assert.equal(g.val("route.page"), "study");
 });

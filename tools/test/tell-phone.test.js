@@ -251,6 +251,8 @@ test("a pickup with a sheet open saves but doesn't redraw", async () => {
   assert.equal(h.val("agSheet.t"), "Half-typed");
   assert.ok(h.saved().agenda.items.some(x => x.t === "Flight"));
   h.click("agclose");
+  // Week shows the days ahead.
+  h.click("agview", {view: "w"});
   assert.match(h.html(), /<b>Flight<\/b>/);
   // With nothing open, a pickup redraws.
   await files(c, [{kind: "event", t: "Soccer", d: "2026-11-12", s: "19:00"}], "Soccer Thursday evening");
