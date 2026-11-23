@@ -41,8 +41,8 @@ test("log sheet: every EPA chip carries its short name, and the picked one shows
   // A part names its EPA and then the part.
   h.click("pickall");
   assert.match(h.html(), /data-part="c8b"><span class="pc">C8-B<\/span><span class="pn">[^<]+<\/span><\/button>/);
-  // C9 is one part now (Entrada has no Part B), so it reads as C9.
-  assert.match(h.html(), /data-part="c9a"><span class="pc">C9<\/span><span class="pn">Inpatient lead<\/span><\/button>/);
+  assert.match(h.html(), /data-part="c9a"><span class="pc">C9-A<\/span><span class="pn">Inpatient lead<\/span><\/button>/);
+  assert.match(h.html(), /data-part="c9b"><span class="pc">C9-B<\/span><span class="pn">Interprofessional care<\/span><\/button>/);
   h.click("pickpart", {part: "f3b"});
   assert.match(h.html(), /<div class="picked"><b>F3-B<\/b> Performing esophagogastroduodenoscopy: Procedure note<\/div>/);
 });

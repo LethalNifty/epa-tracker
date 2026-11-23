@@ -30,8 +30,18 @@ const Store = {
     this.state.missed = {};
     if (ms && typeof ms === "object") for (const k in ms) if (PART_BY_ID[k] && Array.isArray(ms[k]))
       this.state.missed[k] = ms[k].filter(o => o && typeof o === "object").map(o => ({...o, status: "missed"}));
-    // Parts Entrada no longer has (C9 Part B, October 2026): their forms leave
-    // every count but stay in the backup.
+    // Parts the app no longer has: their forms leave every count but stay in
+    // the backup (state.retired). A part that comes back takes its forms back
+    // (C9 Part B, gone in October 2026 and back in November).
+    const rt = this.state.retired;
+    if (rt && typeof rt === "object") {
+      for (const k of Object.keys(rt)) if (PART_BY_ID[k]) {
+        const back = (Array.isArray(rt[k]) ? rt[k] : []).filter(o => o && typeof o === "object");
+        this.state.obs[k] = [...(Array.isArray(this.state.obs[k]) ? this.state.obs[k] : []), ...back.map(o => o.status ? o : {...o, status: "approved"})];
+        delete rt[k];
+      }
+      if (!Object.keys(rt).length) delete this.state.retired;
+    }
     for (const k of Object.keys(this.state.obs)) if (!PART_BY_ID[k]) {
       const r = this.state.retired ||= {};
       r[k] = [...(Array.isArray(r[k]) ? r[k] : []), ...(Array.isArray(this.state.obs[k]) ? this.state.obs[k] : [])];

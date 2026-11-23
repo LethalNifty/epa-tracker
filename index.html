@@ -1200,6 +1200,16 @@ const EPA_DATA = [
       "id": "c6-8",
       "label": "4 difficult colonoscopy",
       "target": 1
+     },
+     {
+      "id": "c6-9",
+      "label": "1 DOPS",
+      "target": 1
+     },
+     {
+      "id": "c6-10",
+      "label": "2 DOPS",
+      "target": 1
      }
     ]
    }
@@ -1657,6 +1667,53 @@ const EPA_DATA = [
       "target": 1
      }
     ]
+   },
+   {
+    "id": "c9b",
+    "name": "Part B: Interprofessional care",
+    "required": 6,
+    "items": [
+     {
+      "id": "c9b-1",
+      "label": "1 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-2",
+      "label": "2 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-3",
+      "label": "3 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-4",
+      "label": "4 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-5",
+      "label": "5 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-6",
+      "label": "6 observer",
+      "target": 1
+     },
+     {
+      "id": "c9b-7",
+      "label": "1 other health care professional",
+      "target": 1
+     },
+     {
+      "id": "c9b-8",
+      "label": "2 other health care professional",
+      "target": 1
+     }
+    ]
    }
   ],
   "ref": {
@@ -1672,6 +1729,14 @@ const EPA_DATA = [
      "method": "Chart or case review by supervisor (Form 1)",
      "collects": [],
      "rule": "Collect 4 observations of achievement — at least 2 different assessors."
+    },
+    {
+     "part": "Part B: Interprofessional care",
+     "method": "Multiple observers provide feedback individually, which is then collated to one report (Form 3)",
+     "collects": [
+      "Role of observer: supervisor; nurse; other health care professional; junior resident; student"
+     ],
+     "rule": "Collect feedback from at least 6 observers — at least 2 other health care professionals."
     }
    ],
    "milestones": [
@@ -1687,6 +1752,22 @@ const EPA_DATA = [
       "HA 1.2 Work with patients and their families to increase opportunities to adopt healthy behaviours",
       "COM 5.1 Document clinical encounters in an accurate, complete, timely and accessible manner",
       "L 2.1 Allocate health care resources for optimal patient care"
+     ]
+    },
+    {
+     "part": "Part B: Interprofessional care",
+     "list": [
+      "ME 1.1 Demonstrate responsibility and accountability for decisions regarding patient care, acting in the role of junior attending",
+      "COL 1.2 Make effective use of the scope and expertise of other health care professionals",
+      "COL 2.1 Delegate tasks and responsibilities in an appropriate and respectful manner",
+      "COL 1.1 Respond appropriately to input from other health care professionals",
+      "COL 1.3 Communicate effectively with other health care professionals",
+      "COL 2.1 Show respect toward collaborators",
+      "HA 1.1 Facilitate timely patient access to services and resources",
+      "P 1.1 Respond punctually to requests from patients or other health care providers",
+      "COM 1.5 Manage disagreements and emotionally charged conversations with patients and/or families",
+      "P 1.1 Demonstrate professional behaviours, such as punctuality, integrity and compassion",
+      "L 4.2 Run the service efficiently, safely, and effectively"
      ]
     }
    ]
