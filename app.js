@@ -1073,7 +1073,7 @@ const DRAFT_OF = {
   epa: s => (s && s.mode === "new" && (s.a.trim() || s.n.trim()) ? {pid: s.pid, d: s.d, a: s.a, n: s.n, status: s.status, tick: s.tick || []} : null),
   pearl: s => (s && s.mode === "new" && (s.t.trim() || s.who.trim()) ? {t: s.t, who: s.who, topic: s.topic, d: s.d} : null),
   ag: s => (s && s.mode === "new" && (s.t.trim() || String(s.n || "").trim()) ? {kind: s.kind, t: s.t, d: s.d, d2: s.d2 || null, s: s.s, e: s.e || "",
-    allDay: !!s.allDay, multi: !!s.multi, rep: s.rep || null, every: s.every || 1, until: s.until || "", n: s.n || "", al: s.al || null} : null),
+    allDay: !!s.allDay, multi: !!s.multi, rep: s.rep || null, every: s.every || 1, until: s.until || "", n: s.n || "", al: s.al || null, c: s.c || "pers"} : null),
   tell: s => (s && String(s.text || "").trim() ? {text: s.text} : null),
 };
 const draftHolder = k => (k === "scope" ? scopeCap : k === "epa" ? sheet : k === "pearl" ? pearlSheet : k === "ag" ? agSheet : FELLOWS ? null : tellSheet);

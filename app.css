@@ -1463,6 +1463,30 @@ a.src:active { background: var(--wall-3); }
 .agtodo b { font-size: 15px; font-weight: 520; line-height: 1.3; }
 .agtodo > span:not(.mono) { font-size: 13px; color: var(--dim); line-height: 1.35; }
 .agtodo-a { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Agenda's colours, one for each kind: call in blue stripes, reading an amber
+   outline (a plan, not a booking), holidays red, to-dos an outline, work hours
+   grey; your own events in the colour picked in their sheet, Personal when none is. */
+:root {
+  --kc-call: #6ea8ff;
+  --kc-read: var(--flu);
+  --kc-hol: #ff5f6d;
+  --kc-todo: rgba(245, 242, 255, .5);
+  --kc-work: #35cfc4;
+  --kc-pers: var(--nbi);
+  --kc-soc: #ff8a4f;
+  --kc-trav: #8dd46a;
+  --kc-stripes: repeating-linear-gradient(135deg, color-mix(in srgb, var(--kc-call) 26%, transparent) 0 5px, color-mix(in srgb, var(--kc-call) 8%, transparent) 5px 10px);
+}
+/* The event sheet's Colour row, and a colour's dot. */
+.kal-cat { display: inline-flex; align-items: center; gap: 7px; }
+.pick.ghost.kal-cat.on { background: var(--k); color: #2b0d3f; }
+.kal-cat.on .kal-sw { background: #2b0d3f; }
+.kal-sw { flex: none; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--k); }
+/* Each of your events in its colour (last, so it wins over each kind's own). */
+:is(.kal-ev, .kal-bar, .kal-span, .kal-chip, .ag-row, .kal-cat, .kal-sw).c-work { --k: var(--kc-work); }
+:is(.kal-ev, .kal-bar, .kal-span, .kal-chip, .ag-row, .kal-cat, .kal-sw).c-pers { --k: var(--kc-pers); }
+:is(.kal-ev, .kal-bar, .kal-span, .kal-chip, .ag-row, .kal-cat, .kal-sw).c-soc { --k: var(--kc-soc); }
+:is(.kal-ev, .kal-bar, .kal-span, .kal-chip, .ag-row, .kal-cat, .kal-sw).c-trav { --k: var(--kc-trav); }
 /* Agenda: notes in your words, each with Event, To-do and Delete. */
 .ag-notes { padding: 4px 14px; }
 .agnote { padding: 12px 0; }

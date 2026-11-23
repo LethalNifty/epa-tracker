@@ -16,7 +16,7 @@ function agRowHTML(r) {
     ? [r.to && r.k === "ev" ? `until ${r.to}` : r.more ? "continues tomorrow" : "", r.sub].filter(Boolean).join(" · ")
     : r.k === "todo" ? [r.done ? "Done" : "To-do", r.sub].filter(Boolean).join(" · ") : r.sub;
   const inner = `<span class="ct mono">${time}</span><i class="cdot"></i><span class="cm"><b>${esc(r.t)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</span>`;
-  const cls = `ag-row k-${r.k}${r.off ? " off" : ""}${r.done ? " done" : ""}`;
+  const cls = `ag-row k-${r.k}${r.c ? " c-" + r.c : ""}${r.off ? " off" : ""}${r.done ? " done" : ""}`;
   if (r.k === "ev" || r.k === "all" || r.k === "todo") return `<button class="${cls}" data-action="agopen" data-id="${esc(r.id)}"${r.on ? ` data-on="${r.on}"` : ""}>${inner}</button>`;
   if (r.k === "call") return `<button class="${cls}" data-action="agcall">${inner}</button>`;
   if (r.k === "read") return `<button class="${cls}" data-action="agstudy">${inner}</button>`;
@@ -122,9 +122,9 @@ function agNoteUsed(id) {
 function agOpen(id, on) {
   const it = id ? agState().items.find(x => x.id === id) : null;
   agSheet = it && it.todo ? {mode: "edit", kind: "todo", id, t: it.t, d: it.d, s: it.s, n: it.n, err: null}
-    : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, err: null,
+    : it ? {mode: "edit", kind: "event", id, t: it.t, d: it.d, d2: it.d2, s: it.s || "09:00", e: it.e || "", allDay: !it.s, multi: !!it.d2, rep: it.rep, n: it.n, uid: it.uid, al: it.al, c: it.c || "pers", err: null,
       every: it.every || 1, until: it.until || "", days: it.days || null, nth: it.nth || null, skip: it.skip || [], on: it.rep && agValidIso(on) ? on : null}
-    : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, err: null,
+    : {mode: "new", kind: "event", t: "", d: agSel || agToday(), d2: null, s: "09:00", e: "10:00", allDay: false, multi: false, rep: null, n: "", uid: null, al: null, c: "pers", err: null,
       every: 1, until: "", days: null, nth: null, skip: [], on: null};
   agSheetFresh = true;
 }
@@ -181,11 +181,19 @@ function agSheetHTML() {
     (edit && s.rep && s.on ? `<button class="btn" data-action="agskip">Skip ${esc(agDayWords(s.on))} only</button>` : "") +
     (s.rep && s.skip && s.skip.length ? `<p class="ssub">${s.skip.length === 1 ? "One day" : s.skip.length + " days"} left out ` +
       `<button class="textbtn sm" data-action="agunskip">Bring back</button></p>` : "") +
-    agAlertsHTML(s, chip) +
+    agColourHTML(s) + agAlertsHTML(s, chip) +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n)}" data-ag="n" placeholder="Where, who, what to bring"></label>` +
     (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
     `<div class="sactions">${edit ? `<button class="btn danger" data-action="agdelete">Delete</button>` : ""}` +
     `<button class="btn primary" data-action="agsave">${edit ? "Save" : "Add event"}</button></div></div>`;
+}
+// ---- An event's colour in its sheet ---------------------------------------------------------------
+// Work, Personal (the default, never stored), Social or Travel.
+const AG_COLOUR_CHIPS = [["work", "Work"], ["pers", "Personal"], ["soc", "Social"], ["trav", "Travel"]];
+function agColourHTML(s) {
+  const on = AG_COLOURS.includes(s.c) ? s.c : "pers";
+  return `<div class="lbl mono">Colour</div><div class="pickrow kal-cats">` + AG_COLOUR_CHIPS.map(([k, label]) =>
+    `<button class="pick ghost kal-cat c-${k}${on === k ? " on" : ""}" data-action="agcolour" data-c="${k}" aria-pressed="${on === k}"><i class="kal-sw"></i>${label}</button>`).join("") + `</div>`;
 }
 // ---- An event's alerts in its sheet ------------------------------------------------------------
 // A chip for each usual alert (minutes before only for a timed event), then
@@ -255,7 +263,7 @@ function agSave() {
     timed && !AG_HM.test(s.s) ? "Pick a start time." : timed && !s.multi && s.e && AG_HM.test(s.e) && s.e <= s.s ? "It ends before it starts." :
     s.rep && s.until && agValidIso(s.until) && s.until < s.d ? "It stops repeating before it starts." : null;
   if (err) { s.err = err; return; }
-  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al,
+  const f = {t, d: s.d, d2: s.multi ? s.d2 : null, s: timed ? s.s : null, e: timed && AG_HM.test(s.e) ? s.e : null, rep: s.rep, n: s.n, al: s.al, c: AG_COLOURS.includes(s.c) ? s.c : null,
     every: s.rep ? s.every || 1 : undefined, until: s.rep && agValidIso(s.until) ? s.until : undefined,
     days: s.rep ? s.days || undefined : undefined, nth: s.rep ? s.nth || undefined : undefined, skip: s.rep ? s.skip : undefined};
   const before = agSnapshot();
@@ -461,6 +469,7 @@ function agDispatch(act, d) {
     agSheet = null;
   }
   else if (act === "agunskip" && agSheet) agSheet.skip = [];
+  else if (act === "agcolour" && agSheet && AG_COLOUR_CHIPS.some(([k]) => k === d.c)) agSheet.c = d.c;
   // One kind of alert on, at its usual time, or off (however many of it there
   // are); the rest stay as they were (the usual two, when none was chosen).
   else if (act === "agalert" && agSheet && typeof d.al === "string" && d.al) {

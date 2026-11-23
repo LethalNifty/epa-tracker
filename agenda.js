@@ -12,6 +12,8 @@ const AG_T_MAX = 120, AG_N_MAX = 500;
 // (the last day it can start), days (weekly on these weekdays, 0 Sunday),
 // nth (monthly on the nth weekday, -1 the last) and skip (days left out).
 const AG_REPS = ["d", "w", "m", "y"];
+// An event's colour when it isn't personal (the default): work, social or travel.
+const AG_COLOURS = ["work", "soc", "trav"];
 const AG_WD = {SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6};
 
 // ---- Days ---------------------------------------------------------------------------
@@ -47,7 +49,8 @@ function agUsualClean(u) {
 // ---- Events -------------------------------------------------------------------------------
 // One saved event made whole, or null with no title or date. d2: the last day
 // when it runs over several (inclusive). s and e: "HH:MM", or null for all day;
-// an end before the start runs past midnight into the next day.
+// an end before the start runs past midnight into the next day. c: its
+// colour, only when it isn't personal.
 // A to-do is an item with a todo part: one day, a time (08:00 when none), no
 // end, repeat or alerts of its own.
 function agItemClean(x) {
@@ -63,6 +66,7 @@ function agItemClean(x) {
     uid: typeof x.uid === "string" && x.uid ? x.uid.slice(0, 200) : null, ts: typeof x.ts === "string" ? x.ts : "",
     al: !todo && Array.isArray(x.al) ? agAlertsClean(x.al) : null};
   if (rep) Object.assign(it, agRepClean(x, rep));
+  if (!todo && AG_COLOURS.includes(x.c)) it.c = x.c;
   if (todo) it.todo = todo;
   return it;
 }
@@ -473,6 +477,7 @@ function agEventRows(iso) {
     // A repeating event's row knows its day, so its sheet can skip just that one.
     if (it.rep && !sp.cont) r.on = iso;
     if (it.todo) r.done = !!it.todo.done;
+    if (it.c) r.c = it.c;
     out.push(r);
   }
   return out;
