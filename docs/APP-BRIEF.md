@@ -36,6 +36,7 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - Week: the same for 7 days from Monday, or 3 days from the chosen one; a day's head opens it
 - Month: a Monday-first grid with each day's things by name (up to three, then +N), all-day events as bars, a key to the colours, and the chosen day's rows under it
 - back, on and Today in each; colours by kind: call in blue stripes, reading an amber outline, holidays red, to-dos an outline, work hours grey
+- + Add at the top: a new event, or a to-do from the Event | To-do switch at the top of its sheet
 - your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note and a colour (Work, Personal by default, Social or Travel; Tell GI Hub picks it from what was said); add, edit and delete with Undo
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view

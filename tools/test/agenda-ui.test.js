@@ -166,8 +166,10 @@ test("call goes to Call and back; reading goes to Study", () => {
 });
 
 // ---- The event sheet --------------------------------------------------------------------------
-test("Add: a sheet on the chosen day, 9 to 10; it needs a name and an end after its start; Undo takes it back", () => {
+test("+ Add: a sheet on the chosen day, 9 to 10; it needs a name and an end after its start; Undo takes it back", () => {
   const h = agenda("2026-10-27");
+  // It says Add, not Event: the sheet makes a to-do too.
+  assert.match(h.html(), /<button class="iconbtn phgear phadd" data-action="agnew"><svg class="ic" aria-hidden="true"><use href="#i-plus"\/><\/svg>Add<\/button>/);
   h.click("agday", {day: "2026-10-29"});
   h.click("agnew");
   assert.match(h.html(), /role="dialog" aria-modal="true" aria-label="New event"/);
