@@ -110,12 +110,16 @@ test("the event sheet makes a to-do", () => {
   h.click("agsave");
   const it = h.saved().agenda.items[0];
   assert.deepEqual([it.t, it.d, it.s, it.e, it.todo], ["Call the bank", "2026-11-09", "16:00", null, {q: "", tom: 0, done: null}]);
-  // Opened again: no switch, and Done, Tomorrow and Drop it beside Save.
+  // Opened again: no switch; Tomorrow and Drop it as chips, and Done as a full button beside Save.
   h.click("agopen", {id: it.id});
   const ed = h.html();
   assert.match(ed, /aria-label="Edit to-do"/);
   assert.doesNotMatch(ed, /data-action="agkind"/);
   for (const how of ["done", "tomorrow", "drop"]) assert.match(ed, new RegExp(`data-action="agtodo" data-id="${it.id}" data-how="${how}"`));
+  assert.match(ed, new RegExp(`<div class="agtodo-a"><button class="pick ghost" data-action="agtodo" data-id="${it.id}" data-how="tomorrow">Tomorrow</button>` +
+    `<button class="pick ghost" data-action="agtodo" data-id="${it.id}" data-how="drop">Drop it</button></div>`));
+  assert.match(ed, new RegExp(`<div class="sactions"><button class="btn" data-action="agtodo" data-id="${it.id}" data-how="done">.*?Done</button>` +
+    `<button class="btn primary" data-action="agsave">Save</button></div>`));
   h.click("agclose");
   // A day or time you set yourself asks again, even after two Tomorrows.
   h.run(`agTodoAnswer("${it.id}", "tomorrow", callNow()); agTodoAnswer("${it.id}", "tomorrow", callNow())`);

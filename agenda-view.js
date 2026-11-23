@@ -324,7 +324,8 @@ function agKindHTML(s) {
   return `<div class="segtabs ag-kind" role="group" aria-label="Event or to-do">` + [["event", "Event"], ["todo", "To-do"]].map(([k, label]) =>
     `<button class="${s.kind === k ? "on" : ""}" data-action="agkind" data-kind="${k}" aria-pressed="${s.kind === k}">${label}</button>`).join("") + `</div>`;
 }
-// A to-do: what, its day and the time it asks. Open, it answers like Week does.
+// A to-do: what, its day and the time it asks. Open, it answers like Week does:
+// Tomorrow and Drop it as chips, Done as a full button beside Save.
 function agTodoSheetHTML() {
   const s = agSheet, edit = s.mode === "edit", title = edit ? "Edit to-do" : "New to-do", fresh = agSheetFresh ? " fresh" : "";
   const how = (h, label) => `<button class="pick ghost" data-action="agtodo" data-id="${esc(s.id)}" data-how="${h}">${label}</button>`;
@@ -336,9 +337,10 @@ function agTodoSheetHTML() {
     `<label class="lbl mono">Time<input type="time" value="${esc(s.s)}" data-ag="s"></label></div>` +
     `<label class="lbl mono">Note<input type="text" value="${esc(s.n || "")}" data-ag="n" placeholder="Anything to remember"></label>` +
     `<p class="ssub">It asks once at this time: Done, Tomorrow or Drop it.</p>` +
-    (edit ? `<div class="agtodo-a">${how("done", "Done")}${how("tomorrow", "Tomorrow")}${how("drop", "Drop it")}</div>` : "") +
+    (edit ? `<div class="agtodo-a">${how("tomorrow", "Tomorrow")}${how("drop", "Drop it")}</div>` : "") +
     (s.err ? `<div class="err" role="alert">${esc(s.err)}</div>` : "") +
-    `<div class="sactions"><button class="btn primary" data-action="agsave">${edit ? "Save" : "Add to-do"}</button></div></div>`;
+    `<div class="sactions">${edit ? `<button class="btn" data-action="agtodo" data-id="${esc(s.id)}" data-how="done">${ic("check")}Done</button>` : ""}` +
+    `<button class="btn primary" data-action="agsave">${edit ? "Save" : "Add to-do"}</button></div></div>`;
 }
 function agSheetHTML() {
   if (agSheet.kind === "todo") return agTodoSheetHTML();
