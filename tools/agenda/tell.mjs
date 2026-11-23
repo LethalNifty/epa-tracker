@@ -186,6 +186,8 @@ export function resultClean(raw, item) {
     if (s) r.s = s;
     if (e) r.e = e;
     if (n) r.n = n;
+    // Its colour when it's work, social or travel; none is Personal.
+    if (["work", "soc", "trav"].includes(raw.c)) r.c = raw.c;
     // Reminders said are the event's only ones; none it could read is none said.
     if (Array.isArray(raw.al)) { const al = alClean(raw.al, !!s); if (al.length || !raw.al.length) r.al = al; }
   } else if (raw.kind === "todo") {

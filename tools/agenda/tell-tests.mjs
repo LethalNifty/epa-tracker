@@ -8,15 +8,15 @@
 // A want lists the results in order: the kind, and any of d (a day, or a list
 // of days either of which is right; for a change, the day it moves to), s
 // (likewise its time), d2, chk, cancel, for; al, every reminder in any order
-// and no others; words, which must appear in its
+// and no others; c, its colour (pers: none); words, which must appear in its
 // title, text or what it changes; not, words that must appear nowhere (a
 // patient's name). A swap's want gives its slots, matched in any order, the
 // site only when the words name one. Placeholder names only.
 export const TELL_TESTS = [
   {say: "Flight on the 11th at 9:35", at: "2026-11-09T14:05:00-05:00",
-    want: [{kind: "event", d: "2026-11-11", s: "09:35", words: ["flight"]}]},
+    want: [{kind: "event", d: "2026-11-11", s: "09:35", c: "trav", words: ["flight"]}]},
   {say: "Dentist Friday at 9", at: "2026-11-09T10:00:00-05:00",
-    want: [{kind: "event", d: "2026-11-13", s: "09:00", words: ["dentist"]}]},
+    want: [{kind: "event", d: "2026-11-13", s: "09:00", c: "pers", words: ["dentist"]}]},
   {say: "Remind me to send the slides to Casey", at: "2026-11-09T14:00:00-05:00",
     want: [{kind: "todo", d: "2026-11-10", s: "08:00", words: ["slides"]}]},
   {say: "Remind me to renew my parking pass", at: "2026-11-10T06:30:00-05:00",
@@ -24,7 +24,7 @@ export const TELL_TESTS = [
   {say: "Remind me tomorrow morning to call the pharmacy about the refill", at: "2026-11-09T23:30:00-05:00",
     want: [{kind: "todo", d: "2026-11-10", s: "08:00", words: ["pharmacy"]}]},
   {say: "Tomorrow at 10, coffee with Brook", at: "2026-11-11T00:30:00-05:00",
-    want: [{kind: "event", d: "2026-11-11", s: "10:00", chk: true, words: ["coffee"]}]},
+    want: [{kind: "event", d: "2026-11-11", s: "10:00", chk: true, c: "soc", words: ["coffee"]}]},
   {say: "Move the dentist to next Tuesday at 2", at: "2026-11-09T15:00:00-05:00",
     want: [{kind: "change", d: ["2026-11-10", "2026-11-17"], s: "14:00", chk: true, words: ["dentist"]}]},
   {say: "Cancel the flight", at: "2026-11-09T16:00:00-05:00",
@@ -40,14 +40,14 @@ export const TELL_TESTS = [
   {say: "The clinic parking moved to level 3", at: "2026-11-09T08:15:00-05:00",
     want: [{kind: "note", words: ["level 3"]}]},
   {say: "Soccer Thursday evening", at: "2026-11-09T12:00:00-05:00",
-    want: [{kind: "event", d: "2026-11-12", s: "19:00", words: ["soccer"]}]},
+    want: [{kind: "event", d: "2026-11-12", s: "19:00", c: "pers", words: ["soccer"]}]},
   {say: "Haircut Wednesday afternoon", at: "2026-11-09T12:10:00-05:00",
-    want: [{kind: "event", d: "2026-11-11", s: "13:00", words: ["haircut"]}]},
+    want: [{kind: "event", d: "2026-11-11", s: "13:00", c: "pers", words: ["haircut"]}]},
   {say: "Remind me to email the program office about vacation, and pearl: lactulose is first line for overt hepatic encephalopathy",
     at: "2026-11-09T14:00:00-05:00",
     want: [{kind: "todo", d: "2026-11-10", s: "08:00", words: ["program office"]}, {kind: "pearl", words: ["lactulose"]}]},
   {say: "Flight home from Orlando on the 17th at 3:20 pm", at: "2026-11-13T09:00:00-05:00",
-    want: [{kind: "event", d: "2026-11-17", s: "15:20", words: ["orlando"]}]},
+    want: [{kind: "event", d: "2026-11-17", s: "15:20", c: "trav", words: ["orlando"]}]},
   {say: "Call the bank in two hours", at: "2026-11-09T14:00:00-05:00",
     want: [{kind: "todo", d: "2026-11-09", s: "16:00", words: ["bank"]}]},
   {say: "Follow up on Quill's biopsy results next Monday", at: "2026-11-09T11:00:00-05:00",
@@ -61,9 +61,9 @@ export const TELL_TESTS = [
   {say: "Brook and Rowan switched nights, Brook has December 8 now and Rowan has December 14", at: "2026-11-25T10:00:00-05:00",
     want: [{kind: "callswap", slots: [{d: "2026-12-08", slot: "night", from: "Rowan", to: "Brook"}, {d: "2026-12-14", slot: "night", from: "Brook", to: "Rowan"}]}]},
   {say: "Rounds presentation on December 18 at noon, remind me two weeks before and the day before", at: "2026-11-22T10:00:00-05:00",
-    want: [{kind: "event", d: "2026-12-18", s: "12:00", al: ["2w@19:00", "1d@19:00"], words: ["presentation"]}]},
+    want: [{kind: "event", d: "2026-12-18", s: "12:00", al: ["2w@19:00", "1d@19:00"], c: "work", words: ["presentation"]}]},
   {say: "Haircut December 4 at 5 pm, remind me that morning and an hour before", at: "2026-11-22T10:05:00-05:00",
-    want: [{kind: "event", d: "2026-12-04", s: "17:00", al: ["0d@08:00", "60"], words: ["haircut"]}]},
+    want: [{kind: "event", d: "2026-12-04", s: "17:00", al: ["0d@08:00", "60"], c: "pers", words: ["haircut"]}]},
 ];
 
 // The made-up call sheets (test-sheets/make.mjs draws them from this): Block 7
@@ -121,6 +121,7 @@ function matches(want, r) {
   const val = k => r.kind === "change" && (k === "d" || k === "s") ? (r.to || {})[k] : r[k];
   for (const k of FIELDS) if (k in want && !(Array.isArray(want[k]) ? want[k].includes(val(k)) : want[k] === val(k))) return false;
   if ("al" in want && !(Array.isArray(r.al) && r.al.length === want.al.length && want.al.every(c => r.al.includes(c)))) return false;
+  if ("c" in want && (r.c || "pers") !== want.c) return false;
   const words = [r.t, r.text, r.m].filter(x => typeof x === "string").join("\n").toLowerCase();
   if ((want.words || []).some(w => !words.includes(w.toLowerCase()))) return false;
   const all = strings(r).join("\n").toLowerCase();

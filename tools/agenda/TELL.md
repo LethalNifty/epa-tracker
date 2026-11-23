@@ -138,11 +138,15 @@ trips.
 ```
 
 ```json
-{"item": "ik3m9x2p4qa", "kind": "event", "t": "Vacation", "d": "2026-12-23", "d2": "2026-12-27"}
+{"item": "ik3m9x2p4qa", "kind": "event", "t": "Vacation", "d": "2026-12-23", "d2": "2026-12-27", "c": "trav"}
 ```
 
 ```json
-{"item": "ik3m9x2p4qa", "kind": "event", "t": "Rounds talk", "d": "2026-12-18", "s": "12:00", "al": ["2w@19:00", "1d@19:00"]}
+{"item": "ik3m9x2p4qa", "kind": "event", "t": "Rounds talk", "d": "2026-12-18", "s": "12:00", "c": "work", "al": ["2w@19:00", "1d@19:00"]}
+```
+
+```json
+{"item": "ik3m9x2p4qa", "kind": "event", "t": "Coffee with Brook", "d": "2026-11-11", "s": "10:00", "c": "soc"}
 ```
 
 - `t`: its name as a calendar would show it (Dentist, Flight to Orlando,
@@ -163,6 +167,14 @@ trips.
   the day before" is `["1d@19:00"]`, and "no reminders" is `[]`. Leave `al`
   out when none were said: GI Hub then gives its usual two (19:00 the
   evening before, and 30 minutes before). Eight at most.
+- `c`: its colour in the calendar, only when it's plainly one of these:
+  `"work"` for the fellowship and medicine (rounds, GI rounds, clinic,
+  scopes, meetings, talks, journal club, conferences, exams), `"soc"` for
+  time with other people (dinners, drinks, coffee, parties, birthdays,
+  weddings), `"trav"` for getting somewhere and being away (flights,
+  trains, road trips, vacations). Leave `c` out for anything else (the
+  dentist, a haircut, a run, soccer) or when unsure: GI Hub shows it as
+  Personal.
 
 ### todo
 

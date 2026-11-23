@@ -276,8 +276,8 @@ test("the test set runs from Settings and shows how Claude did", async () => {
   h.click("telscore"); await settle(h);
   const html = h.html();
   assert.match(html, /0 of 26 right<\/b>, 3 filed so far/);
-  assert.ok(html.includes("Wanted event 2026-11-13 09:00; got event 2026-11-13 21:00"), "a said test's miss");
-  assert.ok(html.includes("Wanted event 2026-12-18 12:00 alerts 2w@19:00 1d@19:00; got event 2026-12-18 12:00"), "a miss on the reminders alone");
+  assert.ok(html.includes("Wanted event 2026-11-13 09:00 Personal; got event 2026-11-13 21:00 Personal"), "a said test's miss");
+  assert.ok(html.includes("Wanted event 2026-12-18 12:00 alerts 2w@19:00 1d@19:00 Work; got event 2026-12-18 12:00 Personal"), "a miss on the reminders and colour");
   assert.ok(html.includes("Wanted one call schedule; got note"), "the sheets' miss");
 });
 

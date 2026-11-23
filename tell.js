@@ -136,7 +136,7 @@ function tellApply(r, now) {
   if (r.kind === "event" || r.kind === "todo") {
     if (a.items.some(x => x.id === r.id)) return null;
     const it = agItemClean(r.kind === "todo" ? {id: r.id, t: r.t, d: r.d, s: r.s, ts, todo: {q: r.q || "", tom: 0, done: null}}
-      : {id: r.id, t: r.t, d: r.d, d2: r.d2 || null, s: r.s || null, e: r.e || null, n: r.n || "", al: Array.isArray(r.al) ? r.al : null, ts});
+      : {id: r.id, t: r.t, d: r.d, d2: r.d2 || null, s: r.s || null, e: r.e || null, n: r.n || "", al: Array.isArray(r.al) ? r.al : null, c: r.c, ts});
     if (!it || it.id !== r.id) return null;
     a.items.push(it); Store.save();
     return {...e, undo: {del: it.id}};
@@ -304,12 +304,14 @@ function tellKeyHTML(which, label) {
     `<button class="textbtn" data-action="telcopy" data-which="${which}">Copy</button></div>` +
     (tellShow === which ? `<input class="tellshow mono" type="text" readonly value="${esc(key)}" aria-label="${label}">` : "");
 }
-// What was wanted or filed, in short: the kind, day and time, and any reminders.
-const tellBrief = x => [x.kind, ...[x.d, x.s].filter(Boolean).map(v => Array.isArray(v) ? v.join(" or ") : v),
-  ...(Array.isArray(x.al) ? [x.al.length ? "alerts " + x.al.join(" ") : "no alerts"] : [])].join(" ");
+// What was wanted or filed, in short: the kind, day and time, any reminders,
+// and an event's colour when one was wanted (one filed with none is Personal).
+const tellBrief = (x, got) => [x.kind, ...[x.d, x.s].filter(Boolean).map(v => Array.isArray(v) ? v.join(" or ") : v),
+  ...(Array.isArray(x.al) ? [x.al.length ? "alerts " + x.al.join(" ") : "no alerts"] : []),
+  ...(x.kind === "event" && (x.c || got) ? [(AG_COLOUR_CHIPS.find(([k]) => k === (x.c || "pers")) || [, x.c])[1]] : [])].join(" ");
 // A miss in words: what was wanted and what came, or, for the made-up sheets, what was read wrong.
 const tellMissWords = m => Array.isArray(m.words) ? m.words.join("; ") :
-  `Wanted ${(m.want || []).map(tellBrief).join(", ")}; got ${m.got && m.got.length ? m.got.map(tellBrief).join(", ") : "nothing"}`;
+  `Wanted ${(m.want || []).map(w => tellBrief(w)).join(", ")}; got ${m.got && m.got.length ? m.got.map(r => tellBrief(r, true)).join(", ") : "nothing"}`;
 function tellTestHTML() {
   const s = tellResult, miss = m => `<li><b>${esc(m.say)}</b><span class="mono">${esc(tellMissWords(m))}</span></li>`;
   return `<p class="rnote">The test set: 25 made-up things said and a pair of made-up call sheets, to see how Claude files them. Check it a few minutes after you run it.</p>` +
