@@ -32,9 +32,11 @@ A one-person iPhone web app for an adult GI fellow in Royal College Competence b
 - a gear for Settings: the version (and whether this phone has the live one, with Update now if not), backup export and import, patient age range for the procedure log (off unless switched on, or turned on by importing a log that has ages), and reminders
 
 **Agenda (calendar):**
-- Days: this week from Monday with marks, the chosen day as a timeline (work hours from your usual week named for the rotation, call with who's on, the night's reading with its pages, your events, Manitoba's holidays) and the rest of the week's events and call
-- Month: a Monday-first grid with call, reading, your events and holidays; tap a day for its timeline
-- your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note; add, edit and delete with Undo
+- Day: this week from Monday with marks, then the chosen day's hours drawn to scale (07:00 to 22:00, wider for anything earlier or later): work hours from your usual week named for the rotation and call as bands, your events, to-dos and the night's reading as blocks as long as they last, all-day events and Manitoba's holidays above, a line at now; tap an empty hour for a new event there
+- Week: the same for 7 days from Monday, or 3 days from the chosen one; a day's head opens it
+- Month: a Monday-first grid with each day's things by name (up to three, then +N), all-day events as bars, a key to the colours, and the chosen day's rows under it
+- back, on and Today in each; colours by kind: call in blue stripes, reading an amber outline, holidays red, to-dos an outline, work hours grey
+- your own events: timed, all day, over several days or past midnight, repeating weekly, monthly or yearly, with a note and a colour (Work, Personal by default, Social or Travel; Tell GI Hub picks it from what was said); add, edit and delete with Undo
 - Add from file: an invite or calendar export (.ics), times converted from the sender's zone; a GI call file goes to Call
 - your usual week: work blocks per day (Thursday half day), used for the day view
 - alerts for your events: 19:00 the evening before (one notification lists the day) and 30 minutes before unless you pick others, up to eight per event: 30 min, 1 hour, Day of, Day before, 1 week, 2 weeks or 1 month before, each one a day or more before at its own time (19:00 unless changed, Day of 07:00); a line under the chips says when each goes; an all-day event gets only those a day or more before; Tell GI Hub hears "remind me two weeks before and the day before"
